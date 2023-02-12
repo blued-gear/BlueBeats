@@ -72,7 +72,7 @@ class MainActivity : AppCompatActivity() {
 
         init{
             tabs = listOf(
-                Pair("Media", {FileBrowser.newInstance()})
+                Pair(getText(R.string.main_tab_media).toString(), {FileBrowser.newInstance()})
             )
         }
 

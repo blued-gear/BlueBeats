@@ -36,7 +36,7 @@
                 app:constraint_referenced_ids="player_btn_pause,player_btn_resume" />
 
         <Button
-                android:text="Resume"
+                android:text="@string/player_resume"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:id="@+id/player_btn_resume"
@@ -46,7 +46,7 @@
                 android:layout_marginBottom="8dp" />
 
         <Button
-                android:text="Pause"
+                android:text="@string/player_pause"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:id="@+id/player_btn_pause"
