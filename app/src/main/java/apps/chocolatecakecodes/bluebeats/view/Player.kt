@@ -484,41 +484,49 @@ class Player : Fragment() {
             if(event === null) return
 
             when(event.type){
-                MediaPlayer.Event.TimeChanged -> {
-                    viewModel.updatePlayPosition(player.time)
-                }
-                MediaPlayer.Event.EndReached -> {
-                    // reset player, or else seek will break
-                    player.play(currentMedia!!)
-                    viewModel.updatePlayPosition(0)
-                    viewModel.pause()
-                }
-                MediaPlayer.Event.MediaChanged -> {
-                    newMediaLoading = true
-                }
-                MediaPlayer.Event.Playing -> {
-                    if(newMediaLoading){
-                        newMediaLoading = false
+                MediaPlayer.Event.TimeChanged -> onTimeChanged()
+                MediaPlayer.Event.EndReached -> onEndReached()
+                MediaPlayer.Event.MediaChanged -> onMediaChanged()
+                MediaPlayer.Event.Playing -> onPlaying()
+            }
+        }
 
-                        // chapter-info should now be loaded
-                        // 1.: use chapters from MediaFile; 2.: if not available use from player; 3.: leve empty
-                        val chapters: List<Chapter>
-                        val mediaChapters = viewModel.currentMedia.value!!.chapters
-                        if(!mediaChapters.isNullOrEmpty()){
-                            chapters = mediaChapters
-                        }else{
-                            val vlcChapters: Array<MediaPlayer.Chapter>? = player.getChapters(-1)
-                            if(vlcChapters !== null){
-                                chapters = vlcChapters.map {
-                                    Chapter(it.timeOffset, it.timeOffset + it.duration, it.name)
-                                }
-                            }else{
-                                chapters = emptyList()
-                            }
+        private fun onTimeChanged() {
+            viewModel.updatePlayPosition(player.time)
+        }
+
+        private fun onEndReached() {
+            // reset player, or else seek will break
+            player.play(currentMedia!!)
+            viewModel.updatePlayPosition(0)
+            viewModel.pause()
+        }
+
+        private fun onMediaChanged() {
+            newMediaLoading = true
+        }
+
+        private fun onPlaying() {
+            if(newMediaLoading){
+                newMediaLoading = false
+
+                // chapter-info should now be loaded
+                // 1.: use chapters from MediaFile; 2.: if not available use from player; 3.: leve empty
+                val chapters: List<Chapter>
+                val mediaChapters = viewModel.currentMedia.value!!.chapters
+                if(!mediaChapters.isNullOrEmpty()){
+                    chapters = mediaChapters
+                }else{
+                    val vlcChapters: Array<MediaPlayer.Chapter>? = player.getChapters(-1)
+                    if(vlcChapters !== null){
+                        chapters = vlcChapters.map {
+                            Chapter(it.timeOffset, it.timeOffset + it.duration, it.name)
                         }
-                        viewModel.setChapters(chapters)
+                    }else{
+                        chapters = emptyList()
                     }
                 }
+                viewModel.setChapters(chapters)
             }
         }
     }
