@@ -3,6 +3,7 @@ package apps.chocolatecakecodes.bluebeats.media.model
 import apps.chocolatecakecodes.bluebeats.database.MediaDirEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -30,7 +31,8 @@ abstract class MediaNode {
     init {
         // trigger caching of hashCode (else it might happen that a DB-query in the UI-Thread gets executed)
         CoroutineScope(Dispatchers.IO).launch {
-            hashCode()
+            delay(10)
+            this@MediaNode.hashCode()
         }
     }
 
