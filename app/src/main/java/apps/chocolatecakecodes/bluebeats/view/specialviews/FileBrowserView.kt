@@ -25,7 +25,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-fun mediaNodeToItem(node: MediaNode): AbstractItem<*>? = when(node) {
+internal fun mediaNodeToItem(node: MediaNode): AbstractItem<*>? = when(node) {
     is MediaDir -> MediaDirItem(node)
     is MediaFile -> MediaFileItem(node)
     else -> null

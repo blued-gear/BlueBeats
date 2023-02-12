@@ -13,6 +13,7 @@ internal class MediaDirItem(
 
     override val type: Int = MediaDirItem::class.hashCode()
     override val layoutRes: Int = R.layout.view_media_node
+    override var identifier: Long = dir.hashCode().toLong()
 
     override val isDraggable: Boolean = draggable
 

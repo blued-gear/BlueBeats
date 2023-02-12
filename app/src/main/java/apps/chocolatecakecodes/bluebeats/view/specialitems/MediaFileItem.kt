@@ -19,6 +19,7 @@ internal open class MediaFileItem(
 
     override val type: Int = MediaFileItem::class.hashCode()
     override val layoutRes: Int = R.layout.view_media_node
+    override var identifier: Long = file.hashCode().toLong()
 
     override fun getViewHolder(v: View) = ViewHolder(v)
 

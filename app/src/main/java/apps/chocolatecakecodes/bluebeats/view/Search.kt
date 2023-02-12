@@ -103,7 +103,9 @@ internal class Search : Fragment(R.layout.search_fragment) {
     }
 
     private fun setupItemList() {
-        itemListAdapter = FastItemAdapter()
+        itemListAdapter = FastItemAdapter<GroupItem>().apply {
+            setHasStableIds(true)
+        }
         itemListAdapter.getExpandableExtension().apply {
             isOnlyOneExpandedItem = false
         }
