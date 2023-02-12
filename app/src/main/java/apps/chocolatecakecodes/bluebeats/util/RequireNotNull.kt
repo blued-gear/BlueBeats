@@ -12,11 +12,15 @@ class RequireNotNull<V> constructor(){
         set(initialValue)
     }
 
-    fun get(): V{
+    fun get(): V {
         return value!!
     }
 
     fun set(value: V?) {
         this.value = value
+    }
+
+    fun isNull() : Boolean {
+        return value === null
     }
 }
