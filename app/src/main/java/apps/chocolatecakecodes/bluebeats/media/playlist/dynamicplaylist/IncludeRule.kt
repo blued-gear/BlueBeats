@@ -1,16 +1,10 @@
 package apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist
 
 import androidx.room.*
-import apps.chocolatecakecodes.bluebeats.database.MediaDirDAO
-import apps.chocolatecakecodes.bluebeats.database.MediaDirEntity
-import apps.chocolatecakecodes.bluebeats.database.MediaFileDAO
-import apps.chocolatecakecodes.bluebeats.database.MediaFileEntity
-import apps.chocolatecakecodes.bluebeats.database.RoomDB
+import apps.chocolatecakecodes.bluebeats.database.*
 import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import java.util.*
-import kotlin.collections.HashMap
-import kotlin.collections.HashSet
 
 internal class IncludeRule private constructor(
     private val entityId: Long,

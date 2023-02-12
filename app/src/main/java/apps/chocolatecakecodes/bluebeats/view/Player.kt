@@ -19,7 +19,7 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.taglib.Chapter
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.Utils
-import com.mikepenz.fastadapter.IAdapter
+import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
 import com.mikepenz.fastadapter.adapters.FastItemAdapter
 import com.mikepenz.fastadapter.select.getSelectExtension
 import kotlinx.coroutines.*
@@ -679,8 +679,8 @@ class Player : Fragment() {
             }
         }
 
-        private fun setupListAdapter(): FastItemAdapter<MediaItem> {
-            val adapter = FastItemAdapter<MediaItem>()
+        private fun setupListAdapter(): FastItemAdapter<MediaFileItem> {
+            val adapter = FastItemAdapter<MediaFileItem>()
 
             adapter.getSelectExtension().apply {
                 isSelectable = false
@@ -725,7 +725,7 @@ class Player : Fragment() {
             val pl = viewModel.currentPlaylist.value!!
             CoroutineScope(Dispatchers.IO).launch {
                 pl.getItems().map {
-                    MediaItem(it, false)
+                    MediaFileItem(it, false)
                 }.let {
                     withContext(Dispatchers.Main) {
                         listAdapter.setNewList(it)

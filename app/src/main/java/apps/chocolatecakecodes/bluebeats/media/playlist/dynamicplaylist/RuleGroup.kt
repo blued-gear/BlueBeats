@@ -4,7 +4,6 @@ import androidx.room.*
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import java.util.*
-import kotlin.collections.ArrayList
 
 internal class RuleGroup private constructor(
     private val entityId: Long,

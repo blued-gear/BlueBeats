@@ -1,4 +1,4 @@
-package apps.chocolatecakecodes.bluebeats.view
+package apps.chocolatecakecodes.bluebeats.view.specialitems
 
 import android.util.Log
 import android.view.View

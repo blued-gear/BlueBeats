@@ -4,13 +4,9 @@ import androidx.room.*
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.playlist.*
-import apps.chocolatecakecodes.bluebeats.media.playlist.Playlist
-import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistIterator
-import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistsManager
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
 import java.util.*
-import kotlin.collections.ArrayList
 
 private const val EXAMPLE_ITEM_COUNT = 50
 

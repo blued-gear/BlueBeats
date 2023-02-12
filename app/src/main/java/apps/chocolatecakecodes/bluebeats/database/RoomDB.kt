@@ -8,15 +8,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
-import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistName
-import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistsManager
-import apps.chocolatecakecodes.bluebeats.media.playlist.StaticPlaylist
-import apps.chocolatecakecodes.bluebeats.media.playlist.StaticPlaylistEntity
-import apps.chocolatecakecodes.bluebeats.media.playlist.StaticPlaylistEntry
+import apps.chocolatecakecodes.bluebeats.media.playlist.*
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.*
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylistEntity
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGroupEntity
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGroupEntry
 import java.util.concurrent.atomic.AtomicReference
 
 @Database(version = 3, entities = [

@@ -7,8 +7,6 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
 import java.util.*
-import kotlin.NoSuchElementException
-import kotlin.collections.ArrayList
 
 /**
  * a normal playlist where the user puts media in manually

@@ -8,7 +8,8 @@ import android.view.LayoutInflater
 import android.view.Menu
 import android.view.View
 import android.view.ViewGroup
-import android.widget.*
+import android.widget.ProgressBar
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
@@ -22,9 +23,9 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
-import apps.chocolatecakecodes.bluebeats.util.SimpleObservable
 import apps.chocolatecakecodes.bluebeats.util.Utils
-import com.mikepenz.fastadapter.FastAdapter
+import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaDirItem
+import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
 import com.mikepenz.fastadapter.GenericItem
 import com.mikepenz.fastadapter.ISelectionListener
 import com.mikepenz.fastadapter.adapters.GenericFastItemAdapter
@@ -34,7 +35,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.*
 
 class FileBrowser : Fragment() {
 
@@ -281,7 +281,7 @@ class FileBrowser : Fragment() {
 
         val addToPlItem = mainMenu.findItem(R.id.filebrowser_menu_atp)
         val selectedItems = listAdapter.getSelectExtension().selectedItems
-        val onlyFilesSelected = selectedItems.filterIsInstance<FileItem>()
+        val onlyFilesSelected = selectedItems.filterIsInstance<MediaFileItem>()
             .size == listAdapter.getSelectExtension().selectedItems.size
         addToPlItem.isEnabled = selectedItems.isNotEmpty() && onlyFilesSelected
     }
@@ -308,7 +308,7 @@ class FileBrowser : Fragment() {
 
     private fun onItemSelectionChanged(item: GenericItem, selected: Boolean) {
         if(selected) {
-            if(item is FileItem){
+            if(item is MediaFileItem){
                 viewModel.selectFile(item.file)
             } else {
                 viewModel.selectFile(null)
@@ -318,7 +318,7 @@ class FileBrowser : Fragment() {
             if(selectedItems.size == 1) {
                 // if only one selection is left (and it is a file) use it as selected file
                 val selectedItem = selectedItems[0]
-                if(selectedItem is FileItem)
+                if(selectedItem is MediaFileItem)
                     viewModel.selectFile(selectedItem.file)
                 else
                     viewModel.selectFile(null)
@@ -339,7 +339,7 @@ class FileBrowser : Fragment() {
         }
 
         return when (item) {
-            is DirItem -> {
+            is MediaDirItem -> {
                 viewModel.setCurrentDir(item.dir)
                 viewModel.selectFile(null)
 
@@ -351,7 +351,7 @@ class FileBrowser : Fragment() {
 
                 true
             }
-            is FileItem -> {
+            is MediaFileItem -> {
                 viewModel.selectFile(item.file)
 
                 mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
@@ -419,7 +419,7 @@ class FileBrowser : Fragment() {
 
                             if(pl !== null) {
                                 listAdapter.getSelectExtension().selectedItems
-                                    .filterIsInstance<FileItem>().map {
+                                    .filterIsInstance<MediaFileItem>().map {
                                         it.file
                                     }.sortedBy {
                                         it.name
@@ -442,48 +442,10 @@ class FileBrowser : Fragment() {
 }
 
 //region RecycleView-Items
-private fun mediaNodeToItem(node: MediaNode) = when(node) {
-    is MediaDir -> DirItem(node)
-    is MediaFile -> FileItem(node)
+private fun mediaNodeToItem(node: MediaNode): AbstractItem<*>? = when(node) {
+    is MediaDir -> MediaDirItem(node)
+    is MediaFile -> MediaFileItem(node)
     else -> null
-}
-
-private class DirItem(val dir: MediaDir) : SelectableItem<DirItem.ViewHolder>() {
-
-    override val layoutRes: Int = R.layout.view_media_node
-    override val type: Int = R.layout.filebrowser_fragment.shl(4) + 1
-    override var identifier: Long = Objects.hash(type, dir).toLong()
-
-    override fun getViewHolder(v: View) = ViewHolder(v)
-
-    class ViewHolder(view: View) : SelectableItem.ViewHolder<DirItem>(view) {
-
-        private val text: TextView = view.findViewById(R.id.v_mn_text)
-
-        override fun bindView(item: DirItem, payloads: List<Any>) {
-            super.bindView(item, payloads)
-            text.text = "Dir: " + item.dir.name
-        }
-    }
-}
-
-private class FileItem(val file: MediaFile) : SelectableItem<FileItem.ViewHolder>() {
-
-    override val layoutRes: Int = R.layout.view_media_node
-    override val type: Int = R.layout.filebrowser_fragment.shl(4) + 2
-    override var identifier: Long = Objects.hash(type, file).toLong()
-
-    override fun getViewHolder(v: View) = ViewHolder(v)
-
-    class ViewHolder(view: View) : SelectableItem.ViewHolder<FileItem>(view) {
-
-        private val text: TextView = view.findViewById(R.id.v_mn_text)
-
-        override fun bindView(item: FileItem, payloads: List<Any>) {
-            super.bindView(item, payloads)
-            text.text = "File: " + item.file.name
-        }
-    }
 }
 //endregion
 

@@ -14,23 +14,26 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
 import apps.chocolatecakecodes.bluebeats.media.playlist.StaticPlaylist
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylist
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.RequireNotNull
 import apps.chocolatecakecodes.bluebeats.util.Utils
+import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
+import apps.chocolatecakecodes.bluebeats.view.specialitems.SelectableItem
 import com.mikepenz.fastadapter.FastAdapter
 import com.mikepenz.fastadapter.GenericItem
 import com.mikepenz.fastadapter.ISelectionListener
 import com.mikepenz.fastadapter.adapters.GenericFastItemAdapter
-import com.mikepenz.fastadapter.drag.IDraggable
 import com.mikepenz.fastadapter.drag.ItemTouchCallback
 import com.mikepenz.fastadapter.drag.SimpleDragCallback
 import com.mikepenz.fastadapter.listeners.addTouchListener
 import com.mikepenz.fastadapter.select.getSelectExtension
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val MNU_ID_OVERVIEW_RM = 11
 private const val MNU_ID_OVERVIEW_NEW_DYN = 12
@@ -145,13 +148,13 @@ internal class Playlists : Fragment() {
         itemsDragCallback.isDragEnabled = false
         itemsTouchHelper = ItemTouchHelper(itemsDragCallback)
 
-        itemsAdapter.addTouchListener<MediaItem.ViewHolder, GenericItem>(
+        itemsAdapter.addTouchListener<MediaFileItem.ViewHolder, GenericItem>(
             resolveView = { holder ->
                 holder.itemView.findViewById(R.id.v_mf_handle)
             },
-            onTouch = { v: View, event: MotionEvent, position: Int, fastAdapter: FastAdapter<GenericItem>, item: GenericItem ->
+            onTouch = { _: View, event: MotionEvent, position: Int, _: FastAdapter<GenericItem>, item: GenericItem ->
                 if(event.action == MotionEvent.ACTION_DOWN) {
-                    if(item is MediaItem && viewModel.selectedPlaylist is StaticPlaylist) {
+                    if(item is MediaFileItem && viewModel.selectedPlaylist is StaticPlaylist) {
                         itemsView.get().findViewHolderForAdapterPosition(position)?.let {
                             itemsTouchHelper.startDrag(it)
                         }
@@ -234,8 +237,8 @@ internal class Playlists : Fragment() {
 
     private fun onItemSelectionChanged(item: GenericItem, selected: Boolean) {
         if(selected) {
-            if(item is MediaItem){
-                viewModel.selectedMedia = item.media
+            if(item is MediaFileItem){
+                viewModel.selectedMedia = item.file
             } else {
                 viewModel.selectedMedia = null
             }
@@ -244,8 +247,8 @@ internal class Playlists : Fragment() {
             val selectedItems = itemsAdapter.getSelectExtension().selectedItems.toList()
             if(selectedItems.size == 1) {
                 val selectedItem = selectedItems[0]
-                if(selectedItem is MediaItem)
-                    viewModel.selectedMedia = selectedItem.media
+                if(selectedItem is MediaFileItem)
+                    viewModel.selectedMedia = selectedItem.file
                 else
                     viewModel.selectedMedia = null
             } else {
@@ -371,7 +374,7 @@ internal class Playlists : Fragment() {
         }
 
         itemsAdapter.setNewList(viewModel.playlistItems!!.map {
-            MediaItem(it)
+            MediaFileItem(it, true)
         })
 
         inSelection = false
@@ -556,34 +559,6 @@ private class ListsItem(val playlist: PlaylistInfo) : SelectableItem<ListsItem.V
             super.unbindView(item)
 
             name.text = null
-        }
-    }
-}
-
-internal class MediaItem(val media: MediaFile, draggable: Boolean = true) : SelectableItem<MediaItem.ViewHolder>(), IDraggable {
-
-    override val type: Int = R.layout.playlists_fragment.shl(3) + 2
-    override val layoutRes: Int = R.layout.view_media_file
-
-    override val isDraggable: Boolean = draggable
-
-    override fun getViewHolder(v: View) = ViewHolder(v)
-
-    class ViewHolder(view: View) : SelectableItem.ViewHolder<MediaItem>(view) {
-
-        private val title: TextView = view.findViewById(R.id.v_mf_text)
-        private val dragHandle: View = view.findViewById(R.id.v_mf_handle)
-
-        override fun bindView(item: MediaItem, payloads: List<Any>) {
-            super.bindView(item, payloads)
-
-            title.text = item.media.name
-            dragHandle.visibility = if(item.isDraggable) View.VISIBLE else View.GONE
-        }
-        override fun unbindView(item: MediaItem) {
-            super.unbindView(item)
-
-            title.text = null
         }
     }
 }

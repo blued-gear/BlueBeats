@@ -3,7 +3,6 @@ package apps.chocolatecakecodes.bluebeats.view
 import android.os.Bundle
 import android.view.View
 import android.widget.EditText
-import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -14,7 +13,6 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicP
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import com.mikepenz.fastadapter.adapters.GenericFastItemAdapter
 import com.mikepenz.fastadapter.expandable.getExpandableExtension
-import com.mikepenz.fastadapter.expandable.items.AbstractExpandableItem
 import kotlinx.coroutines.*
 
 private const val STATE_PLAYLIST_ID = "key:plId"
