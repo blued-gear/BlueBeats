@@ -131,13 +131,13 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val appCtx: Conte
     /**
      * @param dir parsed dir which should be scanned
      */
-    private fun scanDir(dir: IMedia, parent: MediaDir?): MediaDir{
+    private fun scanDir(dir: IMedia, parent: MediaDir?, customDirName: String = ""): MediaDir{
         if(!Utils.vlcMediaToDocumentFile(dir).isDirectory)
             throw IllegalArgumentException("path is not a directory")
 
         dir.retain()
 
-        val mediaDir = MediaDir(dir.uri.lastPathSegment!!, parent)
+        val mediaDir = MediaDir(customDirName.ifEmpty { dir.uri.lastPathSegment!! }, parent)
 
         for(i in 0 until dir.subItems().count){
             val child = dir.subItems().getMediaAt(i)
