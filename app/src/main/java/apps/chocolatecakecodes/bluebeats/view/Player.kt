@@ -69,6 +69,11 @@ class Player : Fragment() {
         wireActionHandlers(view)
     }
 
+    override fun onResume() {
+        super.onResume()
+        attachPlayer()
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         viewModel.updatePlayPosition(player.time)
