@@ -34,6 +34,8 @@ internal fun createEditorRoot(
     return DynplaylistGroupEditor(root, cb, ctx)
 }
 
+//TODO add edit for share to editors
+
 //region editors
 private class DynplaylistGroupEditor(
     val group: RuleGroup,
@@ -54,15 +56,25 @@ private class DynplaylistGroupEditor(
     )
 
     private val addBtn = SimpleAddableRuleHeaderView.CommonVisuals.addButton(context)
+    private val logicBtn = SimpleAddableRuleHeaderView.CommonVisuals.logicButton(context)
 
     init {
         addBtn.setOnClickListener {
             onAddEntry()
         }
 
+        logicBtn.apply {
+            setOnClickListener {
+                group.combineWithAnd = !group.combineWithAnd
+                setLogicMode(group.combineWithAnd)
+            }
+            setLogicMode(group.combineWithAnd)
+        }
+
         header.apply {
             title.text = "Group"//TODO rules should have names
-            addVisual(addBtn)
+            addVisual(addBtn, true)
+            addVisual(logicBtn, false)
         }
 
         listItems()
@@ -113,7 +125,7 @@ private class DynplaylistGroupEditor(
                 }
                 this.isChecked = ruleItem.second
             }.let {
-                this.header.addVisual(it)
+                this.header.addVisual(it, false)
             }
         }
     }
@@ -243,7 +255,7 @@ private class DynplaylistUsertagsEditor(
             }
             setLogicMode(rule.combineWithAnd)
         }.let {
-            header.addVisual(it)
+            header.addVisual(it, false)
         }
 
         addBtn.apply {
@@ -383,7 +395,7 @@ private class SimpleAddableRuleHeaderView(ctx: Context) : LinearLayout(ctx) {
     /**
      * @param atEnd if true item will be placed as the last view; else it will be placed after the title
      */
-    fun addVisual(item: View, atEnd: Boolean = false) {
+    fun addVisual(item: View, atEnd: Boolean) {
         val lp = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, 0f)
         if(atEnd)
             this.addView(item, lp)
