@@ -19,7 +19,7 @@ class CachedReference<out T, in P>(parent: P, private val maxIdleTime: Long, pri
         lastAccess = System.currentTimeMillis()
 
         val task = TimerTask()
-        TimerThread.INSTANCE.addInterval(task::execute, maxIdleTime)
+        TimerThread.INSTANCE.addInterval(maxIdleTime, task::execute)
         Destructor.registerDestructor(parent){
             task.cancel = true
         }

@@ -39,7 +39,12 @@ class TimerThread private constructor(){
         runner.start()
     }
 
-    fun addTimeout(task: TaskRunnable, timeout: Long): Int{
+    /**
+     * will schedule the task to run after timeout
+     * @param timeout time before execution in milliseconds
+     * @param task task to run
+     */
+    fun addTimeout(timeout: Long, task: TaskRunnable): Int{
         synchronized(lock){
             val idTimePart: Long = System.currentTimeMillis()
             val idRngPart: Long = idRng.nextLong()
@@ -52,7 +57,12 @@ class TimerThread private constructor(){
         }
     }
 
-    fun addInterval(task: TaskRunnable, timeout: Long): Int{
+    /**
+     * will schedule the task to run every timeout (first run after timeout)
+     * @param timeout time between each executions in milliseconds
+     * @param task task to run repeatedly
+     */
+    fun addInterval(timeout: Long, task: TaskRunnable): Int{
         synchronized(lock){
             val idTimePart: Long = System.currentTimeMillis()
             val idRngPart: Long = idRng.nextLong()
