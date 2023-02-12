@@ -13,6 +13,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.service.PlayerService
@@ -24,6 +25,7 @@ import com.mikepenz.fastadapter.adapters.FastItemAdapter
 import com.mikepenz.fastadapter.expandable.getExpandableExtension
 import com.mikepenz.fastadapter.expandable.items.AbstractExpandableItem
 import com.mikepenz.fastadapter.select.getSelectExtension
+import kotlinx.coroutines.*
 
 internal class Search : Fragment(R.layout.search_fragment) {
 
@@ -41,6 +43,7 @@ internal class Search : Fragment(R.layout.search_fragment) {
     private val searchText = RequireNotNull<EditText>()
     private val subgroupsSpinner = RequireNotNull<Spinner>()
     private val itemListView = RequireNotNull<RecyclerView>()
+    private val itemListRefresh = RequireNotNull<SwipeRefreshLayout>()
 
     private var menu: Menu? = null
     private var inSelection = false
@@ -62,6 +65,7 @@ internal class Search : Fragment(R.layout.search_fragment) {
         searchText.set(view.findViewById(R.id.search_search_text))
         subgroupsSpinner.set(view.findViewById(R.id.search_subgroups))
         itemListView.set(view.findViewById(R.id.search_items))
+        itemListRefresh.set(view.findViewById(R.id.search_items_sr))
 
         wireActionHandlers()
         wireObservers()
@@ -183,6 +187,19 @@ internal class Search : Fragment(R.layout.search_fragment) {
         searchText.get().doAfterTextChanged {
             viewModel.setSearchText(searchText.get().text.toString())
         }
+
+        itemListRefresh.get().setOnRefreshListener {
+            viewModel.refresh()
+
+            // show the animation just for a moment
+            CoroutineScope(Dispatchers.Default).launch {
+                delay(200)
+                withContext(Dispatchers.Main) {
+                    itemListRefresh.get().isRefreshing = false
+                }
+            }
+        }
+
 
         this.requireActivity().onBackPressedDispatcher.addCallback(SmartBackPressedCallback(this.lifecycle, this::onBackPressed))
     }

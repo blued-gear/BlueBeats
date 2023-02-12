@@ -87,6 +87,18 @@ internal class SearchViewModel : ViewModel() {
         searchDebouncer.debounce(text)
     }
 
+    fun refresh() {
+        if(grouping.value === null)
+            return
+
+        CoroutineScope(Dispatchers.IO).launch {
+            loadItems(grouping.value!!, subgroup.value)
+
+            if(!searchText.value.isNullOrEmpty())
+                search(searchText.value!!)
+        }
+    }
+
     private fun loadSubgroups(grouping: Grouping) {
         when(grouping) {
             Grouping.ID3_TAG -> {
