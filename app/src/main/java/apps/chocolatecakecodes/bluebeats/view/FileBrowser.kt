@@ -102,21 +102,18 @@ class FileBrowser(private val mediaDB: MediaDBEventRelay) : Fragment() {
         listView!!.adapter = listAdapter
 
         // add handler for back button (to get one dir up)
-        //TODO this disables the default handler (which is good), but there should be a handler (which is always active) which closes the app on double-back-press
-        this.requireActivity().onBackPressedDispatcher.addCallback(this.viewLifecycleOwner, object : OnBackPressedCallback(true){
-            override fun handleOnBackPressed() {
-                // check if we can go up by one dir
-                val parentDir = currentDir.parent
-                if (parentDir !== null) {
-                    currentDir = parentDir
-                    expandMediaDir(parentDir) {
-                        withContext(Dispatchers.Main) {
-                            listAdapter.setEntries(it)
-                        }
+        mainVM.addBackPressListener(this.viewLifecycleOwner){
+            // check if we can go up by one dir
+            val parentDir = currentDir.parent
+            if (parentDir !== null) {
+                currentDir = parentDir
+                expandMediaDir(parentDir) {
+                    withContext(Dispatchers.Main) {
+                        listAdapter.setEntries(it)
                     }
                 }
             }
-        })
+        }
 
         // add media-scan listener
         scanListener = object : MediaDB.ScanEventHandler(Handler(Looper.getMainLooper())){

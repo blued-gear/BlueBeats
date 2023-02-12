@@ -6,7 +6,6 @@ import android.util.Log
 import android.view.*
 import android.widget.Button
 import android.widget.FrameLayout
-import androidx.activity.OnBackPressedCallback
 import androidx.core.view.GestureDetectorCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
@@ -97,15 +96,12 @@ class Player : Fragment() {
         }
 
         // fullscreen close on back
-        //TODO this disables the default handler (which is good), but there should be a handler (which is always active) which closes the app on double-back-press
-        this.requireActivity().onBackPressedDispatcher.addCallback(this.viewLifecycleOwner, object : OnBackPressedCallback(true){
-            override fun handleOnBackPressed() {
-                // check fullscreen is active
-                if(mainVM.fullScreenContent.value !== null){
-                    viewModel.setFullscreenMode(false)
-                }
+        mainVM.addBackPressListener(this.viewLifecycleOwner){
+            // check fullscreen is active
+            if(mainVM.fullScreenContent.value !== null){
+                viewModel.setFullscreenMode(false)
             }
-        })
+        }
     }
 
     private fun wireObservers(){
