@@ -4,14 +4,14 @@ import android.os.Handler
 import android.util.Log
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.*
+import apps.chocolatecakecodes.bluebeats.taglib.TagFields
+import apps.chocolatecakecodes.bluebeats.taglib.TagParser
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import apps.chocolatecakecodes.bluebeats.util.using
-
 import org.videolan.libvlc.FactoryManager
 import org.videolan.libvlc.interfaces.ILibVLC
 import org.videolan.libvlc.interfaces.IMedia
 import org.videolan.libvlc.interfaces.IMediaFactory
-
 import java.io.FileNotFoundException
 import java.io.IOException
 
@@ -306,9 +306,14 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
             }
         }
 
+        val mf = MediaFile(MediaFileEntity(MediaNode.UNALLOCATED_NODE_ID, name, parent.entity.id, type,
+            TagFields(), null))
+
+        parseTags(mf)
+
         //TODO parse more attributes
 
-        return MediaFile(MediaFileEntity(MediaNode.UNALLOCATED_NODE_ID, name, parent.entity.id, type))
+        return mf
     }
 
     private fun updateFile(file: MediaFile){
@@ -321,11 +326,39 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
                 wasChanged = true
                 file.type = fsVersion.type
             }
+
+            if(file.chapters != fsVersion.chapters){
+                wasChanged = true
+                file.chapters = fsVersion.chapters
+            }
+            if(file.mediaTags != fsVersion.mediaTags){
+                wasChanged = true
+                file.mediaTags = fsVersion.mediaTags
+            }
+            if(file.userTags != fsVersion.userTags){
+                wasChanged = true
+                file.userTags = fsVersion.userTags
+            }
             //TODO update more attributes
 
             if(wasChanged){
                 RoomDB.DB_INSTANCE.mediaFileDao().save(file)
                 eventHandler.onNodeUpdated(file, unchangedVersion)
+            }
+        }
+    }
+
+    private fun parseTags(file: MediaFile){
+        if(file.type == MediaFile.Type.AUDIO) {
+            try {
+                val parser = TagParser(file.path)
+                parser.parse()
+
+                file.mediaTags = parser.tagFields
+                file.userTags = parser.userTags?.tags ?: emptyList()
+                file.chapters = parser.chapters
+            }catch (e: Exception){
+                Log.d(LOG_TAG, "exception in parser", e)
             }
         }
     }
