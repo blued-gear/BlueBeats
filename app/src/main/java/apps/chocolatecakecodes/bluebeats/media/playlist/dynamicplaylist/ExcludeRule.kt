@@ -18,7 +18,7 @@ internal typealias DirPathInclude = Pair<MediaDir, Boolean>
 internal class ExcludeRule private constructor(
     private val entityId: Long,
     dirs: Set<DirPathInclude> = emptySet(), files: Set<MediaFile> = emptySet()
-) {
+) : Rulelike {
 
     companion object {
         val EMPTY_EXCLUDE get() = ExcludeRule(-1)

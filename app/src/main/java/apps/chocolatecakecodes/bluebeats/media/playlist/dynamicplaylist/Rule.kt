@@ -2,7 +2,9 @@ package apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist
 
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 
-internal interface Rule {
+internal interface Rulelike// marker
+
+internal interface Rule : Rulelike{
 
     /** determines how much items a rule should add to the resulting collection */
     data class Share(

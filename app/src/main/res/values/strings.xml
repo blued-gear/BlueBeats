@@ -15,4 +15,6 @@
     <string name="misc_remove">Remove</string>
     <string name="tagname_filepath">Path</string>
     <string name="player_show_playlist">Current Playlist</string>
+    <string name="dynpl_buffersize">Item-count before regeneration:</string>
+    <string name="playlists_add_dyn">Create Dynamic Playlist</string>
 </resources>
