@@ -99,11 +99,10 @@ internal class SearchViewModel : ViewModel() {
             Grouping.USER_TAG -> loadByUsertag()
         }
     }
-    //TODO make all special chars and numbers as two groups
 
     private fun loadByFilename() {
         allItems = RoomDB.DB_INSTANCE.mediaFileDao().getAllFiles().groupBy {
-            it.name.first().toString()
+            textGroupingChar(it.name)
         }.mapValues {
             it.value.sortedBy {
                 it.name
@@ -114,7 +113,7 @@ internal class SearchViewModel : ViewModel() {
 
     private fun loadByTitle() {
         allItems = RoomDB.DB_INSTANCE.id3TagDao().getFilesWithAnyTag("title").groupBy {
-            it.second.first().toString()
+            textGroupingChar(it.second)
         }.mapValues {
             it.value.sortedBy {
                 it.second
@@ -176,5 +175,12 @@ internal class SearchViewModel : ViewModel() {
     private fun hasSubgroup(grouping: Grouping) = when(grouping) {
         Grouping.ID3_TAG -> true
         else -> false
+    }
+
+    private fun textGroupingChar(str: String) = when(val c = str.first()) {
+        in '0'..'9' -> "0-9"
+        in 'a'..'z', in 'A'..'Z' -> c.uppercase()
+        in listOf('ä', 'Ä', 'ü', 'Ü', 'ö', 'Ö', 'ß') -> "Ä"
+        else -> "#"
     }
 }
