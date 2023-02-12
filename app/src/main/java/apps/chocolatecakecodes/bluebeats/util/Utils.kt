@@ -2,7 +2,9 @@ package apps.chocolatecakecodes.bluebeats.util
 
 import androidx.documentfile.provider.DocumentFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
+import org.videolan.libvlc.interfaces.AbstractVLCEvent
 import org.videolan.libvlc.interfaces.IMedia
+import org.videolan.libvlc.interfaces.IVLCObject
 import java.io.File
 
 object Utils {
@@ -33,5 +35,14 @@ object Utils {
         if(idx == path.lastIndex && path.length > 1)
             idx = path.lastIndexOf('/', path.lastIndex - 1)
         return path.substring(0, idx) + "/"
+    }
+}
+
+inline fun <T : AbstractVLCEvent?> IVLCObject<T>.using(retain: Boolean = true, block: () -> Unit){
+    if(retain) this.retain()
+    try{
+        block()
+    }finally {
+        this.release()
     }
 }
