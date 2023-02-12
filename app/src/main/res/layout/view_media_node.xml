@@ -29,8 +29,8 @@
             tools:visibility="visible" />
 
     <ImageView
-            android:layout_width="96dp"
-            android:layout_height="96dp"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
             app:srcCompat="@drawable/shape_border"
             android:id="@+id/v_mf_thumb"
             app:layout_constraintStart_toEndOf="@+id/v_mf_handle"
