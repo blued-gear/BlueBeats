@@ -330,20 +330,11 @@ class Player : Fragment() {
     }
 
     private fun showPlaylistOverview() {
-        val inflater = LayoutInflater.from(this.requireContext())
-        val content = inflater.inflate(R.layout.player_playlist_fragment, null)
+        Utils.showPopup(this.requireContext(), this.requireView(),
+            R.layout.player_playlist_fragment,
+        true) {
 
-        val popup = PopupWindow(
-            content,
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
-            true
-        )
-        content.setOnTouchListener { v, event ->
-            popup.dismiss()
-            true
         }
-
-        popup.showAtLocation(this.requireView(), Gravity.CENTER, 0, 0)
     }
     //endregion
 

@@ -1,6 +1,9 @@
 package apps.chocolatecakecodes.bluebeats.util
 
+import android.content.Context
 import android.os.Looper
+import android.view.*
+import android.widget.PopupWindow
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.MutableLiveData
 import com.google.gson.reflect.TypeToken
@@ -87,6 +90,45 @@ object Utils {
             data.setValue(value)
         else
             data.postValue(value)
+    }
+
+    /**
+     * Creates and shows a popup.
+     * The popup will be as big as the anchor-view.
+     * @param context the context to use
+     * @param anchor the view over which the popup will be shown
+     * @param contentLayout the id of the layout to show
+     * @param closeOnClick if true every uncaught ACTION_UP on the contentLayout will close the popup
+     * @param initContent called with the inflated contentLayout before the popup is shown
+     */
+    fun showPopup(context: Context, anchor: View,
+                  contentLayout: Int,
+                  closeOnClick: Boolean,
+                  initContent: ((View) -> Unit)) {
+        val inflater = LayoutInflater.from(context)
+        val content = inflater.inflate(contentLayout, null)
+
+        val popup = PopupWindow(
+            content,
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
+            true
+        )
+
+        initContent(content)
+
+        if(closeOnClick) {
+            content.setOnTouchListener { v, event ->
+                if(event.actionMasked == MotionEvent.ACTION_UP) {
+                    v.performClick()
+
+                    popup.dismiss()
+                }
+
+                true
+            }
+        }
+
+        popup.showAtLocation(anchor, Gravity.CENTER, 0, 0)
     }
 }
 
