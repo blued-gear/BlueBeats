@@ -20,7 +20,7 @@ internal class RuleGroup private constructor(
     }
 
     override fun generateItems(amount: Int, exclude: Set<MediaFile>): List<MediaFile> {
-        val (positiveRules, negativeRules) = getRules().partition { it.second }.let {
+        val (negativeRules, positiveRules) = getRules().partition { it.second }.let {
             Pair(
                 it.first.map { it.first },
                 it.second.map { it.first }
