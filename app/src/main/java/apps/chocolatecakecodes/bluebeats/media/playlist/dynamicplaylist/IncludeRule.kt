@@ -129,7 +129,7 @@ internal class IncludeRule private constructor(
 
         dest.writeInt(dirs.size)
         dirs.forEach {
-            dest.writeLong(it.key.entity.id)
+            dest.writeLong(it.key.entityId)
             Utils.parcelWriteBoolean(dest, it.value)
         }
 
@@ -304,7 +304,7 @@ internal class IncludeRule private constructor(
                 IncludeRuleDirEntry(
                     0,
                     rule.entityId,
-                    it.first.entity.id,
+                    it.first.entityId,
                     it.second
                 )
             }

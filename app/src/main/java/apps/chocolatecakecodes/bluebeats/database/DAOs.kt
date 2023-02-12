@@ -28,7 +28,8 @@ internal abstract class MediaDirDAO{
     }
 
     //region public methods
-    fun newDir(name: String, parent: Long): MediaDir{
+    @Transaction
+    open fun newDir(name: String, parent: Long): MediaDir{
         val dirEntity = MediaDirEntity(MediaNode.UNALLOCATED_NODE_ID, name, parent)
         val id = insertEntity(dirEntity)
 
@@ -37,12 +38,25 @@ internal abstract class MediaDirDAO{
 
     fun getForId(id: Long): MediaDir{
         return cache.get(id) {
-            MediaDir(getEntityForId(id))
+            val entity = getEntityForId(id)
+
+            val parentSupplier = {
+                if(entity.parent < 0)
+                    null// all invalid MediaNode-IDs are < 0
+                else
+                    this.getForId(entity.parent)
+            }
+
+            MediaDir(
+                id,
+                entity.name,
+                parentSupplier
+            )
         }
     }
 
     fun getDirsInDir(parent: MediaDir): List<MediaDir>{
-        val subdirIds = getSubdirIdsInDir(parent.entity.id)
+        val subdirIds = getSubdirIdsInDir(parent.entityId)
         return subdirIds.map { getForId(it) }
     }
 
@@ -50,14 +64,22 @@ internal abstract class MediaDirDAO{
         return getForId(getIdForNameAndParent(name, parent))
     }
 
-    fun save(dir: MediaDir){
-        updateEntity(dir.entity)
+    @Transaction
+    open fun save(dir: MediaDir){
+        updateEntity(
+            MediaDirEntity(
+                dir.entityId,
+                dir.name,
+                dir.parent?.entityId ?: MediaNode.NULL_PARENT_ID
+            )
+        )
     }
 
-    fun delete(dir: MediaDir){
+    @Transaction
+    open fun delete(dir: MediaDir){
         // children will be deleted too, because the foreign-keys are set to CASCADE
-        deleteEntity(dir.entity)
-        cache.invalidate(dir.entity.id)
+        deleteEntity(dir.entityId)
+        cache.invalidate(dir.entityId)
     }
 
     @Query("SELECT EXISTS(SELECT id FROM MediaDirEntity WHERE id = :id);")
@@ -83,8 +105,8 @@ internal abstract class MediaDirDAO{
     @Update
     protected abstract fun updateEntity(entity: MediaDirEntity)
 
-    @Delete
-    protected abstract fun deleteEntity(entity: MediaDirEntity)
+    @Query("DELETE FROM MediaDirEntity WHERE id = :id;")
+    protected abstract fun deleteEntity(id: Long)
     //endregion
 }
 
@@ -138,7 +160,7 @@ internal abstract class MediaFileDAO{
 
     @Transaction
     open fun newFile(from: MediaFile): MediaFile{
-        val newFile = newFile(from.name, from.type, from.parent.entity.id)
+        val newFile = newFile(from.name, from.type, from.parent.entityId)
 
         // copy extra attributes (TODO update whenever attributes changes)
         newFile.mediaTags = from.mediaTags.clone()
@@ -156,7 +178,7 @@ internal abstract class MediaFileDAO{
             val parentSupplier = {
                 mediaDirDao.getForId(entity.parent)
             }
-            val mediaTagsProvider = {
+            val mediaTagsSupplier = {
                 RoomDB.DB_INSTANCE.id3TagDao().getTagsOfFile(id)
             }
             val chaptersSupplier: () -> List<Chapter>? = {
@@ -178,13 +200,13 @@ internal abstract class MediaFileDAO{
                 entity.name,
                 entity.type,
                 parentSupplier,
-                mediaTagsProvider, chaptersSupplier, usertagsSupplier
+                mediaTagsSupplier, chaptersSupplier, usertagsSupplier
             )
         }
     }
 
     fun getFilesInDir(parent: MediaDir): List<MediaFile>{
-        return getFileIdsInDir(parent.entity.id).map { getForId(it) }
+        return getFileIdsInDir(parent.entityId).map { getForId(it) }
     }
 
     fun getForNameAndParent(name: String, parent: Long): MediaFile{
@@ -200,7 +222,7 @@ internal abstract class MediaFileDAO{
             MediaFileEntity(
                 file.entityId,
                 file.name,
-                file.parent.entity.id,
+                file.parent.entityId,
                 file.type,
                 chaptersJson
             )

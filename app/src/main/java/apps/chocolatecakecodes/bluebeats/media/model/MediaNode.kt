@@ -1,6 +1,5 @@
 package apps.chocolatecakecodes.bluebeats.media.model
 
-import apps.chocolatecakecodes.bluebeats.database.MediaDirEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -11,12 +10,12 @@ import java.util.concurrent.TimeUnit
 abstract class MediaNode {
 
     companion object{
-        val NULL_PARENT_ID: Long = -1
-        val UNALLOCATED_NODE_ID: Long = 0
+        const val NULL_PARENT_ID: Long = -1
+        const val UNALLOCATED_NODE_ID: Long = 0
         /**
          * used for single parsed files
          */
-        val UNSPECIFIED_DIR: MediaDir = MediaDir(MediaDirEntity(-2, "~UNSPECIFIED~", NULL_PARENT_ID))
+        val UNSPECIFIED_DIR: MediaDir = MediaDir(-2, "~UNSPECIFIED~", { null })
 
         @JvmStatic
         protected val NODE_CACHE_TIME = TimeUnit.MINUTES.toMillis(5)

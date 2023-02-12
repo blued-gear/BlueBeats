@@ -2,14 +2,12 @@ package apps.chocolatecakecodes.bluebeats.media
 
 import android.os.Handler
 import android.util.Log
-import apps.chocolatecakecodes.bluebeats.database.MediaDirEntity
+import apps.chocolatecakecodes.bluebeats.database.MediaDirDAO
 import apps.chocolatecakecodes.bluebeats.database.MediaFileDAO
-import apps.chocolatecakecodes.bluebeats.database.MediaFileEntity
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
-import apps.chocolatecakecodes.bluebeats.taglib.TagFields
 import apps.chocolatecakecodes.bluebeats.taglib.TagParser
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import apps.chocolatecakecodes.bluebeats.util.using
@@ -42,10 +40,12 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
     private val mediaFactory: IMediaFactory
     private val scanRoots: MutableSet<String>
     private var mediaTree: MediaDir = MediaNode.UNSPECIFIED_DIR
-    //TODO collections that maps files to types, tags, ...
 
     private val mediaFileDao: MediaFileDAO by lazy {
         RoomDB.DB_INSTANCE.mediaFileDao()
+    }
+    private val mediaDirDao: MediaDirDAO by lazy {
+        RoomDB.DB_INSTANCE.mediaDirDao()
     }
 
     constructor(libVLC: ILibVLC): this(libVLC, NOOP_EVENT_HANDLER){}
@@ -65,17 +65,14 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
     }
 
     fun loadDB(){
-        val dirDao = RoomDB.DB_INSTANCE.mediaDirDao()
-        if(dirDao.doesSubdirExist("/", MediaNode.NULL_PARENT_ID)){
-            mediaTree = dirDao.getForNameAndParent("/", MediaNode.NULL_PARENT_ID)
+        if(mediaDirDao.doesSubdirExist("/", MediaNode.NULL_PARENT_ID)){
+            mediaTree = mediaDirDao.getForNameAndParent("/", MediaNode.NULL_PARENT_ID)
         }else{
-            mediaTree = dirDao.newDir("/", MediaNode.NULL_PARENT_ID)
+            mediaTree = mediaDirDao.newDir("/", MediaNode.NULL_PARENT_ID)
         }
     }
 
     fun scanInAll() {
-        val dirDao = RoomDB.DB_INSTANCE.mediaDirDao()
-
         eventHandler.onScanStarted()
         eventHandler.onNewNodeFound(mediaTree)// publish root
 
@@ -88,7 +85,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
                     if(part == "") continue
                     var nextParent = currentParent.findChild(part) as? MediaDir
                     if(nextParent === null){
-                        nextParent = dirDao.newDir(part, currentParent.entity.id)
+                        nextParent = mediaDirDao.newDir(part, currentParent.entityId)
                         currentParent.addDir(nextParent)
                     }
                     currentParent = nextParent
@@ -105,7 +102,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
         mediaTree.getDirs().map { it.name }.toHashSet().let { dirNames ->
             mediaTree.getDirs().filter { !dirNames.contains(it.name) }.forEach {
                 mediaTree.removeDir(it)
-                dirDao.delete(it)
+                mediaDirDao.delete(it)
                 eventHandler.onNodeRemoved(it)
             }
         }
@@ -139,11 +136,19 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
                 media.parse(IMedia.Parse.ParseLocal or IMedia.Parse.DoInteract)
 
                 if(media.type == IMedia.Type.Directory){
-                    val dir = MediaDir(MediaDirEntity(MediaNode.UNSPECIFIED_DIR.entity.id, media.uri.lastPathSegment!!, MediaNode.NULL_PARENT_ID))
+                    val dir = MediaDir(
+                        MediaNode.UNSPECIFIED_DIR.entityId,
+                        media.uri.lastPathSegment!!,
+                        { null }
+                    )
 
                     val contents = scanDir(media)
                     for(subdir in contents.first){
-                        dir.addDir(MediaDir(MediaDirEntity(MediaNode.UNSPECIFIED_DIR.entity.id, subdir.uri.lastPathSegment!!, dir.entity.id)))
+                        dir.addDir(MediaDir(
+                            MediaNode.UNSPECIFIED_DIR.entityId,
+                            subdir.uri.lastPathSegment!!,
+                            { mediaDirDao.getForId(dir.entityId) }
+                        ))
                     }
                     for(file in contents.second){
                         dir.addFile(parseFile(file, dir))
@@ -242,7 +247,6 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
     }
 
     private fun updateDir(dir: MediaDir, contents: DirContents){//TODO should a onNodeUpdated be fired if the dir-content changes (new / removed files / dirs)?
-        val dirDao = RoomDB.DB_INSTANCE.mediaDirDao()
         var wasChanged = false
 
         // check dirs
@@ -252,7 +256,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
         // add new subdirs
         discoveredSubdirNames.minus(existingSubdirsWithName.keys).forEach {
             wasChanged = true
-            val newSubdir = dirDao.newDir(it, dir.entity.id)
+            val newSubdir = mediaDirDao.newDir(it, dir.entityId)
             dir.addDir(newSubdir)
             eventHandler.onNewNodeFound(newSubdir)
         }
@@ -261,7 +265,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
         existingSubdirsWithName.keys.minus(discoveredSubdirNames).forEach{
             wasChanged = true
             val child = existingSubdirsWithName[it]!!
-            dirDao.delete(child)
+            mediaDirDao.delete(child)
             dir.removeDir(child)
             eventHandler.onNodeRemoved(child)
         }
@@ -296,7 +300,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
         }
 
         if(wasChanged)
-            dirDao.save(dir)
+            mediaDirDao.save(dir)
     }
 
     private fun parseFile(file: IMedia, parent: MediaDir): MediaFile{
@@ -328,7 +332,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
             MediaNode.UNALLOCATED_NODE_ID,
             name,
             type,
-            { RoomDB.DB_INSTANCE.mediaDirDao().getForId(parent.entity.id) }
+            { mediaDirDao.getForId(parent.entityId) }
         )
 
         parseTags(mf)

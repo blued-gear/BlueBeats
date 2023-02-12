@@ -95,7 +95,7 @@ internal class StaticPlaylist private constructor(
 
             deleteEntriesOfPlaylist(id)
             playlist.items().mapIndexed { idx, media ->
-                StaticPlaylistEntry(0, id, media.entity.id, idx)
+                StaticPlaylistEntry(0, id, media.entityId, idx)
             }.let {
                 insertPlaylistEntries(it)
             }

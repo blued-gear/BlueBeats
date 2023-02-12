@@ -74,9 +74,9 @@ private class DBUpgradeCallback : RoomDatabase.Callback(){
 
         // insert UNSPECIFIED_DIR
         val udRowValues = ContentValues(3)
-        udRowValues.put("id", MediaNode.UNSPECIFIED_DIR.entity.id)
-        udRowValues.put("name", MediaNode.UNSPECIFIED_DIR.entity.name)
-        udRowValues.put("parent", MediaNode.UNSPECIFIED_DIR.entity.parent)
+        udRowValues.put("id", MediaNode.UNSPECIFIED_DIR.entityId)
+        udRowValues.put("name", MediaNode.UNSPECIFIED_DIR.name)
+        udRowValues.put("parent", MediaNode.NULL_PARENT_ID)
         db.insert("MediaDirEntity", SQLiteDatabase.CONFLICT_FAIL, udRowValues)
     }
 

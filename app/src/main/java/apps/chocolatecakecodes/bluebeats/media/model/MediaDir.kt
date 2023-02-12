@@ -1,11 +1,14 @@
 package apps.chocolatecakecodes.bluebeats.media.model
 
-import apps.chocolatecakecodes.bluebeats.database.MediaDirEntity
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.util.CachedReference
 import java.util.*
 
-class MediaDir internal constructor(internal val entity: MediaDirEntity): MediaNode() {
+class MediaDir internal constructor(
+    internal val entityId: Long,
+    override val name: String,
+    parentProvider: () -> MediaDir?
+): MediaNode() {
 
     private val dirs: MutableSet<MediaDir> by CachedReference(this, NODE_CACHE_TIME) {
         val collection = TreeSet<MediaDir>(compareBy { it.name })
@@ -19,9 +22,7 @@ class MediaDir internal constructor(internal val entity: MediaDirEntity): MediaN
     }
 
     override val parent: MediaDir? by CachedReference(this, NODE_CACHE_TIME) {
-        if(entity.parent < 0) return@CachedReference null// all invalid MediaNode-IDs are < 0
-        val dao = RoomDB.DB_INSTANCE.mediaDirDao()
-        return@CachedReference dao.getForId(entity.parent)
+        parentProvider()
     }
     override val path: String by lazy {
         return@lazy if(parent === null)
@@ -29,10 +30,9 @@ class MediaDir internal constructor(internal val entity: MediaDirEntity): MediaN
             else
                 parent!!.path + name + "/"
     }
-    override val name: String by entity::name
 
     internal fun addDir(dir: MediaDir){
-        if(this.entity != dir.parent?.entity)
+        if(this.entityId != dir.parent?.entityId)
             throw IllegalArgumentException("dir is not sub-item of this dir")
         dirs.add(dir)
     }
@@ -44,7 +44,7 @@ class MediaDir internal constructor(internal val entity: MediaDirEntity): MediaN
     }
 
     internal fun addFile(file: MediaFile){
-        if(this.entity != file.parent.entity)
+        if(this.entityId != file.parent.entityId)
             throw IllegalArgumentException("file is not sub-item of this dir")
         files.add(file)
     }
@@ -60,11 +60,15 @@ class MediaDir internal constructor(internal val entity: MediaDirEntity): MediaN
     }
 
     fun createCopy(): MediaDir{
-        val copy = MediaDir(entity.copy(id = MediaNode.UNALLOCATED_NODE_ID))
-        // copy children because copy will be unable to load them (because of changed id)
-        copy.dirs.addAll(dirs)
-        copy.files.addAll(files)
-        return copy
+        return MediaDir(
+            MediaNode.UNALLOCATED_NODE_ID,
+            this.name,
+            { this.parent }
+        ).apply {
+            // copy children because copy will be unable to load them (because of changed id)
+            dirs.addAll(this@MediaDir.dirs)
+            files.addAll(this@MediaDir.files)
+        }
     }
 
     /** only compares if <code>other</code> is a MediaDir an its entity is equals */
@@ -72,7 +76,7 @@ class MediaDir internal constructor(internal val entity: MediaDirEntity): MediaN
         if(other !is MediaDir)
             return false
 
-        return this.entity == other.entity
+        return this.entityId == other.entityId
     }
 
     /**

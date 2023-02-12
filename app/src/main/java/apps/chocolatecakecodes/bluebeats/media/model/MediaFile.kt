@@ -10,7 +10,7 @@ class MediaFile internal constructor(
     override val name: String,
     var type: Type,
     parentSupplier: () -> MediaDir,
-    mediaTagsProvider: () -> TagFields = { TagFields() },
+    mediaTagsSupplier: () -> TagFields = { TagFields() },
     chaptersSupplier: () -> List<Chapter>? = { null },
     usertagsSupplier: () -> List<String> = { emptyList() }
 ): MediaNode(){
@@ -24,7 +24,7 @@ class MediaFile internal constructor(
     }
 
     var mediaTags: TagFields by LazyVar<MediaFile, TagFields> {
-        mediaTagsProvider()
+        mediaTagsSupplier()
     }
 
     var chapters: List<Chapter>? by LazyVar<MediaFile, List<Chapter>?> {
