@@ -1,5 +1,9 @@
 package apps.chocolatecakecodes.bluebeats.media
 
+import android.annotation.SuppressLint
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.media.MediaMetadataRetriever
 import android.os.Handler
 import android.util.Log
 import apps.chocolatecakecodes.bluebeats.database.MediaDirDAO
@@ -184,6 +188,23 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
         }
 
         throw AssertionError("unreachable")
+    }
+
+    @SuppressLint("Range")
+    fun getThumbnail(file: MediaFile, width: Int, height: Int): Bitmap? {
+        return when(file.type) {
+            MediaFile.Type.AUDIO -> {
+                tryLoadThumbnail(file.path)?.let {
+                    scaleBitmap(it, width, height)
+                }
+            }
+            MediaFile.Type.VIDEO -> {
+                (tryLoadThumbnail(file.path) ?: tryLoadVideoFrame(file.path))?.let {
+                    scaleBitmap(it, width, height)
+                }
+            }
+            MediaFile.Type.OTHER -> null
+        }
     }
     //endregion
 
@@ -393,6 +414,52 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
                 Log.d(LOG_TAG, "exception in parser", e)
             }
         }
+    }
+
+    private fun tryLoadThumbnail(filePath: String): Bitmap? {
+        return MediaMetadataRetriever().use { retriever ->
+            retriever.setDataSource(filePath)
+            retriever.embeddedPicture?.let {
+                BitmapFactory.decodeByteArray(it, 0, it.size)
+            }
+        }
+    }
+
+    private fun tryLoadVideoFrame(filePath: String): Bitmap? {
+        val timePercentage = 0.1
+        val maxTime = 90000L
+
+        return MediaMetadataRetriever().use { retriever ->
+            retriever.setDataSource(filePath)
+
+            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLong()?.let { totalTime ->
+                val thumbTime = (totalTime * timePercentage).toLong().coerceAtMost(maxTime)
+                retriever.getFrameAtTime(thumbTime, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+            } ?: return null
+        }
+    }
+
+    private fun scaleBitmap(src: Bitmap, width: Int, height: Int): Bitmap? {
+        if(src.width == 0 || src.height == 0)
+            return null
+
+        val sWidth: Int
+        val sHeight: Int
+        if(width == -1 && height == -1) {
+            sWidth = src.width
+            sHeight = src.height
+        } else if(width == -1) {
+            sHeight = height
+            sWidth = ((src.width.toFloat() / src.height) * sHeight).toInt()
+        } else if(height == -1) {
+            sWidth = width
+            sHeight = ((src.height.toFloat() / src.width) * sWidth).toInt()
+        } else {
+            sWidth = width
+            sHeight = height
+        }
+
+        return Bitmap.createScaledBitmap(src, sWidth, sHeight, true)
     }
     //endregion
 
