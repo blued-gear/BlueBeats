@@ -17,6 +17,10 @@ import org.videolan.libvlc.MediaPlayer
 import org.videolan.libvlc.interfaces.IMedia
 import org.videolan.libvlc.util.VLCVideoLayout
 
+private const val CONTROLS_FADE_IN_TIME = 200L
+private const val CONTROLS_FADE_OUT_TIME = 100L
+private const val CONTROLS_FADE_OUT_DELAY = 2000L
+
 class Player : Fragment() {
 
     companion object {
@@ -31,6 +35,8 @@ class Player : Fragment() {
     private lateinit var player: MediaPlayer
     private lateinit var playerView: VLCVideoLayout
     private var currentMedia: IMedia? = null
+    private var controlsVisible: Boolean = true
+    private var controlsHideCoroutine: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,17 +87,26 @@ class Player : Fragment() {
     @SuppressLint("ClickableViewAccessibility")
     private fun wireActionHandlers(view: View){
         // player control by tapping
-        val gestureHandler = PlayerGestureHandler()
+        val controlsPane = view.findViewById<ViewGroup>(R.id.player_controls_overlay)
+        val gestureHandler = ControlsGestureHandler(controlsPane)
         val gestureDetector = GestureDetectorCompat(this.requireContext(), gestureHandler)
         gestureDetector.setOnDoubleTapListener(gestureHandler)
         gestureDetector.setIsLongpressEnabled(false)
-        playerView.setOnTouchListener { _, event ->
+        controlsPane.setOnTouchListener { _, event ->
             gestureDetector.onTouchEvent(event)
             return@setOnTouchListener true
         }
 
+        // play/pause button
+        view.findViewById<Button>(R.id.player_controls_play).setOnClickListener {
+            if(viewModel.isPlaying.value == true)
+                viewModel.pause()
+            else if(viewModel.currentMedia.value !== null)
+                viewModel.resume()
+        }
+
         // fullscreen button
-        view.findViewById<Button>(R.id.player_btn_fullscreen).setOnClickListener {
+        view.findViewById<Button>(R.id.player_controls_fullscreen).setOnClickListener {
             viewModel.setFullscreenMode(true)
         }
 
@@ -117,6 +132,19 @@ class Player : Fragment() {
                     player.play()
                 else
                     player.pause()
+
+                if (it){
+                    // hide controls
+                    controlsHideCoroutine?.cancel(null)
+                    controlsHideCoroutine = CoroutineScope(Dispatchers.Default).launch {
+                        delay(CONTROLS_FADE_OUT_DELAY)
+                        launch(Dispatchers.Main) {
+                            if (viewModel.isPlaying.value == true) {// only re-hide if playing
+                                runControlsTransition(false)
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -137,6 +165,32 @@ class Player : Fragment() {
         if(!player.vlcVout.areViewsAttached()){
             player.attachViews(playerView, null, false, false)//TODO in future version subtitle option should be settable
         }
+    }
+
+    private fun runControlsTransition(fadeIn: Boolean){
+        if(!(fadeIn xor controlsVisible))// do nothing if the desired state is already set
+            return
+
+        controlsVisible = fadeIn
+
+        val controlsPane = this.requireView().findViewById<ViewGroup>(R.id.player_controls_overlay)
+        controlsPane.animate()
+            .setDuration(if(fadeIn) CONTROLS_FADE_IN_TIME else CONTROLS_FADE_OUT_TIME)
+            .alpha(if(fadeIn) 1.0f else 0.0f)
+            .setUpdateListener {
+                if(it.animatedFraction == 1.0f){// is finished
+                    controlsHideCoroutine?.cancel(null)
+                    controlsHideCoroutine = CoroutineScope(Dispatchers.Default).launch {
+                        delay(CONTROLS_FADE_OUT_DELAY)
+                        launch(Dispatchers.Main) {
+                            if(viewModel.isPlaying.value == true){// only re-hide if playing
+                                runControlsTransition(false)
+                            }
+                        }
+                    }
+                }
+            }
+            .start()
     }
 
     private fun playMedia(mediaFile: MediaFile){
@@ -210,15 +264,12 @@ class Player : Fragment() {
         }
     }
 
-    private inner class PlayerGestureHandler : GestureDetector.SimpleOnGestureListener(){
+    private inner class ControlsGestureHandler(private val view: View) : GestureDetector.SimpleOnGestureListener(){
 
         override fun onSingleTapConfirmed(e: MotionEvent?): Boolean {
-            playerView.performClick()
+            view.performClick()
 
-            if(viewModel.isPlaying.value == true)
-                viewModel.pause()
-            else if(viewModel.currentMedia.value !== null)
-                viewModel.resume()
+            runControlsTransition(!controlsVisible)
 
             return true
         }
@@ -228,7 +279,7 @@ class Player : Fragment() {
             if(e.actionMasked != MotionEvent.ACTION_UP) return false
             if(viewModel.currentMedia.value === null) return false
 
-            val width = playerView.width
+            val width = view.width
             val x = e.x
 
             if(x <= width * SEEK_AREA_WIDTH){

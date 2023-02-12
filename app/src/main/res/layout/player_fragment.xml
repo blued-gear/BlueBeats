@@ -15,35 +15,54 @@
         <FrameLayout
                 android:layout_width="0dp"
                 android:layout_height="0dp"
-                android:id="@+id/player_playerholder"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
-                app:layout_constraintBottom_toBottomOf="@id/player_brr_controls"
-                android:layout_marginBottom="8dp"
-                android:layout_marginTop="8dp">
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent">
+
+            <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:id="@+id/player_playerholder"
+                    android:layout_marginStart="0dp"
+                    android:layout_marginEnd="0dp"
+                    android:layout_marginBottom="0dp"
+                    android:layout_marginTop="0dp">
+
+            </FrameLayout>
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:id="@+id/player_controls_overlay"
+                    android:alpha="1">
+
+                <Button
+                        android:text="P/P"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:id="@+id/player_controls_play"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        android:layout_marginEnd="8dp"
+                        android:layout_marginBottom="8dp"
+                        android:layout_marginTop="8dp"
+                        android:layout_marginStart="8dp" />
+
+                <Button
+                        android:text="@string/player_fullscreen"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:id="@+id/player_controls_fullscreen"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        android:layout_marginBottom="8dp"
+                        android:layout_marginEnd="8dp" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
         </FrameLayout>
-
-        <androidx.constraintlayout.widget.Barrier
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:id="@+id/player_brr_controls"
-                app:barrierDirection="top"
-                tools:layout_editor_absoluteY="675dp"
-                app:constraint_referenced_ids="player_btn_fullscreen" />
-
-        <Button
-                android:text="@string/player_fullscreen"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:id="@+id/player_btn_fullscreen"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                android:layout_marginStart="8dp"
-                android:layout_marginBottom="8dp" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
