@@ -5,10 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.view.View
-import android.view.WindowInsets
-import android.view.WindowInsetsController
-import android.view.WindowManager
+import android.view.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
@@ -44,6 +41,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mainTabContent: ViewPager2
     private lateinit var mainTabAdapter: TabContentAdapter
 
+    private var appMenu: Menu? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         this.setContentView(R.layout.activity_main)
@@ -62,6 +61,17 @@ class MainActivity : AppCompatActivity() {
         setupSystemBarsHider()
 
         getAppPermissions()
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        appMenu = menu
+        super.onCreateOptionsMenu(menu)
+
+        val menuProvider = viewModel.menuProvider.value
+        if(menuProvider !== null)
+            menuProvider(menu, this.menuInflater)
+
+        return true
     }
 
     override fun onBackPressed() {
@@ -126,6 +136,16 @@ class MainActivity : AppCompatActivity() {
             }else{
                 resetFullscreen()
             }
+        }
+
+        viewModel.menuProvider.observe(this){
+            val appMenu = this.appMenu
+            if(appMenu === null)
+                return@observe
+
+            appMenu.clear()
+            if(it !== null)
+                it(appMenu, this.menuInflater)
         }
     }
 

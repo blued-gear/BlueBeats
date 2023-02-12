@@ -1,6 +1,8 @@
 package apps.chocolatecakecodes.bluebeats.view
 
 import android.util.Log
+import android.view.Menu
+import android.view.MenuInflater
 import android.view.View
 import androidx.lifecycle.*
 
@@ -12,6 +14,7 @@ class MainActivityViewModel : ViewModel(){
 
     val currentTab = MutableLiveData<Tabs>(Tabs.MEDIA)
     val fullScreenContent = MutableLiveData<View>()
+    val menuProvider = MutableLiveData<((Menu, MenuInflater) -> Unit)?>()
 
     private val backPressListeners = MutableList<BackPressListener>(0){throw AssertionError("none should be initialized")}
 
