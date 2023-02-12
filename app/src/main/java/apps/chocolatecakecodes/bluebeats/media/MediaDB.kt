@@ -206,22 +206,25 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
                 dir.parse(IMedia.Parse.ParseLocal or IMedia.Parse.DoInteract)
             }
 
-            for(i in 0 until dir.subItems().count){
-                val child = dir.subItems().getMediaAt(i)
-                child.addOption(IGNORE_LIST_OPTION)
-                child.parse(IMedia.Parse.ParseLocal or IMedia.Parse.DoInteract)
+            dir.subItems().using(false) {
+                for(i in 0 until it.count){
+                    it.getMediaAt(i).using(false) { child ->
+                        child.addOption(IGNORE_LIST_OPTION)
+                        child.parse(IMedia.Parse.ParseLocal or IMedia.Parse.DoInteract)
 
-                when (child.type) {
-                    IMedia.Type.Directory -> {
-                        assert(Utils.vlcMediaToDocumentFile(child).isDirectory)
-                        dirs.add(child)
-                    }
-                    IMedia.Type.File -> {
-                        assert(Utils.vlcMediaToDocumentFile(child).isFile)
-                        files.add(child)
-                    }
-                    else -> {
-                        Log.d(LOG_TAG, "unknown media type encountered: ${child.type}  -  ${child.uri}")
+                        when (child.type) {
+                            IMedia.Type.Directory -> {
+                                assert(Utils.vlcMediaToDocumentFile(child).isDirectory)
+                                dirs.add(child)
+                            }
+                            IMedia.Type.File -> {
+                                assert(Utils.vlcMediaToDocumentFile(child).isFile)
+                                files.add(child)
+                            }
+                            else -> {
+                                Log.d(LOG_TAG, "unknown media type encountered: ${child.type}  -  ${child.uri}")
+                            }
+                        }
                     }
                 }
             }
