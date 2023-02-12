@@ -6,6 +6,9 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.playlist.*
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.*
 
 private const val EXAMPLE_ITEM_COUNT = 50
@@ -128,8 +131,11 @@ internal class DynamicPlaylistIterator(
     private val bufferSize: Int
 ) : PlaylistIterator {
 
-    private val mediaBuffer = ArrayList<MediaFile>(bufferSize + 1)
+    private val mediaBuffer = ArrayList<MediaFile>(bufferSize + 2)
     private val mediaBufferRO = Collections.unmodifiableList(mediaBuffer)
+    private val pregeneratedMediaBuffer = ArrayList<MediaFile>(bufferSize + 1)
+    @Volatile
+    private var pregeneratedMediaBufferValid: Boolean = false
 
     override val totalItems: Int = UNDETERMINED_COUNT
     override var currentPosition: Int = -1
@@ -142,11 +148,13 @@ internal class DynamicPlaylistIterator(
     override var shuffle: Boolean = true
         set(_) {
             // used to trigger regeneration
-            generateItems()
+            val current = currentMedia()
+            generateItems(mediaBuffer, currentMedia())
+            seekToMedia(current)
         }
 
     init {
-        generateItems()
+        generateItems(mediaBuffer, null)
         currentPosition = -1
     }
 
@@ -165,9 +173,26 @@ internal class DynamicPlaylistIterator(
         val newPos = currentPosition + amount
 
         if(newPos == mediaBuffer.size) {
-            generateItems()
+            if(pregeneratedMediaBufferValid) {
+                mediaBuffer.clear()
+                mediaBuffer.addAll(pregeneratedMediaBuffer)
+                pregeneratedMediaBufferValid = false
+            } else {
+                generateItems(mediaBuffer, mediaBuffer.last())// retain last media and place at top
+            }
+
+            currentPosition = 0
         } else if(newPos >= 0 && newPos < mediaBuffer.size) {
             currentPosition = newPos
+
+            // pregenerate items if near end of current buffer
+            if(currentPosition == mediaBuffer.size - 2){
+                CoroutineScope(Dispatchers.IO).launch {
+                    pregeneratedMediaBufferValid = false
+                    generateItems(pregeneratedMediaBuffer, mediaBuffer.last())// retain last media and place at top
+                    pregeneratedMediaBufferValid = true
+                }
+            }
         } else {
             throw IllegalArgumentException("seeking by $amount would result in an out-of-bounds position")
         }
@@ -194,27 +219,13 @@ internal class DynamicPlaylistIterator(
         return mediaBufferRO
     }
 
-    private fun generateItems() {
-        // retain current media (if existing) and place at top
-        val currentMedia: MediaFile?
-        val toExclude: Set<MediaFile>
-        if(currentPosition >= 0) {
-            currentMedia = currentMedia()
-            toExclude = setOf(currentMedia)// exclude to prevent repetition
-        } else {
-            currentMedia = null
-            toExclude = emptySet()
-        }
+    private fun generateItems(dest: MutableList<MediaFile>, prepend: MediaFile?) {
+        val toExclude = if(prepend !== null) setOf(prepend) else emptySet()// exclude to prevent repetition
 
-        mediaBuffer.clear()
-        mediaBuffer.addAll(rootRuleGroup.generateItems(bufferSize, toExclude).shuffled())
-
-        if(currentMedia !== null) {
-            mediaBuffer.add(0, currentMedia)
-            currentPosition = 1
-        } else {
-            currentPosition = 0
-        }
+        dest.clear()
+        if(prepend != null)
+            dest.add(prepend)
+        dest.addAll(rootRuleGroup.generateItems(bufferSize, toExclude).shuffled())
     }
 }
 
