@@ -1,6 +1,7 @@
 package apps.chocolatecakecodes.bluebeats.media.model
 
 import androidx.room.*
+import apps.chocolatecakecodes.bluebeats.database.MediaFileEntity
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.taglib.Chapter
 import apps.chocolatecakecodes.bluebeats.taglib.TagFields
@@ -114,19 +115,3 @@ class MediaFile internal constructor(internal val entity: MediaFileEntity): Medi
         AUDIO, VIDEO, OTHER
     }
 }
-
-@Entity(
-    foreignKeys = [ForeignKey(entity = MediaDirEntity::class, parentColumns = ["id"], childColumns = ["parent"], onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE)],
-    indices = [Index(value = ["name", "parent"], unique = true)]
-)
-internal data class MediaFileEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long,
-    @ColumnInfo(name = "name", index = true) val name: String,
-    @ColumnInfo(name = "parent", index = true) val parent: Long,
-    @ColumnInfo(name = "type", index = true) var type: MediaFile.Type,
-
-    @Embedded(prefix = "mediaTags_")
-    var mediaTags: TagFields,
-    @ColumnInfo(name = "chapters", index = false)
-    var chaptersJson: String?// store them as JSON because this is the easiest way to store lists
-)

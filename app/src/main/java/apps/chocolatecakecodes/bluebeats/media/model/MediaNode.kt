@@ -1,5 +1,6 @@
 package apps.chocolatecakecodes.bluebeats.media.model
 
+import apps.chocolatecakecodes.bluebeats.database.MediaDirEntity
 import java.util.*
 import java.util.concurrent.TimeUnit
 

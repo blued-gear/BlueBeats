@@ -1,6 +1,7 @@
 package apps.chocolatecakecodes.bluebeats.media.model
 
 import androidx.room.*
+import apps.chocolatecakecodes.bluebeats.database.MediaDirEntity
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.util.CachedReference
 import java.util.*
@@ -102,13 +103,3 @@ class MediaDir internal constructor(internal val entity: MediaDirEntity): MediaN
         return true
     }
 }
-
-@Entity(
-    foreignKeys = [ForeignKey(entity = MediaDirEntity::class, parentColumns = ["id"], childColumns = ["parent"], onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE)],
-    indices = [Index(value = ["name", "parent"], unique = true)]
-)
-internal data class MediaDirEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long,
-    @ColumnInfo(name = "name", index = true) val name: String,
-    @ColumnInfo(name = "parent", index = true) val parent: Long
-)

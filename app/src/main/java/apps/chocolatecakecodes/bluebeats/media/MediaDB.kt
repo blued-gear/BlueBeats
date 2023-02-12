@@ -2,6 +2,8 @@ package apps.chocolatecakecodes.bluebeats.media
 
 import android.os.Handler
 import android.util.Log
+import apps.chocolatecakecodes.bluebeats.database.MediaDirEntity
+import apps.chocolatecakecodes.bluebeats.database.MediaFileEntity
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.*
 import apps.chocolatecakecodes.bluebeats.taglib.TagFields
@@ -311,8 +313,10 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
             }
         }
 
-        val mf = MediaFile(MediaFileEntity(MediaNode.UNALLOCATED_NODE_ID, name, parent.entity.id, type,
-            TagFields(), null))
+        val mf = MediaFile(
+            MediaFileEntity(MediaNode.UNALLOCATED_NODE_ID, name, parent.entity.id, type,
+            TagFields(), null)
+        )
 
         parseTags(mf)
 

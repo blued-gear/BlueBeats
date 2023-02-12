@@ -7,8 +7,6 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
-import apps.chocolatecakecodes.bluebeats.media.model.MediaDirEntity
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFileEntity
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import java.util.concurrent.atomic.AtomicReference
 

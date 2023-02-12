@@ -1,9 +1,34 @@
 package apps.chocolatecakecodes.bluebeats.database
 
 import androidx.room.*
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFileEntity
+import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import apps.chocolatecakecodes.bluebeats.taglib.TagFields
 
-//TODO move other entities here
+@Entity(
+    foreignKeys = [ForeignKey(entity = MediaDirEntity::class, parentColumns = ["id"], childColumns = ["parent"], onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE)],
+    indices = [Index(value = ["name", "parent"], unique = true)]
+)
+internal data class MediaDirEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long,
+    @ColumnInfo(name = "name", index = true) val name: String,
+    @ColumnInfo(name = "parent", index = true) val parent: Long
+)
+
+@Entity(
+    foreignKeys = [ForeignKey(entity = MediaDirEntity::class, parentColumns = ["id"], childColumns = ["parent"], onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE)],
+    indices = [Index(value = ["name", "parent"], unique = true)]
+)
+internal data class MediaFileEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long,
+    @ColumnInfo(name = "name", index = true) val name: String,
+    @ColumnInfo(name = "parent", index = true) val parent: Long,
+    @ColumnInfo(name = "type", index = true) var type: MediaFile.Type,
+
+    @Embedded(prefix = "mediaTags_")
+    var mediaTags: TagFields,
+    @ColumnInfo(name = "chapters", index = false)
+    var chaptersJson: String?// store them as JSON because this is the easiest way to store lists
+)
 
 @Entity(
     indices = [Index(value = ["name"], unique = true)]
