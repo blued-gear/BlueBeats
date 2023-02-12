@@ -233,9 +233,10 @@ internal class Search : Fragment(R.layout.search_fragment) {
     }
 
     private fun applyItems(items: Map<String, List<MediaFile>>) {
+        val useTitle = viewModel.grouping.value != SearchViewModel.Grouping.FILENAME
         items.map { group ->
             group.value.map {
-                MediaFileSubItem(it)
+                MediaFileSubItem(it, useTitle)
             }.let {
                 GroupItem(group.key, it)
             }
@@ -288,8 +289,8 @@ private class GroupItem(
 
 private class MediaFileSubItem(
     file: MediaFile,
-    draggable: Boolean = false
-) : MediaFileItem(file, draggable), ISubItem<MediaFileItem.ViewHolder> {
+    useTitle: Boolean
+) : MediaFileItem(file, false, useTitle), ISubItem<MediaFileItem.ViewHolder> {
     override var parent: IParentItem<*>? = null
 }
 //endregion

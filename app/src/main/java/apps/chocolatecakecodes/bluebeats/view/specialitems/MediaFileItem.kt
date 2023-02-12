@@ -6,15 +6,19 @@ import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import com.mikepenz.fastadapter.drag.IDraggable
 
+/**
+ * @param file the MediaFile to represent
+ * @param isDraggable if the item should be draggable
+ * @param useTitle if true, the title from the tags will be used instead of the filename (if available)
+ */
 internal open class MediaFileItem(
     val file: MediaFile,
-    draggable: Boolean = false
+    override val isDraggable: Boolean = false,
+    private val useTitle: Boolean = false
 ) : SelectableItem<MediaFileItem.ViewHolder>(), IDraggable {
 
     override val type: Int = MediaFileItem::class.hashCode()
     override val layoutRes: Int = R.layout.view_media_node
-
-    override val isDraggable: Boolean = draggable
 
     override fun getViewHolder(v: View) = ViewHolder(v)
 
@@ -26,7 +30,10 @@ internal open class MediaFileItem(
         override fun bindView(item: MediaFileItem, payloads: List<Any>) {
             super.bindView(item, payloads)
 
-            title.text = item.file.name
+            title.text = if(item.useTitle && !item.file.mediaTags.title.isNullOrEmpty())
+                    item.file.mediaTags.title
+                else
+                    item.file.name
             dragHandle.visibility = if(item.isDraggable) View.VISIBLE else View.GONE
         }
         override fun unbindView(item: MediaFileItem) {
