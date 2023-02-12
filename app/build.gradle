@@ -3,6 +3,7 @@ plugins {
     id 'kotlin-android'
     id 'kotlin-kapt'
     id 'idea'
+    id 'com.jaredsburrows.license' version '0.9.0'
 }
 
 idea{
