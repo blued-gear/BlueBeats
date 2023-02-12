@@ -14,6 +14,10 @@ import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.taglib.TagFields
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val STATE_FILE = "key:filePath"
 
@@ -55,8 +59,19 @@ class FileDetails() : Fragment(R.layout.filedetails_fragment) {
     }
 
     private fun showData(){
-        showTags(file.mediaTags)
-        showUsertags(file.userTags)
+        // tags could be loaded from DB
+        CoroutineScope(Dispatchers.IO).launch {
+            file.mediaTags.let {
+                withContext(Dispatchers.Main){
+                    showTags(it)
+                }
+            }
+            file.userTags.let {
+                withContext(Dispatchers.Main){
+                    showUsertags(it)
+                }
+            }
+        }
     }
 
     private fun showTags(tags: TagFields){
