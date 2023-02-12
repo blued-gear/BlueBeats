@@ -13,14 +13,14 @@ import kotlin.collections.ArrayList
  * a normal playlist where the user puts media in manually
  */
 internal class StaticPlaylist private constructor(
-    private val entity: StaticPlaylistEntity,
+    name: String,
     entries: List<MediaFile>
-    ) : Playlist {
+) : Playlist {
 
     override val type: PlaylistType = PlaylistType.STATIC
 
-    override val name: String
-        get() = entity.toString()
+    override var name: String = name
+        private set
 
     private val media: ArrayList<MediaFile> = ArrayList(entries)
     private val mediaImmutable: List<MediaFile> = Collections.unmodifiableList(media)
@@ -59,66 +59,66 @@ internal class StaticPlaylist private constructor(
             cache = CacheBuilder.newBuilder().weakValues().build()
         }
 
-        fun createNew(name: String): StaticPlaylist {
-            val id = insertEntity(StaticPlaylistEntity(0, name))
-            return load(id)
+        private val playlistsManager: PlaylistsManager by lazy {
+            RoomDB.DB_INSTANCE.playlistManager()
+        }
+
+        @Transaction
+        open fun createNew(name: String): StaticPlaylist {
+            val playlist = StaticPlaylist(name, emptyList())
+            val id = insertEntity(StaticPlaylistEntity(0))
+
+            playlistsManager.createNewEntry(name, playlist.type, id)
+
+            cache.put(id, playlist)
+            return playlist
         }
 
         fun load(id: Long): StaticPlaylist {
             return cache.get(id){
-                val entity = getEntityWithId(id)
+                val name = playlistsManager.getPlaylistName(id)
+
                 val entries = getEntriesForPlaylist(id).map {
                     RoomDB.DB_INSTANCE.mediaFileDao().getForId(it.media)
                 }
-                StaticPlaylist(entity, entries)
+
+                StaticPlaylist(name, entries)
             }
         }
 
-        fun save(playlist: StaticPlaylist) {
-            updateEntity(playlist.entity)
+        @Transaction
+        open fun save(playlist: StaticPlaylist) {
+            val id = playlistsManager.getPlaylistId(playlist.name)
 
-            deleteEntriesOfPlaylist(playlist.entity.id)
+            deleteEntriesOfPlaylist(id)
             playlist.items().map {
-                StaticPlaylistEntry(0, playlist.entity.id, it.entity.id)
+                StaticPlaylistEntry(0, id, it.entity.id)
             }.let {
                 insertPlaylistEntries(it)
             }
         }
 
+        @Transaction
+        open fun delete(playlist: StaticPlaylist) {
+            val id = playlistsManager.getPlaylistId(playlist.name)
+
+            playlistsManager.deleteEntry(playlist.name)
+            deleteEntries(id)
+            deleteEntity(StaticPlaylistEntity(id))
+
+            cache.invalidate(id)
+        }
+
         fun changeName(playlist: StaticPlaylist, newName: String) {
-            val entity = playlist.entity
-            val oldName = entity.name
-
-            entity.name = newName
-            try {
-                updateEntity(entity)
-            } catch (e: Exception) {
-                entity.name = oldName
-
-                throw e
-            }
+            playlistsManager.renamePlaylist(playlist.name, newName)
+            playlist.name = newName
         }
-
-        /**
-         * return the names of all playlists with their IDs
-         */
-        fun getAllNames(): Map<String, Long> {
-            return getAllEntities().associate {
-                Pair(it.name, it.id)
-            }
-        }
-
-        @Query("SELECT * FROM StaticPlaylistEntity;")
-        protected abstract fun getAllEntities(): List<StaticPlaylistEntity>
-
-        @Query("SELECT * FROM StaticPlaylistEntity WHERE id = :id;")
-        protected abstract fun getEntityWithId(id: Long): StaticPlaylistEntity
 
         @Insert
         protected abstract fun insertEntity(entity: StaticPlaylistEntity): Long
 
-        @Update
-        protected abstract fun updateEntity(entity: StaticPlaylistEntity)
+        @Delete
+        protected abstract fun deleteEntity(entity: StaticPlaylistEntity)
 
         @Query("SELECT * FROM StaticPlaylistEntry WHERE playlist = :id;")
         protected abstract fun getEntriesForPlaylist(id: Long): List<StaticPlaylistEntry>
@@ -128,18 +128,23 @@ internal class StaticPlaylist private constructor(
 
         @Insert
         protected abstract fun insertPlaylistEntries(entries: List<StaticPlaylistEntry>)
+
+        @Query("DELETE FROM StaticPlaylistEntry WHERE playlist = :playlist;")
+        protected abstract fun deleteEntries(playlist: Long)
     }
 }
 
-@Entity(
-    indices = [Index(value = ["name"], unique = true)]
-)
+@Entity
 internal data class StaticPlaylistEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long,
-    @ColumnInfo(name = "name") var name: String,
+    @PrimaryKey(autoGenerate = true) val id: Long
 )
 
-@Entity
+@Entity(
+    foreignKeys = [ForeignKey(entity = StaticPlaylistEntry::class,
+        parentColumns = ["id"], childColumns = ["playlist"],
+        onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.RESTRICT
+    )]
+)
 internal data class StaticPlaylistEntry(
     @PrimaryKey(autoGenerate = true) val id: Long,
     @ColumnInfo(name = "playlist", index = true) val playlist: Long,

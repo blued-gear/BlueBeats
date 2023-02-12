@@ -8,6 +8,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
+import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistName
+import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistsManager
 import apps.chocolatecakecodes.bluebeats.media.playlist.StaticPlaylist
 import apps.chocolatecakecodes.bluebeats.media.playlist.StaticPlaylistEntity
 import apps.chocolatecakecodes.bluebeats.media.playlist.StaticPlaylistEntry
@@ -16,6 +18,7 @@ import java.util.concurrent.atomic.AtomicReference
 @Database(version = 3, entities = [
     MediaDirEntity::class, MediaFileEntity::class,
     UserTagEntity::class, UserTagRelation::class,
+    PlaylistName::class,
     StaticPlaylistEntity::class, StaticPlaylistEntry::class
 ])
 internal abstract class RoomDB : RoomDatabase() {
@@ -47,6 +50,8 @@ internal abstract class RoomDB : RoomDatabase() {
     internal abstract fun mediaDirDao(): MediaDirDAO
     internal abstract fun mediaFileDao(): MediaFileDAO
     internal abstract fun userTagDao(): UserTagsDAO
+
+    internal abstract fun playlistManager(): PlaylistsManager
     internal abstract fun staticPlaylistDao(): StaticPlaylist.StaticPlaylistDao
 }
 
