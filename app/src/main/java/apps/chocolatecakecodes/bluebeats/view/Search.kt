@@ -2,6 +2,8 @@ package apps.chocolatecakecodes.bluebeats.view
 
 import android.os.Bundle
 import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.Spinner
 import androidx.core.widget.doAfterTextChanged
@@ -22,6 +24,8 @@ internal class Search : Fragment(R.layout.search_fragment) {
     private var viewModel: SearchViewModel by OnceSettable()
     private var mainVM: MainActivityViewModel by OnceSettable()
     private var playerVM: PlayerViewModel by OnceSettable()
+
+    private var subgroupsAdapter: ArrayAdapter<String> by OnceSettable()
 
     private val tabs = RequireNotNull<TabLayout>()
     private val searchText = RequireNotNull<EditText>()
@@ -47,6 +51,9 @@ internal class Search : Fragment(R.layout.search_fragment) {
 
         wireActionHandlers()
         wireObservers()
+
+        setupSubgroupsSpinner()
+        setupItemList()
     }
 
     override fun onStart() {
@@ -74,9 +81,19 @@ internal class Search : Fragment(R.layout.search_fragment) {
         itemView.set(null)
     }
 
+    private fun setupSubgroupsSpinner() {
+        subgroupsAdapter = ArrayAdapter(this.requireContext(), android.R.layout.simple_spinner_item, mutableListOf())
+        subgroupsSpinner.get().adapter = subgroupsAdapter
+    }
+
+    private fun setupItemList() {
+
+    }
+
     //region action handlers
     private fun wireActionHandlers() {
         setupTabSelectionListener()
+        setupSubgroupsSelectionListener()
 
         searchText.get().doAfterTextChanged {
             viewModel.setSearchText(it.toString())
@@ -102,6 +119,15 @@ internal class Search : Fragment(R.layout.search_fragment) {
             }
         })
     }
+
+    private fun setupSubgroupsSelectionListener() {
+        subgroupsSpinner.get().onItemSelectedListener = object : AdapterView.OnItemSelectedListener{
+            override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
+                viewModel.setSubgroup(subgroupsAdapter.getItem(position)!!)
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+    }
     //endregion
 
     //region vm handlers
@@ -115,6 +141,20 @@ internal class Search : Fragment(R.layout.search_fragment) {
         viewModel.searchText.observe(this.viewLifecycleOwner) {
             it?.let {
                 applySearchText(it)
+            }
+        }
+
+        viewModel.subgroups.observe(this.viewLifecycleOwner) {
+            it?.let {
+                subgroupsAdapter.setNotifyOnChange(false)
+                subgroupsAdapter.clear()
+                subgroupsAdapter.addAll(it)
+                subgroupsAdapter.notifyDataSetChanged()
+            }
+        }
+        viewModel.subgroup.observe(this.viewLifecycleOwner) {
+            it?.let {
+                subgroupsSpinner.get().setSelection(subgroupsAdapter.getPosition(it))
             }
         }
     }

@@ -3,12 +3,14 @@ package apps.chocolatecakecodes.bluebeats.view
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 
@@ -38,6 +40,9 @@ internal class SearchViewModel : ViewModel() {
     }
 
     fun setGrouping(grouping: Grouping) {
+        if(grouping == groupingRW.value)
+            return
+
         Utils.trySetValueImmediately(groupingRW, grouping)
 
         CoroutineScope(Dispatchers.IO).launch {
@@ -51,7 +56,10 @@ internal class SearchViewModel : ViewModel() {
         }
     }
 
-    fun setSubgroup(subgroup: String) {
+    fun setSubgroup(subgroup: String?) {
+        if(subgroup == subgroupRW.value)
+            return
+
         Utils.trySetValueImmediately(subgroupRW, subgroup)
 
         grouping.value?.let {
@@ -62,12 +70,22 @@ internal class SearchViewModel : ViewModel() {
     fun setSearchText(text: String) {
         if(text == searchText.value)
             return
+
         Utils.trySetValueImmediately(searchTextRW, text)
+
         debounceSearch(text)
     }
 
     private fun loadSubgroups(grouping: Grouping) {
-
+        when(grouping) {
+            Grouping.ID3_TAG -> {
+                RoomDB.DB_INSTANCE.id3TagDao().getAllTagTypes().let {
+                    subgroupsRW.postValue(it)
+                    setSubgroup(if(it.isNotEmpty()) it.first() else null)
+                }
+            }
+            else -> throw AssertionError()
+        }
     }
 
     private fun loadItems(grouping: Grouping, subgroup: String?) {
@@ -80,7 +98,7 @@ internal class SearchViewModel : ViewModel() {
 
     private fun setupSearchDebouncer() {
         CoroutineScope(Dispatchers.IO).launch {
-            callbackFlow {
+            channelFlow {
                 this@SearchViewModel.addCloseable {
                     this.close()
                 }
