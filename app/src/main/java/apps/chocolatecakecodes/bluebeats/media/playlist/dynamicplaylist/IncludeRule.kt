@@ -13,10 +13,11 @@ internal typealias DirPathInclude = Pair<MediaDir, Boolean>
 
 internal class IncludeRule private constructor(
     private val entityId: Long,
+    override val isOriginal: Boolean,
     dirs: Set<DirPathInclude> = emptySet(),
     files: Set<MediaFile> = emptySet(),
     initialShare: Rule.Share
-) : Rule {
+) : Rule<IncludeRule> {
 
     private val dirs = HashMap<MediaDir, Boolean>(dirs.associate { it.first to it.second })
     private val files = HashSet(files)
@@ -73,6 +74,18 @@ internal class IncludeRule private constructor(
         files.remove(file)
     }
 
+    override fun copy(): IncludeRule {
+        return IncludeRule(entityId, false, getDirs(), getFiles(), share.copy())
+    }
+
+    override fun applyFrom(other: IncludeRule) {
+        dirs.clear()
+        dirs.putAll(other.dirs)
+        files.clear()
+        files.addAll(other.files)
+        share = other.share.copy()
+    }
+
     override fun equals(other: Any?): Boolean {
         if(other !is IncludeRule)
             return false
@@ -116,7 +129,7 @@ internal class IncludeRule private constructor(
         @Transaction
         open fun createNew(initialShare: Rule.Share): IncludeRule {
             val id = insertEntity(IncludeRuleEntity(0, initialShare))
-            return IncludeRule(id, initialShare = initialShare)
+            return IncludeRule(id, true, initialShare = initialShare)
         }
 
         fun load(id: Long): IncludeRule {
@@ -129,11 +142,14 @@ internal class IncludeRule private constructor(
                 dirDao.getForId(it.dir) to it.deep
             }.toSet()
 
-            return IncludeRule(id, dirEntries, fileEntries, entity.share)
+            return IncludeRule(id, true, dirEntries, fileEntries, entity.share)
         }
 
         @Transaction
         open fun save(rule: IncludeRule) {
+            if(!rule.isOriginal)
+                throw IllegalArgumentException("only original rules may be saved to DB")
+
             val currentFileEntries = generateFileEntries(rule).toSet()
             val storedFileEntries = getFileEntriesForRule(rule.entityId)
                 .map { it.copy(id = 0) }// set id to 0 to be comparable to generated entries

@@ -9,15 +9,17 @@ import java.util.*
 
 internal class RuleGroup private constructor(
     private val entityId: Long,
+    override val isOriginal: Boolean,
     override var share: Rule.Share,
     var combineWithAnd: Boolean = false,
-    rules: List<Pair<Rule, Boolean>> = emptyList()
-) : Rule {
+    rules: List<Pair<GenericRule, Boolean>> = emptyList()
+) : Rule<RuleGroup> {
 
-    private val rules: MutableList<Pair<Rule, Boolean>> = ArrayList(rules)
-    private val rulesRO: List<Pair<Rule, Boolean>> by lazy {
+    private val rules: MutableList<Pair<GenericRule, Boolean>> = ArrayList(rules)
+    private val rulesRO: List<Pair<GenericRule, Boolean>> by lazy {
         Collections.unmodifiableList(this.rules)
     }
+    private val graveyard: MutableList<GenericRule> = ArrayList()
 
     override fun generateItems(amount: Int, exclude: Set<MediaFile>): List<MediaFile> {
         val (negativeRules, positiveRules) = getRules().partition { it.second }.let {
@@ -75,33 +77,112 @@ internal class RuleGroup private constructor(
     /**
      * @return List<Pair<rule, negate>>
      */
-    fun getRules(): List<Pair<Rule, Boolean>> {
+    fun getRules(): List<Pair<GenericRule, Boolean>> {
         return rulesRO
     }
 
-    fun addRule(rule: Rule, negate: Boolean = false) {
+    fun addRule(rule: GenericRule, negate: Boolean = false) {
         rules.add(Pair(rule, negate))
     }
 
-    fun getRuleNegated(rule: Rule): Boolean? {
+    fun getRuleNegated(rule: GenericRule): Boolean? {
         return getRules().find {
             it.first == rule
         }?.second
     }
 
-    fun setRuleNegated(rule: Rule, negated: Boolean) {
+    fun setRuleNegated(rule: GenericRule, negated: Boolean) {
         val idx = rules.indexOfFirst { it.first == rule }
         if(idx == -1)
             throw NoSuchElementException("rule not found")
         rules.set(idx, Pair(rule, negated))
     }
 
-    fun removeRule(rule: Rule) {
-        rules.removeIf { it.first == rule }
+    fun removeRule(rule: GenericRule) {
+        rules.removeIfSingle { it.first == rule }?.let {
+            graveyard.add(it.first)
+        } ?: throw IllegalArgumentException("given rule was not in this group")
     }
 
     fun removeRuleAt(idx: Int) {
         rules.removeAt(idx)
+    }
+
+    override fun copy(): RuleGroup {
+        return RuleGroup(entityId, false, share.copy(), combineWithAnd).apply {
+            this@RuleGroup.rules.map {
+                Pair(it.first.copy() as GenericRule, it.second)
+            }.let {
+                rules.addAll(it)
+            }
+        }
+    }
+
+    /**
+     * this will make a deep-copy of all subrules (it will create new instances if this and other are both originals)
+     * @see Rule.applyFrom
+     */
+    override fun applyFrom(other: RuleGroup) {
+        this.combineWithAnd = other.combineWithAnd
+        this.share = other.share.copy()
+
+        val thisRules = this.rules.associateBy { RuleGroupDao.getRuleEntityId(it.first) }
+        val otherRules = other.rules.associateBy { RuleGroupDao.getRuleEntityId(it.first) }
+        Utils.diffChanges(thisRules.keys, otherRules.keys).let { (added, deleted, same) ->
+            added.map {
+                otherRules[it]!!
+            }.forEach {  (rule, negate) ->
+                if(other.isOriginal)
+                    assert(rule.isOriginal) { "original RuleGroups can only contain original subrules" }
+
+                if(this.isOriginal){
+                    if(rule.isOriginal && !other.isOriginal){
+                        // takeover rule
+                        other.takeoverRule(rule)
+                        this.addRule(rule, negate)
+                    } else {
+                        // make new instance
+                        when(rule.javaClass) {
+                            RuleGroup::class.java -> RoomDB.DB_INSTANCE.dplRuleGroupDao().createNew(rule.share)
+                            IncludeRule::class.java -> RoomDB.DB_INSTANCE.dplIncludeRuleDao().createNew(rule.share)
+                            UsertagsRule::class.java -> RoomDB.DB_INSTANCE.dplUsertagsRuleDao().createNew(rule.share)
+                            else -> throw IllegalArgumentException("unsupported type")
+                        }.castTo<Rule<in GenericRule>>().apply {
+                            this.applyFrom(rule)
+                        }.let {
+                            this.addRule(it, negate)
+                        }
+                    }
+                } else {
+                    // make (another) copy
+                    this.addRule(rule.copy() as GenericRule, negate)
+                }
+            }
+
+            deleted.map {
+                thisRules[it]!!
+            }.forEach { (rule, _) ->
+                if(this.isOriginal)
+                    assert(rule.isOriginal) { "original RuleGroups can only contain original subrules" }
+
+                this.removeRule(rule)
+            }
+
+            same.map { id ->
+                otherRules[id]!!.let {
+                    Triple(it.first, it.second, thisRules[id]!!.first)
+                }
+            }.forEach { (otherRule, negate, thisRule) ->
+                if(this.isOriginal)
+                    assert(thisRule.isOriginal) { "original RuleGroups can only contain original subrules" }
+                if(other.isOriginal)
+                    assert(otherRule.isOriginal) { "original RuleGroups can only contain original subrules" }
+
+                thisRule.castTo<Rule<in GenericRule>>().applyFrom(otherRule)
+
+                this.setRuleNegated(thisRule, negate)
+            }
+        }
     }
 
     override fun equals(other: Any?): Boolean {
@@ -125,6 +206,23 @@ internal class RuleGroup private constructor(
             USERTAGS_RULE
         }
 
+        companion object {
+            private fun getRuleType(rule: GenericRule) = when(rule) {
+                is RuleGroup -> KnownRuleTypes.RULE_GROUP
+                is IncludeRule -> KnownRuleTypes.INCLUDE_RULE
+                is UsertagsRule -> KnownRuleTypes.USERTAGS_RULE
+                else -> throw IllegalArgumentException("unsupported type")
+            }
+
+            fun getRuleEntityId(rule: GenericRule): Long {
+                return when(getRuleType(rule)) {
+                    KnownRuleTypes.RULE_GROUP -> (rule as RuleGroup).entityId
+                    KnownRuleTypes.INCLUDE_RULE -> RoomDB.DB_INSTANCE.dplIncludeRuleDao().getEntityId(rule as IncludeRule)
+                    KnownRuleTypes.USERTAGS_RULE -> RoomDB.DB_INSTANCE.dplUsertagsRuleDao().getEntityId(rule as UsertagsRule)
+                }
+            }
+        }
+
         //region api
         @Transaction
         open fun createNew(initialShare: Rule.Share): RuleGroup {
@@ -138,13 +236,16 @@ internal class RuleGroup private constructor(
                 .map { Pair(loadRule(it.rule, KnownRuleTypes.values()[it.type]), it.negated) }
 
             return RuleGroup(
-                entity.id, entity.share, entity.andMode,
+                entity.id, true, entity.share, entity.andMode,
                 ruleEntries.map { Pair(it.first, it.second) },
             )
         }
 
         @Transaction
         open fun save(group: RuleGroup) {
+            if(!group.isOriginal)
+                throw IllegalArgumentException("only original rules may be saved to DB")
+
             val existingRules = getEntriesForGroup(group.entityId).map {
                 Pair(it.rule, KnownRuleTypes.values()[it.type])
             }.toSet()
@@ -153,7 +254,9 @@ internal class RuleGroup private constructor(
             }
 
             Utils.diffChanges(existingRules, currentRules.keys).let { (added, deleted, existing) ->
-                deleted.forEach {
+                group.graveyard.map {
+                    Pair(getRuleEntityId(it), getRuleType(it))
+                }.toSet().plus(deleted).forEach {
                     deleteRule(group.entityId, it.first, it.second)
                 }
 
@@ -231,7 +334,7 @@ internal class RuleGroup private constructor(
         //endregion
 
         //region private helpers
-        private fun loadRule(id: Long, type: KnownRuleTypes): Rule {
+        private fun loadRule(id: Long, type: KnownRuleTypes): GenericRule {
             return when(type) {
                 KnownRuleTypes.RULE_GROUP -> this.load(id)
                 KnownRuleTypes.INCLUDE_RULE -> RoomDB.DB_INSTANCE.dplIncludeRuleDao().load(id)
@@ -242,7 +345,7 @@ internal class RuleGroup private constructor(
         /**
          * @return Pair<entityId, type>
          */
-        private fun saveRule(rule: Rule) {
+        private fun saveRule(rule: GenericRule) {
             when(getRuleType(rule)) {
                 KnownRuleTypes.RULE_GROUP -> {
                     val rule = rule as RuleGroup
@@ -261,7 +364,7 @@ internal class RuleGroup private constructor(
             }
         }
 
-        private fun deleteRule(group: Long, rule: Rule) {
+        private fun deleteRule(group: Long, rule: GenericRule) {
             when(val type = getRuleType(rule)) {
                 KnownRuleTypes.RULE_GROUP -> {
                     val rule = rule as RuleGroup
@@ -299,21 +402,6 @@ internal class RuleGroup private constructor(
                     deleteEntry(group, ruleId, ruleType.ordinal)
                     dao.delete(ruleId)
                 }
-            }
-        }
-
-        private fun getRuleType(rule: Rule) = when(rule) {
-            is RuleGroup -> KnownRuleTypes.RULE_GROUP
-            is IncludeRule -> KnownRuleTypes.INCLUDE_RULE
-            is UsertagsRule -> KnownRuleTypes.USERTAGS_RULE
-            else -> throw IllegalArgumentException("unsupported type")
-        }
-
-        private fun getRuleEntityId(rule: Rule): Long {
-            return when(getRuleType(rule)) {
-                KnownRuleTypes.RULE_GROUP -> (rule as RuleGroup).entityId
-                KnownRuleTypes.INCLUDE_RULE -> RoomDB.DB_INSTANCE.dplIncludeRuleDao().getEntityId(rule as IncludeRule)
-                KnownRuleTypes.USERTAGS_RULE -> RoomDB.DB_INSTANCE.dplUsertagsRuleDao().getEntityId(rule as UsertagsRule)
             }
         }
         //endregion

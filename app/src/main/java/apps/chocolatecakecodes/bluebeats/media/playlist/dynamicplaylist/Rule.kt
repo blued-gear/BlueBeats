@@ -2,7 +2,12 @@ package apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist
 
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 
-internal interface Rule {
+internal typealias GenericRule = Rule<*>
+
+/**
+ * @param T type of the implementing class
+ */
+internal interface Rule<T> {
 
     /** determines how much items a rule should add to the resulting collection */
     data class Share(
@@ -12,6 +17,12 @@ internal interface Rule {
         val isRelative: Boolean
     )
 
+    /**
+     * only one original may exist at any given time; multiple copies may exist; only the original can be stored to DB
+     * @see Rule.copy
+     */
+    val isOriginal: Boolean
+
     var share: Share
 
     /**
@@ -20,6 +31,18 @@ internal interface Rule {
      * @param exclude set of files which must not be contained in the resulting set
      */
     fun generateItems(amount: Int, exclude: Set<MediaFile>): List<MediaFile>
+
+    /**
+     * Returns a deep-copy of the rule and all its subrules.
+     * The returned rule will have isOriginal set to false
+     */
+    fun copy(): T
+
+    /**
+     * Applies all properties of the given rule to this instance.
+     * If this rule is a group then this method will be called on all subrules.
+     */
+    fun applyFrom(other: T)
 
     override fun equals(other: Any?): Boolean
 

@@ -12,8 +12,9 @@ internal class UsertagsRule private constructor(
     override var share: Rule.Share,
     /** if true returned files will match all tags; if false returned files will match any of the tags */
     var combineWithAnd: Boolean = true,
+    override val isOriginal: Boolean,
     private val entityId: Long
-) : Rule {
+) : Rule<UsertagsRule> {
 
     private val tags = HashSet<String>()
     private val tagsRO = Collections.unmodifiableSet(tags)
@@ -47,6 +48,19 @@ internal class UsertagsRule private constructor(
             .takeOrAll(amount)
     }
 
+    override fun copy(): UsertagsRule {
+        return UsertagsRule(share.copy(), combineWithAnd, false, entityId).apply {
+            tags.addAll(this@UsertagsRule.tags)
+        }
+    }
+
+    override fun applyFrom(other: UsertagsRule) {
+        tags.clear()
+        tags.addAll(other.tags)
+        combineWithAnd = other.combineWithAnd
+        share = other.share.copy()
+    }
+
     override fun equals(other: Any?): Boolean {
         if(other !is UsertagsRule)
             return false
@@ -77,12 +91,12 @@ internal class UsertagsRule private constructor(
         open fun createNew(share: Rule.Share): UsertagsRule {
             val initialAndMode = true
             val id = insertEntity(UsertagsRuleEntity(0, share, initialAndMode))
-            return UsertagsRule(share, initialAndMode, id)
+            return UsertagsRule(share, initialAndMode, true, id)
         }
 
         fun load(id: Long): UsertagsRule {
             return getEntity(id).let {
-                UsertagsRule(it.share, it.andMode, it.id)
+                UsertagsRule(it.share, it.andMode, true, it.id)
             }.apply {
                 getAllEntriesForRule(entityId).forEach {
                     addTag(it.tag)
@@ -92,6 +106,9 @@ internal class UsertagsRule private constructor(
 
         @Transaction
         open fun save(rule: UsertagsRule) {
+            if(!rule.isOriginal)
+                throw IllegalArgumentException("only original rules may be saved to DB")
+
             val storedTags = getAllEntriesForRule(rule.entityId).map { it.tag }.toSet()
             Utils.diffChanges(storedTags, rule.getTags()).let { (added, deleted, _) ->
                 deleted.forEach {
