@@ -7,4 +7,10 @@
     <item
             android:title="@string/search_mnu_collapse_all"
             android:id="@+id/search_mnu_colp" />
+    <item
+            android:title="@string/filebrowser_menu_add_playlist"
+            android:id="@+id/search_mnu_addpl" />
+    <item
+            android:title="@string/filebrowser_menu_fileinfo"
+            android:id="@+id/search_mnu_fi" />
 </menu>

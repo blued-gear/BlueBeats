@@ -17,14 +17,15 @@ import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.RequireNotNull
+import apps.chocolatecakecodes.bluebeats.util.SmartBackPressedCallback
+import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaDirItem
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
 import com.google.android.material.tabs.TabLayout
-import com.mikepenz.fastadapter.FastAdapter
-import com.mikepenz.fastadapter.IParentItem
-import com.mikepenz.fastadapter.ISubItem
+import com.mikepenz.fastadapter.*
 import com.mikepenz.fastadapter.adapters.FastItemAdapter
 import com.mikepenz.fastadapter.expandable.getExpandableExtension
 import com.mikepenz.fastadapter.expandable.items.AbstractExpandableItem
+import com.mikepenz.fastadapter.select.getSelectExtension
 
 internal class Search : Fragment(R.layout.search_fragment) {
 
@@ -43,7 +44,9 @@ internal class Search : Fragment(R.layout.search_fragment) {
     private val searchText = RequireNotNull<EditText>()
     private val subgroupsSpinner = RequireNotNull<Spinner>()
     private val itemListView = RequireNotNull<RecyclerView>()
+
     private var menu: Menu? = null
+    private var inSelection = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -105,9 +108,34 @@ internal class Search : Fragment(R.layout.search_fragment) {
     private fun setupItemList() {
         itemListAdapter = FastItemAdapter<GroupItem>().apply {
             setHasStableIds(true)
+
+            // prevent click-event when long-click for selection
+            onLongClickListener = { _, _, _: GenericItem, _ ->
+                true
+            }
+
+            onClickListener =  { _, _, item: GenericItem, pos ->
+                if(item is MediaFileSubItem)
+                    onItemClick(item, pos)
+                true
+            }
         }
         itemListAdapter.getExpandableExtension().apply {
             isOnlyOneExpandedItem = false
+        }
+        itemListAdapter.getSelectExtension().apply {
+            isSelectable = true
+            multiSelect = true
+            allowDeselection = true
+            selectOnLongClick = true
+
+            @Suppress("UNCHECKED_CAST")
+            selectionListener = (object : ISelectionListener<GenericItem> {
+                override fun onSelectionChanged(item: GenericItem, selected: Boolean) {
+                    if(item is MediaFileItem)
+                        this@Search.onSelectionChanged(item, selected)
+                }
+            }) as ISelectionListener<GroupItem>
         }
 
         itemListView.get().apply {
@@ -131,6 +159,20 @@ internal class Search : Fragment(R.layout.search_fragment) {
                 itemListAdapter.getExpandableExtension().collapse()
                 true
             }
+            menu.findItem(R.id.search_mnu_addpl).apply {
+                isEnabled = false
+                setOnMenuItemClickListener {
+                    onAddToPlaylist()
+                    true
+                }
+            }
+            menu.findItem(R.id.search_mnu_fi).apply {
+                isEnabled = false
+                setOnMenuItemClickListener {
+                    onShowFileInfo()
+                    true
+                }
+            }
         }
     }
     //endregion
@@ -143,6 +185,8 @@ internal class Search : Fragment(R.layout.search_fragment) {
         searchText.get().doAfterTextChanged {
             viewModel.setSearchText(it.toString())
         }
+
+        this.requireActivity().onBackPressedDispatcher.addCallback(SmartBackPressedCallback(this.lifecycle, this::onBackPressed))
     }
 
     private fun setupTabSelectionListener() {
@@ -173,6 +217,35 @@ internal class Search : Fragment(R.layout.search_fragment) {
             }
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
+    }
+
+    private fun onBackPressed() {
+        itemListAdapter.getSelectExtension().deselect()
+    }
+
+    private fun onItemClick(item: MediaFileItem, pos: Int) {
+        if (inSelection){
+            itemListAdapter.getSelectExtension().toggleSelection(pos)
+        } else {
+            //TODO open media
+        }
+    }
+
+    private fun onSelectionChanged(item: MediaFileItem, selected: Boolean) {
+        val selectedCount = itemListAdapter.getSelectExtension().selectedItems.size
+        menu?.let {
+            it.findItem(R.id.search_mnu_addpl).isEnabled = selectedCount > 0
+            it.findItem(R.id.search_mnu_fi).isEnabled = selectedCount == 1
+        }
+        inSelection = selectedCount > 0
+    }
+
+    private fun onAddToPlaylist() {
+        ;
+    }
+
+    private fun onShowFileInfo() {
+        ;
     }
     //endregion
 
