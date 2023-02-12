@@ -1,6 +1,8 @@
 package apps.chocolatecakecodes.bluebeats.view.specialitems
 
+import android.content.res.ColorStateList
 import android.view.View
+import android.widget.ImageView
 import android.widget.TextView
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
@@ -23,6 +25,15 @@ internal class MediaDirItem(
 
         private val title: TextView = view.findViewById(R.id.v_mf_text)
         private val dragHandle: View = view.findViewById(R.id.v_mf_handle)
+
+        init {
+            view.findViewById<ImageView?>(R.id.v_mf_thumb).apply {
+                visibility = View.VISIBLE
+                imageTintList = ColorStateList.valueOf(context.getColor(R.color.gray_600))
+                setBackgroundColor(context.getColor(R.color.gray_410))
+                setImageResource(R.drawable.ic_baseline_folder_24)
+            }
+        }
 
         override fun bindView(item: MediaDirItem, payloads: List<Any>) {
             super.bindView(item, payloads)
