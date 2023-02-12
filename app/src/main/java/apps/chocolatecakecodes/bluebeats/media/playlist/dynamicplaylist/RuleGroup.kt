@@ -264,7 +264,8 @@ internal class RuleGroup private constructor(
         private enum class KnownRuleTypes {
             RULE_GROUP,
             INCLUDE_RULE,
-            USERTAGS_RULE
+            USERTAGS_RULE,
+            ID3TAGS_RULE
         }
 
         companion object {
@@ -272,6 +273,7 @@ internal class RuleGroup private constructor(
                 is RuleGroup -> KnownRuleTypes.RULE_GROUP
                 is IncludeRule -> KnownRuleTypes.INCLUDE_RULE
                 is UsertagsRule -> KnownRuleTypes.USERTAGS_RULE
+                is ID3TagsRule -> KnownRuleTypes.ID3TAGS_RULE
                 else -> throw IllegalArgumentException("unsupported type")
             }
 
@@ -280,6 +282,7 @@ internal class RuleGroup private constructor(
                     KnownRuleTypes.RULE_GROUP -> (rule as RuleGroup).entityId
                     KnownRuleTypes.INCLUDE_RULE -> RoomDB.DB_INSTANCE.dplIncludeRuleDao().getEntityId(rule as IncludeRule)
                     KnownRuleTypes.USERTAGS_RULE -> RoomDB.DB_INSTANCE.dplUsertagsRuleDao().getEntityId(rule as UsertagsRule)
+                    KnownRuleTypes.ID3TAGS_RULE -> RoomDB.DB_INSTANCE.dplID3TagsRuleDao().getEntityId(rule as ID3TagsRule)
                 }
             }
         }
@@ -400,6 +403,7 @@ internal class RuleGroup private constructor(
                 KnownRuleTypes.RULE_GROUP -> this.load(id)
                 KnownRuleTypes.INCLUDE_RULE -> RoomDB.DB_INSTANCE.dplIncludeRuleDao().load(id)
                 KnownRuleTypes.USERTAGS_RULE -> RoomDB.DB_INSTANCE.dplUsertagsRuleDao().load(id)
+                KnownRuleTypes.ID3TAGS_RULE -> RoomDB.DB_INSTANCE.dplID3TagsRuleDao().load(id)
             }
         }
 
@@ -420,6 +424,11 @@ internal class RuleGroup private constructor(
                 KnownRuleTypes.USERTAGS_RULE -> {
                     val rule = rule as UsertagsRule
                     val dao = RoomDB.DB_INSTANCE.dplUsertagsRuleDao()
+                    dao.save(rule)
+                }
+                KnownRuleTypes.ID3TAGS_RULE -> {
+                    val rule = rule as ID3TagsRule
+                    val dao = RoomDB.DB_INSTANCE.dplID3TagsRuleDao()
                     dao.save(rule)
                 }
             }
@@ -444,6 +453,12 @@ internal class RuleGroup private constructor(
                     deleteEntry(group, dao.getEntityId(rule), type.ordinal)
                     dao.delete(rule)
                 }
+                KnownRuleTypes.ID3TAGS_RULE -> {
+                    val rule = rule as ID3TagsRule
+                    val dao = RoomDB.DB_INSTANCE.dplID3TagsRuleDao()
+                    deleteEntry(group, dao.getEntityId(rule), type.ordinal)
+                    dao.delete(rule)
+                }
             }
         }
 
@@ -460,6 +475,11 @@ internal class RuleGroup private constructor(
                 }
                 KnownRuleTypes.USERTAGS_RULE -> {
                     val dao = RoomDB.DB_INSTANCE.dplUsertagsRuleDao()
+                    deleteEntry(group, ruleId, ruleType.ordinal)
+                    dao.delete(ruleId)
+                }
+                KnownRuleTypes.ID3TAGS_RULE -> {
+                    val dao = RoomDB.DB_INSTANCE.dplID3TagsRuleDao()
                     deleteEntry(group, ruleId, ruleType.ordinal)
                     dao.delete(ruleId)
                 }

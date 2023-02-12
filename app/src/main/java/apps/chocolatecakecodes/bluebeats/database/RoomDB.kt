@@ -21,7 +21,8 @@ import java.util.concurrent.atomic.AtomicReference
     DynamicPlaylistEntity::class,
     RuleGroupEntity::class, RuleGroupEntry::class,
     IncludeRuleEntity::class, IncludeRuleFileEntry::class, IncludeRuleDirEntry::class,
-    UsertagsRuleEntity::class, UsertagsRuleEntry::class
+    UsertagsRuleEntity::class, UsertagsRuleEntry::class,
+    ID3TagsRuleEntity::class, ID3TagsRuleEntry::class
 ])
 internal abstract class RoomDB : RoomDatabase() {
 
@@ -61,6 +62,7 @@ internal abstract class RoomDB : RoomDatabase() {
     internal abstract fun dplRuleGroupDao(): RuleGroup.RuleGroupDao
     internal abstract fun dplIncludeRuleDao(): IncludeRule.IncludeRuleDao
     internal abstract fun dplUsertagsRuleDao(): UsertagsRule.UsertagsRuleDao
+    internal abstract fun dplID3TagsRuleDao(): ID3TagsRule.ID3TagsRuleDao
 }
 
 private class DBUpgradeCallback : RoomDatabase.Callback(){
