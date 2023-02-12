@@ -24,6 +24,11 @@ public final class UserTags{
     private String[] tags;// set by JNI
     private List<String> readonlyTags = null;
 
+    public UserTags(String[] tags){
+        this.tags = new String[tags.length];
+        System.arraycopy(tags, 0, this.tags, 0, tags.length);
+    }
+
     private UserTags(){}// called by JNI
 
     @NotNull

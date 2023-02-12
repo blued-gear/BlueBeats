@@ -24,7 +24,7 @@ public final class TagFields{
     private long length;
     //TODO add more
 
-    private TagFields(){}// called by NJI
+    public TagFields(){}// called by NJI
 
     public String getTitle(){
         return title;
