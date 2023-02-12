@@ -16,13 +16,10 @@ import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
+import apps.chocolatecakecodes.bluebeats.util.RequireNotNull
 import com.mikepenz.fastadapter.FastAdapter
-import com.mikepenz.fastadapter.GenericAdapter
-import com.mikepenz.fastadapter.GenericItem
-import com.mikepenz.fastadapter.IItem
 import com.mikepenz.fastadapter.adapters.GenericFastItemAdapter
 import com.mikepenz.fastadapter.adapters.GenericItemAdapter
-import com.mikepenz.fastadapter.adapters.ItemAdapter
 import com.mikepenz.fastadapter.items.AbstractItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,9 +34,9 @@ internal class Playlists : Fragment() {
 
     private var viewModel: PlaylistsViewModel by OnceSettable()
     private var mainVM: MainActivityViewModel by OnceSettable()
-    private var itemsAdapter: GenericItemAdapter by OnceSettable()
-    private var titleText: TextView by OnceSettable()
-    private var upBtn: ImageButton by OnceSettable()
+    private var itemsAdapter: GenericFastItemAdapter by OnceSettable()
+    private var titleText = RequireNotNull<TextView>()
+    private var upBtn = RequireNotNull<ImageButton>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,6 +44,8 @@ internal class Playlists : Fragment() {
         val vmProvider = ViewModelProvider(this.requireActivity())
         viewModel = vmProvider.get(PlaylistsViewModel::class.java)
         mainVM = vmProvider.get(MainActivityViewModel::class.java)
+
+        itemsAdapter = GenericFastItemAdapter()
     }
 
     override fun onCreateView(
@@ -59,8 +58,8 @@ internal class Playlists : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        titleText = view.findViewById(R.id.pls_title)
-        upBtn = view.findViewById(R.id.pls_up_btn)
+        titleText.set(view.findViewById(R.id.pls_title))
+        upBtn.set(view.findViewById(R.id.pls_up_btn))
 
         setupRecycleView()
         wireActionHandlers()
@@ -73,13 +72,17 @@ internal class Playlists : Fragment() {
         mainVM.menuProvider.value = null// don't have a menu yet so remove remaining values
     }
 
-    private fun setupRecycleView() {
-        itemsAdapter = GenericItemAdapter()
-        val fastAdapter = FastAdapter.with(itemsAdapter)
+    override fun onDestroyView() {
+        super.onDestroyView()
 
+        titleText.set(null)
+        upBtn.set(null)
+    }
+
+    private fun setupRecycleView() {
         val recyclerView = this.requireView().findViewById<RecyclerView>(R.id.pls_entries)
         recyclerView.layoutManager = LinearLayoutManager(this.requireContext(), LinearLayoutManager.VERTICAL, false)
-        recyclerView.adapter = fastAdapter
+        recyclerView.adapter = itemsAdapter
     }
 
     //region action handlers
@@ -112,7 +115,7 @@ internal class Playlists : Fragment() {
     }
 
     private fun wireUpBtn() {
-        upBtn.setOnClickListener {
+        upBtn.get().setOnClickListener {
             viewModel.showOverview.postValue(false)
         }
     }
@@ -124,14 +127,14 @@ internal class Playlists : Fragment() {
                 viewModel.playlistItems = null
                 loadPlaylists()
 
-                titleText.text = null
-                upBtn.visibility = Button.INVISIBLE
+                titleText.get().text = null
+                upBtn.get().visibility = Button.INVISIBLE
             } else {
                 viewModel.allLists = null
                 loadPlaylistItems()
 
-                titleText.text = viewModel.selectedPlaylist!!.name
-                upBtn.visibility = Button.VISIBLE
+                titleText.get().text = viewModel.selectedPlaylist!!.name
+                upBtn.get().visibility = Button.VISIBLE
             }
         }
     }
