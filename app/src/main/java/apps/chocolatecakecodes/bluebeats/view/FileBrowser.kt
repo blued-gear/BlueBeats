@@ -40,6 +40,7 @@ class FileBrowser : Fragment() {
     private var listView: RecyclerView? = null
     private var progressBar: ProgressBar? = null
     private lateinit var scanListener: MediaDB.ScanEventHandler
+    private var scanRequested = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,8 +51,6 @@ class FileBrowser : Fragment() {
         mainVM = vmProvider.get(MainActivityViewModel::class.java)
 
         setupAdapter()
-
-        scanMedia()
     }
 
     override fun onCreateView(
@@ -102,6 +101,10 @@ class FileBrowser : Fragment() {
                 expandMediaDir(it) {
                     withContext(Dispatchers.Main) {
                         listAdapter.setEntries(it)
+
+                        // scanMedia() was split because there were a race condition between this set and addEntry in the scan-listener
+                        if(scanRequested)
+                            scanMedia()
                     }
                 }
             }
@@ -162,7 +165,7 @@ class FileBrowser : Fragment() {
         })
     }
 
-    private fun scanMedia(){
+    private fun loadMediaRoot(){
         if(viewModel.mediaWasScanned)
             return
 
@@ -171,7 +174,18 @@ class FileBrowser : Fragment() {
 
             mediaDB.loadDB()
 
+            scanRequested = true
             viewModel.setCurrentDir(mediaDB.getMediaTreeRoot())
+        }
+    }
+    private fun scanMedia(){
+        if(viewModel.mediaWasScanned)
+            return
+
+        scanRequested = false
+
+        CoroutineScope(Dispatchers.IO).launch {
+            val mediaDB = viewModel.mediaDB.getSubject()
 
             viewModel.mediaScanned()// call before scanInAll to prevent calls to scanMedia() before scan was complete
 
