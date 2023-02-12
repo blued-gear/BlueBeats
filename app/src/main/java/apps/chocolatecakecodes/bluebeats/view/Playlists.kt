@@ -9,6 +9,7 @@ import android.widget.ImageButton
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
@@ -16,7 +17,12 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import com.mikepenz.fastadapter.FastAdapter
+import com.mikepenz.fastadapter.GenericAdapter
+import com.mikepenz.fastadapter.GenericItem
+import com.mikepenz.fastadapter.IItem
+import com.mikepenz.fastadapter.adapters.GenericFastItemAdapter
 import com.mikepenz.fastadapter.adapters.GenericItemAdapter
+import com.mikepenz.fastadapter.adapters.ItemAdapter
 import com.mikepenz.fastadapter.items.AbstractItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -70,7 +76,10 @@ internal class Playlists : Fragment() {
     private fun setupRecycleView() {
         itemsAdapter = GenericItemAdapter()
         val fastAdapter = FastAdapter.with(itemsAdapter)
-        this.requireView().findViewById<RecyclerView>(R.id.pls_entries).adapter = fastAdapter
+
+        val recyclerView = this.requireView().findViewById<RecyclerView>(R.id.pls_entries)
+        recyclerView.layoutManager = LinearLayoutManager(this.requireContext(), LinearLayoutManager.VERTICAL, false)
+        recyclerView.adapter = fastAdapter
     }
 
     //region action handlers
@@ -135,7 +144,7 @@ internal class Playlists : Fragment() {
                 }
 
                 withContext(Dispatchers.Main) {
-                    itemsAdapter.set(viewModel.allLists!!.map {
+                    itemsAdapter.setNewList(viewModel.allLists!!.map {
                         ListsItem(it)
                     })
                 }
