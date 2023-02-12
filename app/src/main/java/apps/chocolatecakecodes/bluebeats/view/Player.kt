@@ -15,6 +15,7 @@ import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
+import apps.chocolatecakecodes.bluebeats.util.Utils
 import kotlinx.coroutines.*
 import org.videolan.libvlc.MediaPlayer
 import org.videolan.libvlc.interfaces.IMedia
@@ -24,7 +25,7 @@ import kotlin.math.abs
 private const val CONTROLS_FADE_IN_TIME = 200L
 private const val CONTROLS_FADE_OUT_TIME = 100L
 private const val CONTROLS_FADE_OUT_DELAY = 2000L
-private const val SEEK_STEP = 1000.0
+private const val SEEK_STEP = 1000.0f
 
 class Player : Fragment() {
 
@@ -40,7 +41,7 @@ class Player : Fragment() {
     private var player: MediaPlayer by OnceSettable()
     private var playerView: VLCVideoLayout by OnceSettable()
     private var playerContainer: ViewGroup by OnceSettable()
-    private var seekBar: SeekBar by OnceSettable()
+    private var seekBar: SegmentedSeekBar by OnceSettable()
     private var timeTextView: TextView by OnceSettable()
     private var currentMedia: IMedia? = null
     private var controlsVisible: Boolean = true
@@ -75,9 +76,10 @@ class Player : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         playerContainer = view.findViewById(R.id.player_player_container)
+        timeTextView = view.findViewById(R.id.player_controls_time)
+
         seekBar = view.findViewById(R.id.player_controls_seek)
         seekBar.max = SEEK_STEP.toInt()
-        timeTextView = view.findViewById(R.id.player_controls_time)
 
         // setup player-view
         playerView = VLCVideoLayout(this.requireContext())
@@ -133,7 +135,7 @@ class Player : Fragment() {
         }
 
         // seek-bar
-        seekBar.setOnSeekBarChangeListener(seekHandler)
+        seekBar.seekListener = seekHandler
 
         timeTextView.setOnClickListener {
             viewModel.setTimeTextAsRemaining(!viewModel.timeTextAsRemaining.value!!)
@@ -187,7 +189,7 @@ class Player : Fragment() {
                         player.setTime(it, false)
 
                 if(!seekHandler.isSeeking) {
-                    seekBar.progress = ((it / player.length.toDouble()) * SEEK_STEP).toInt().coerceAtLeast(1)
+                    seekBar.value = ((it / player.length.toDouble()) * SEEK_STEP).toInt().coerceAtLeast(1)
                 }
 
                 timeTextView.text = formatPlayTime(it, player.length, viewModel.timeTextAsRemaining.value!!)
@@ -207,6 +209,30 @@ class Player : Fragment() {
 
         viewModel.timeTextAsRemaining.observe(this.viewLifecycleOwner){
             timeTextView.text = formatPlayTime(player.time, player.length, it!!)
+        }
+
+        viewModel.chapters.observe(this.viewLifecycleOwner){ it ->
+            val chapters = it
+
+            if(chapters === null || chapters.isEmpty()){
+                seekBar.segments = Utils.emptyArray()
+                seekBar.showTitle = false
+            }else{
+                val totalTime = player.length.toDouble()
+
+                // if fragment was recreated, this will be triggered before player was fully loaded (then totalTime == -1)
+                if(totalTime > 0) {
+                    val segments = Array<SegmentedSeekBar.Segment>(chapters.size) {
+                        val chapter = chapters[it]
+                        val start = ((chapter.timeOffset.toDouble() / totalTime) * SEEK_STEP).toInt()
+                        val end = (((chapter.timeOffset + chapter.duration).toDouble() / totalTime) * SEEK_STEP).toInt()
+                        return@Array SegmentedSeekBar.Segment(start, end, chapter.name)
+                    }
+
+                    seekBar.segments = segments
+                    seekBar.showTitle = true
+                }
+            }
         }
     }
 
@@ -400,7 +426,7 @@ class Player : Fragment() {
 
         override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
             if(isSeeking)
-                viewModel.updatePlayPosition((player.length * (this@Player.seekBar.progress / SEEK_STEP)).toLong())
+                viewModel.updatePlayPosition((player.length * (this@Player.seekBar.value / SEEK_STEP)).toLong())
         }
 
         override fun onStartTrackingTouch(seekBar: SeekBar?) {
@@ -433,6 +459,8 @@ class Player : Fragment() {
 
     private inner class PlayerEventHandler : MediaPlayer.EventListener{
 
+        private var newMediaLoading = false
+
         override fun onEvent(event: MediaPlayer.Event?) {
             if(event === null) return
 
@@ -445,6 +473,17 @@ class Player : Fragment() {
                     player.play(currentMedia!!)
                     viewModel.updatePlayPosition(0)
                     viewModel.pause()
+                }
+                MediaPlayer.Event.MediaChanged -> {
+                    newMediaLoading = true
+                }
+                MediaPlayer.Event.Playing -> {
+                    if(newMediaLoading){
+                        newMediaLoading = false
+
+                        // chapter-info should now be loaded
+                        viewModel.setChapters(player.getChapters(-1) ?: Utils.emptyArray())
+                    }
                 }
             }
         }
