@@ -3,6 +3,9 @@
 
 #include "mpegfile.h"
 #include "tag.h"
+#include "id3v2tag.h"
+#include "chapterframe.h"
+#include "textidentificationframe.h"
 
 using namespace TagLib::MPEG;
 using TagLib::Tag;
@@ -19,12 +22,20 @@ namespace {
             c_TagParser = jni->FindClass("apps/chocolatecakecodes/bluebeats/taglib/TagParser");
             f_TagParser_TagFields = jni->GetFieldID(c_TagParser, "tagFields", "Lapps/chocolatecakecodes/bluebeats/taglib/TagFields;");
             f_TagParser_UserTags = jni->GetFieldID(c_TagParser, "userTags", "Lapps/chocolatecakecodes/bluebeats/taglib/UserTags;");
+            f_TagParser_Chapters = jni->GetFieldID(c_TagParser, "chapters", "Ljava/util/List;");
 
             c_TagFields = jni->FindClass("apps/chocolatecakecodes/bluebeats/taglib/TagFields");
             m_TagFields_Constructor = jni->GetMethodID(c_TagFields, "<init>", "()V");
             f_TagFields_Artist = jni->GetFieldID(c_TagFields, "artist", "Ljava/lang/String;");
             f_TagFields_Length = jni->GetFieldID(c_TagFields, "length", "J");
             f_TagFields_Title = jni->GetFieldID(c_TagFields, "title", "Ljava/lang/String;");
+
+            c_Chapter = jni->FindClass("apps/chocolatecakecodes/bluebeats/taglib/Chapter");
+            m_Chapter_Constructor  = jni->GetMethodID(c_Chapter, "<init>","(JJLjava/lang/String;)V");
+
+            c_ArrayList = jni->FindClass("java/util/ArrayList");
+            m_ArrayList_Constructor_Size = jni->GetMethodID(c_ArrayList, "<init>", "(I)V");
+            m_ArrayList_Add = jni->GetMethodID(c_ArrayList, "add", "(Ljava/lang/Object;)Z");
         }
 
         JNIEnv* jni;
@@ -34,6 +45,7 @@ namespace {
         jclass c_TagParser = nullptr;
         jfieldID f_TagParser_TagFields = nullptr;
         jfieldID f_TagParser_UserTags = nullptr;
+        jfieldID f_TagParser_Chapters = nullptr;
 
         jclass c_TagFields = nullptr;
         jmethodID m_TagFields_Constructor = nullptr;
@@ -43,6 +55,10 @@ namespace {
 
         jclass c_Chapter = nullptr;
         jmethodID m_Chapter_Constructor = nullptr;
+
+        jclass c_ArrayList = nullptr;
+        jmethodID m_ArrayList_Constructor_Size = nullptr;
+        jmethodID m_ArrayList_Add = nullptr;
     };
     typedef struct JavaIDs_t JavaIDs;
 
@@ -58,7 +74,7 @@ namespace {
 
         void readID3Tags(const JavaIDs& jid, const Tag *tag, const Properties* audioProps, TagFields dest);
 
-        Chapters readChapters(const JavaIDs& jid, const File& file);
+        Chapters readChapters(const JavaIDs& jid, File& file, bool& err);
     }
 }
 //endregion
@@ -86,6 +102,11 @@ Java_apps_chocolatecakecodes_bluebeats_taglib_TagParser_parseMp3(
     BlueBeats::TagFields tagFields = BlueBeats::readTags(jni, file);
     if(tagFields == nullptr) return;// an error occurred and so an exception was thrown
     env->SetObjectField(thisRef, jni.f_TagParser_TagFields, tagFields);
+
+    bool readChaptersErr = false;
+    BlueBeats::Chapters chapters = BlueBeats::readChapters(jni, file, readChaptersErr);
+    if(readChaptersErr) return;// an error occurred and so an exception was thrown
+    env->SetObjectField(thisRef, jni.f_TagParser_Chapters, chapters);
 }
 //endregion
 
@@ -133,5 +154,65 @@ void BlueBeats::readID3Tags(const JavaIDs& jid, const Tag *tag, const Properties
         jlong length = audioProps->lengthInMilliseconds();
         jid.jni->SetLongField(dest, jid.f_TagFields_Length, length);
     }
+}
+
+BlueBeats::Chapters BlueBeats::readChapters(const JavaIDs &jid, File &file, bool &err) {
+    // parsing of chapters only supported for ID3v2
+    if(!file.hasID3v2Tag())
+        return nullptr;
+
+    const TagLib::ID3v2::Tag* tag = file.ID3v2Tag(false);
+    assert(tag != nullptr);
+    const TagLib::ID3v2::FrameList& chapterFrames = tag->frameList("CHAP");
+
+    // create java list obj
+    jint chapterCount = chapterFrames.size();
+    Chapters list = jid.jni->NewObject(jid.c_ArrayList, jid.m_ArrayList_Constructor_Size, chapterCount);
+    if(list == nullptr){
+        err = true;
+        throwParseException(jid, "unable to alloc object");
+        return nullptr;
+    }
+
+    // parse chapters
+    for(TagLib::ID3v2::Frame* frame : chapterFrames){
+        auto* chapterFrame = dynamic_cast<TagLib::ID3v2::ChapterFrame*>(frame);
+        assert(chapterFrame != nullptr);
+
+        jlong start = chapterFrame->startTime();
+        jlong end = chapterFrame->endTime();
+
+        // search title (the first valid text frame)
+        jstring title = nullptr;
+        const TagLib::ID3v2::FrameList& subFrames = chapterFrame->embeddedFrameList();
+        for(const TagLib::ID3v2::Frame* subFrame : subFrames){
+            if(subFrame->frameID() == "TIT2" || subFrame->frameID() == "TIT3"){
+                auto textFrame = dynamic_cast<const TagLib::ID3v2::TextIdentificationFrame*>(subFrame);
+                if(textFrame != nullptr){
+                    String textStr = textFrame->toString();
+                    title = jid.jni->NewStringUTF(textStr.toCString(true));
+                    break;
+                }
+            }
+        }
+        if(title == nullptr)// no title was found -> fallback value
+            title = jid.jni->NewStringUTF("");
+        if(title == nullptr){// error in NewStringUTF()
+            err = true;
+            throwParseException(jid, "unable to alloc string");
+            return nullptr;
+        }
+
+        // create and add chapter obj
+        jobject chap = jid.jni->NewObject(jid.c_Chapter, jid.m_Chapter_Constructor, start, end, title);
+        if(chap == nullptr){
+            err = true;
+            throwParseException(jid, "unable to alloc object");
+            return nullptr;
+        }
+        jid.jni->CallBooleanMethod(list, jid.m_ArrayList_Add, chap);
+    }
+
+    return list;
 }
 //endregion

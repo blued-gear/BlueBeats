@@ -1,5 +1,7 @@
 package apps.chocolatecakecodes.bluebeats.taglib;
 
+import java.util.List;
+
 public class TagParser{
 
     static{
@@ -10,6 +12,7 @@ public class TagParser{
     private final String filepath;
     private TagFields tagFields;// set by JNI
     private UserTags userTags;// set by JNI
+    private List<Chapter> chapters;// set by JNI
 
     public TagParser(String filepath){
         this.filepath = filepath;
@@ -26,6 +29,10 @@ public class TagParser{
 
     public UserTags getUserTags(){
         return userTags;
+    }
+
+    public List<Chapter> getChapters(){
+        return chapters;
     }
 
     public String getFilepath(){
