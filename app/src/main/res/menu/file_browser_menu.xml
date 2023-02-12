@@ -2,6 +2,9 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
+            android:title="@string/filebrowser_menu_select_all_files"
+            android:id="@+id/filebrowser_menu_sela" />
+    <item
             android:title="@string/filebrowser_menu_add_playlist"
             android:id="@+id/filebrowser_menu_atp" />
     <item

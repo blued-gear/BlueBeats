@@ -27,9 +27,11 @@ import apps.chocolatecakecodes.bluebeats.taglib.BuildConfig
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.SmartBackPressedCallback
 import apps.chocolatecakecodes.bluebeats.util.Utils
+import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
 import apps.chocolatecakecodes.bluebeats.view.specialviews.FileBrowserView
 import apps.chocolatecakecodes.bluebeats.view.specialviews.SpinnerTextbox
 import apps.chocolatecakecodes.bluebeats.view.specialviews.mediaNodeToItem
+import com.mikepenz.fastadapter.select.getSelectExtension
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -117,6 +119,10 @@ class FileBrowser : Fragment() {
             }
             menu.findItem(R.id.filebrowser_menu_atp).setOnMenuItemClickListener {
                 onAddToPlClicked()
+                true
+            }
+            menu.findItem(R.id.filebrowser_menu_sela).setOnMenuItemClickListener {
+                onSelectAllClicked()
                 true
             }
 
@@ -333,6 +339,14 @@ class FileBrowser : Fragment() {
                 it.name
             }
         showAddToPlDlg(this.requireContext(), toAdd)
+    }
+
+    private fun onSelectAllClicked() {
+        browser.listAdapter.adapterItems
+            .filterIsInstance<MediaFileItem>()
+            .forEach {
+                browser.listAdapter.getSelectExtension().select(it, true)
+            }
     }
     //endregion
 }
