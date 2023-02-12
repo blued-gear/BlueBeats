@@ -9,15 +9,12 @@ import androidx.lifecycle.ViewModel
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import apps.chocolatecakecodes.bluebeats.util.Debouncer
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.debounce
 
 private const val SEARCH_DEBOUNCE_TIMEOUT = 200L
 
-@OptIn(FlowPreview::class)
 internal class SearchViewModel : ViewModel() {
 
     enum class Grouping { FILENAME, TITLE, TYPE, ID3_TAG, USER_TAG }
@@ -35,11 +32,18 @@ internal class SearchViewModel : ViewModel() {
 
     lateinit var contextProvider: () -> Context
 
-    private lateinit var debounceSearch: (String) -> Unit
+    private val searchDebouncer: Debouncer<String>
     private lateinit var allItems: Map<String, List<MediaFile>>
 
     init {
-        setupSearchDebouncer()
+        searchDebouncer = Debouncer.create(SEARCH_DEBOUNCE_TIMEOUT) {
+            withContext(Dispatchers.IO) {
+                search(it)
+            }
+        }
+        this.addCloseable {
+            searchDebouncer.stop()
+        }
     }
 
     fun setGrouping(grouping: Grouping) {
@@ -77,7 +81,7 @@ internal class SearchViewModel : ViewModel() {
             return
 
         Utils.trySetValueImmediately(searchTextRW, text)
-        debounceSearch(text)
+        searchDebouncer.debounce(text)
     }
 
     private fun loadSubgroups(grouping: Grouping) {
@@ -236,26 +240,6 @@ internal class SearchViewModel : ViewModel() {
                 }.let {
                     if (it != items.value)
                         itemsRW.postValue(it)
-                }
-            }
-        }
-    }
-
-    private fun setupSearchDebouncer() {
-        CoroutineScope(Dispatchers.IO).launch {
-            callbackFlow {
-                this@SearchViewModel.addCloseable {
-                    this.close()
-                }
-
-                debounceSearch = {
-                    trySend(it)
-                }
-
-                awaitClose {  }
-            }.debounce(SEARCH_DEBOUNCE_TIMEOUT).collect {
-                withContext(Dispatchers.IO) {
-                    search(it)
                 }
             }
         }
