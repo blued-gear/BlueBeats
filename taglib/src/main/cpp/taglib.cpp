@@ -32,6 +32,7 @@ namespace {
             f_TagFields_Artist = jni->GetFieldID(c_TagFields, "artist", "Ljava/lang/String;");
             f_TagFields_Length = jni->GetFieldID(c_TagFields, "length", "J");
             f_TagFields_Title = jni->GetFieldID(c_TagFields, "title", "Ljava/lang/String;");
+            f_TagFields_Genre = jni->GetFieldID(c_TagFields, "genre", "Ljava/lang/String;");
 
             c_Chapter = jni->FindClass("apps/chocolatecakecodes/bluebeats/taglib/Chapter");
             m_Chapter_Constructor  = jni->GetMethodID(c_Chapter, "<init>","(JJLjava/lang/String;)V");
@@ -60,6 +61,7 @@ namespace {
         jfieldID f_TagFields_Artist = nullptr;
         jfieldID f_TagFields_Length = nullptr;
         jfieldID f_TagFields_Title = nullptr;
+        jfieldID f_TagFields_Genre = nullptr;
 
         jclass c_Chapter = nullptr;
         jmethodID m_Chapter_Constructor = nullptr;
@@ -179,6 +181,13 @@ void BlueBeats_Parser::readID3Tags(const JavaIDs& jid, const Tag *tag, const Pro
         const char* titleStr = title.toCString(true);
         jstring titleJStr = jid.jni->NewStringUTF(titleStr);
         jid.jni->SetObjectField(dest, jid.f_TagFields_Title, titleJStr);
+    }
+
+    String genre = tag->genre();
+    if(!genre.isNull()){
+        const char* genreStr = genre.toCString(true);
+        jstring genreJStr = jid.jni->NewStringUTF(genreStr);
+        jid.jni->SetObjectField(dest, jid.f_TagFields_Genre, genreJStr);
     }
 
     if(audioProps != nullptr){

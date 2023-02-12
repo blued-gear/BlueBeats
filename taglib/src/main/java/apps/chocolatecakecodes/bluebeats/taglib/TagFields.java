@@ -23,6 +23,7 @@ public final class TagFields implements Cloneable{
     // all fields will be set by JNI
     private String title;
     private String artist;
+    private String genre;
     private long length;
     //TODO add more
 
@@ -34,6 +35,10 @@ public final class TagFields implements Cloneable{
 
     public String getArtist(){
         return artist;
+    }
+
+    public String getGenre(){
+        return genre;
     }
 
     public long getLength(){
@@ -48,6 +53,10 @@ public final class TagFields implements Cloneable{
         this.artist = artist;
     }
 
+    public void setGenre(String genre){
+        this.genre = genre;
+    }
+
     public void setLength(long length){
         this.length = length;
     }
@@ -59,13 +68,14 @@ public final class TagFields implements Cloneable{
         var clone = new TagFields();
         clone.title = this.title;
         clone.artist = this.artist;
+        clone.genre = this.genre;
         clone.length = this.length;
         return clone;
     }
 
     @Override
     public int hashCode(){
-        return Objects.hash(title, artist, length, "TagLib::TAGS");
+        return Objects.hash(title, artist, genre, length, "TagLib::TAGS");
     }
 
     @Override
@@ -76,6 +86,7 @@ public final class TagFields implements Cloneable{
         TagFields other = (TagFields) obj;
         return Objects.equals(other.title, this.title)
                 && Objects.equals(other.artist, this.artist)
+                && Objects.equals(other.genre, this.genre)
                 && other.length == this.length;
     }
 
@@ -95,6 +106,7 @@ public final class TagFields implements Cloneable{
             out.beginObject();
             out.name("title").value(value.title);
             out.name("artist").value(value.artist);
+            out.name("genre").value(value.genre);
             out.name("length").value(value.length);
             out.endObject();
         }
@@ -102,7 +114,7 @@ public final class TagFields implements Cloneable{
         @Override
         public TagFields read(JsonReader in) throws IOException{
             if(in.peek() == JsonToken.NULL)
-                return null;
+                return null;//TODO do I have to consume the null?
 
             TagFields value = new TagFields();
 
@@ -115,6 +127,9 @@ public final class TagFields implements Cloneable{
                         break;
                     case "artist":
                         value.artist = in.nextString();
+                        break;
+                    case "genre":
+                        value.genre = in.nextString();
                         break;
                     case "length":
                         value.length = in.nextLong();

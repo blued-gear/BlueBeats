@@ -35,4 +35,5 @@
     <string name="dynpl_edit_name_invalid_blank">The name must not be empty</string>
     <string name="dynpl_edit_rules_not_100">relative shares do not add up to 100%</string>
     <string name="dynpl_edit_mnu_reset">Undo Changes</string>
+    <string name="tagname_genre">Genre</string>
 </resources>

@@ -101,6 +101,7 @@ class FileDetails() : Fragment(R.layout.filedetails_fragment) {
         }
 
         addTag(R.string.tagname_artist, tags.artist)
+        addTag(R.string.tagname_genre, tags.genre)
     }
 
     private fun showUsertags(tags: List<String>){
