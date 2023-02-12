@@ -29,6 +29,7 @@ import apps.chocolatecakecodes.bluebeats.util.Utils
 import kotlinx.coroutines.*
 import java.math.RoundingMode
 import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
 import kotlin.math.truncate
 
 internal typealias ChangedCallback = (Rule) -> Unit
@@ -462,7 +463,8 @@ private class SimpleAddableRuleHeaderView(ctx: Context) : LinearLayout(ctx) {
         if(share.isRelative) {
             val sharePercentage = DecimalFormat("#.#").apply {
                 roundingMode = RoundingMode.HALF_UP
-            }.format(share.value * 100)
+                multiplier = 100
+            }.format(share.value)
             shareBtn.text = "S: ${sharePercentage}%"
         } else {
             shareBtn.text = "S: ${share.value.toInt()}"
@@ -525,9 +527,19 @@ private class ShareEditor(
             valueInp = EditText(context).apply {
                 inputType = EditorInfo.TYPE_CLASS_NUMBER
                 setSingleLine()
-                if(initialShare.isRelative)
+                if(initialShare.isRelative){
                     inputType = inputType or EditorInfo.TYPE_NUMBER_FLAG_DECIMAL
-                text.append(initialShare.value.toString())
+                    val shareDecimal = DecimalFormatSymbols().apply {
+                        decimalSeparator = '.'
+                    }.let { formatSymbols ->
+                        DecimalFormat("#.####", formatSymbols).apply {
+                            roundingMode = RoundingMode.HALF_UP
+                        }.format(initialShare.value)
+                    }
+                    text.append(shareDecimal)
+                }else{
+                    text.append(initialShare.value.toInt().toString())
+                }
 
             }.also {
                 addView(it)
