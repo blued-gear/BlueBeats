@@ -163,6 +163,8 @@ internal class Playlists : Fragment() {
         wireItemsClickListener()
         wireUpBtn()
 
+        mainVM.addBackPressListener(this.viewLifecycleOwner, this::onBackPressed)
+
         itemsAdapter.getSelectExtension().selectionListener = object : ISelectionListener<GenericItem> {
             override fun onSelectionChanged(item: GenericItem, selected: Boolean) {
                 onItemSelectionChanged(item, selected)
@@ -237,6 +239,14 @@ internal class Playlists : Fragment() {
     private fun wireUpBtn() {
         upBtn.get().setOnClickListener {
             viewModel.showOverview.postValue(true)
+        }
+    }
+
+    private fun onBackPressed() {
+        if(inSelection) {
+            itemsAdapter.getSelectExtension().deselect()
+        } else if(viewModel.showOverview.value == false) {
+            viewModel.showOverview.value = true
         }
     }
     //endregion
