@@ -45,8 +45,8 @@ internal open class MediaFileItem(
         override fun bindView(item: MediaFileItem, payloads: List<Any>) {
             super.bindView(item, payloads)
 
-            title.text = if(item.useTitle && !item.file.mediaTags.title.isNullOrEmpty())
-                    item.file.mediaTags.title
+            title.text = if(item.useTitle)
+                    item.file.title
                 else
                     item.file.name
 

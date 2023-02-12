@@ -140,10 +140,7 @@ internal class SearchViewModel : ViewModel() {
             fileTypeStr(it.type, contextProvider())
         }.mapValues {
             it.value.sortedBy {
-                if(!it.mediaTags.title.isNullOrEmpty())
-                    it.mediaTags.title
-                else
-                    it.name
+                it.title
             }
         }.toSortedMap()
 
@@ -215,11 +212,7 @@ internal class SearchViewModel : ViewModel() {
                     Grouping.TYPE -> {
                         allItems.flatMap { group ->
                             group.value.map {
-                                val title = if(!it.mediaTags.title.isNullOrEmpty())
-                                        it.mediaTags.title
-                                    else
-                                        it.name
-                                Pair(title, Pair(group.key, it))
+                                Pair(it.title, Pair(group.key, it))
                             }
                         }.let {
                             performSearch(parsedQuery, it)

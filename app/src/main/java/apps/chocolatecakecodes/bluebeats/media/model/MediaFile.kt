@@ -35,6 +35,14 @@ class MediaFile internal constructor(
         usertagsSupplier()
     }
 
+    val title: String
+        get() {
+            return if(!mediaTags.title.isNullOrEmpty())
+                mediaTags.title
+            else
+                name
+        }
+
     override fun equals(other: Any?): Boolean {
         if(other !is MediaFile)
             return false
