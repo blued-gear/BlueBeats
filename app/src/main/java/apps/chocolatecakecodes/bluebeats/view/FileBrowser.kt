@@ -56,7 +56,7 @@ class FileBrowser : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_file_browser, container, false)
+        return inflater.inflate(R.layout.filebrowser_fragment, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -138,6 +138,12 @@ class FileBrowser : Fragment() {
                     listView?.findViewHolderForAdapterPosition(listAdapter.keyProvider.getPosition(key))?.let{
                         val holder = it as MediaNodeViewHolder
                         holder.setIsSelected(selected)
+
+                        val mediaNode = holder.entry
+                        if(selected && mediaNode is MediaFile)
+                            viewModel.selectFile(mediaNode)
+                        else
+                            viewModel.selectFile(null)
                     }
 
                     updateMenuFileInfo()
@@ -235,6 +241,8 @@ class FileBrowser : Fragment() {
         listAdapter = ViewAdapter(entriesContainer, mediaNodeKeyProvider) {
             if(it is MediaDir){
                 viewModel.setCurrentDir(it)
+                viewModel.selectFile(null)
+
                 expandMediaDir(it){
                     withContext(Dispatchers.Main){
                         listAdapter.setEntries(it)
@@ -242,6 +250,7 @@ class FileBrowser : Fragment() {
                 }
             }else if(it is MediaFile){
                 viewModel.selectFile(it)
+
                 mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
                 playerVM.play(it)
             }
@@ -270,7 +279,7 @@ class FileBrowser : Fragment() {
 
     private fun updateMenuFileInfo(){
         val chaptersItem = mainMenu.findItem(R.id.filebrowser_menu_details)
-        chaptersItem.isEnabled = listAdapter.selectionTracker.selection.size() == 1
+        chaptersItem.isEnabled = viewModel.selectedFile.value !== null
     }
 
     //region recycle-view helper classes
