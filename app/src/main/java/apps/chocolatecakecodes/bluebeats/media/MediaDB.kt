@@ -130,6 +130,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val appCtx: Conte
 
                 if(media.type == IMedia.Type.Directory){
                     val dir = MediaDir(MediaDirEntity(MediaNode.UNSPECIFIED_DIR.entity.id, media.uri.lastPathSegment!!, MediaNode.NULL_PARENT_ID))
+
                     val contents = scanDir(media)
                     for(subdir in contents.first){
                         dir.addDir(MediaDir(MediaDirEntity(MediaNode.UNSPECIFIED_DIR.entity.id, subdir.uri.lastPathSegment!!, dir.entity.id)))
@@ -137,31 +138,37 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val appCtx: Conte
                     for(file in contents.second){
                         dir.addFile(parseFile(file, dir))
                     }
-                }else{
+
+                    return dir
+                }else if(media.type == IMedia.Type.File){
                     return parseFile(media, MediaNode.UNSPECIFIED_DIR)
+                }else{
+                    throw IllegalArgumentException("path is not a file nor a directory")
                 }
             }
-        }
+        }else{
+            var currentParent = mediaTree
+            val pathParts = path.split('/')
+            pathParts.indices.forEach { i ->
+                val pathPart = pathParts[i]
+                if (pathPart == "") return@forEach// continue
 
-        var currentParent = mediaTree
-        val pathParts = path.split('/')
-        pathParts.indices.forEach{ i ->
-            val pathPart = pathParts[i]
-            if(pathPart == "") return@forEach
-
-            val child = currentParent.findChild(pathPart)
-                ?: throw FileNotFoundException("path $path not found in media-tree (at $pathPart)")
-            if(child is MediaDir) {
-                currentParent = child
-            }else if(child is MediaFile){
-                if(i != pathParts.size - 1)
-                    throw FileNotFoundException("path could not be resolved, because a file was found where a dir was expected (path: $path , current-dir: $pathPart)")
-                return child
-            }else{
-                throw AssertionError("there should be no more subclasses of MediaNode than dir and file")
+                val child = currentParent.findChild(pathPart)
+                    ?: throw FileNotFoundException("path $path not found in media-tree (at $pathPart)")
+                if(child is MediaDir){
+                    currentParent = child
+                }else if (child is MediaFile){
+                    if (i != pathParts.size - 1)
+                        throw FileNotFoundException("path could not be resolved, because a file was found where a dir was expected (path: $path , current-dir: $pathPart)")
+                    return child
+                }else{
+                    throw AssertionError("there should be no more subclasses of MediaNode than dir and file")
+                }
             }
+            return currentParent
         }
-        return currentParent
+
+        throw AssertionError("unreachable")
     }
     //endregion
 
