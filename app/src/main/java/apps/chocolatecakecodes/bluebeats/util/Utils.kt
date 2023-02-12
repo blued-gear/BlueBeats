@@ -132,6 +132,17 @@ object Utils {
 
         return popup
     }
+
+    /**
+     * @return (added, deleted, same)
+     */
+    fun <T>diffChanges(old: Set<T>, new: Set<T>): Triple<Set<T>, Set<T>, Set<T>> {
+        return Triple(
+            new.minus(old),
+            old.minus(new),
+            old.intersect(new)
+        )
+    }
 }
 
 inline fun <T : IVLCObject<E>, E : AbstractVLCEvent?> T.using(retain: Boolean = true, block: (T) -> Unit){

@@ -4,6 +4,7 @@ import androidx.room.*
 import apps.chocolatecakecodes.bluebeats.database.*
 import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import apps.chocolatecakecodes.bluebeats.util.Utils
 import java.util.*
 
 internal class IncludeRule private constructor(
@@ -115,11 +116,13 @@ internal class IncludeRule private constructor(
                 .map { it.copy(id = 0) }// set id to 0 to be comparable to generated entries
                 .toSet()
 
-            storedFileEntries.minus(currentFileEntries).forEach {
-                deleteFileEntry(it.rule, it.file)
-            }
-            currentFileEntries.minus(storedFileEntries).forEach {
-                insertFileEntry(it)
+            Utils.diffChanges(storedFileEntries, currentFileEntries).let { (added, deleted, _) ->
+                deleted.forEach {
+                    deleteFileEntry(it.rule, it.file)
+                }
+                added.forEach {
+                    insertFileEntry(it)
+                }
             }
 
             val currentDirEntries = generateDirEntries(rule).toSet()
@@ -127,21 +130,27 @@ internal class IncludeRule private constructor(
                 .map { it.copy(id = 0) }// set id to 0 to be comparable to generated entries
                 .toSet()
 
-            storedDirEntries.minus(currentDirEntries).forEach {
-                deleteDirEntry(it.rule, it.dir)
-            }
-            currentDirEntries.minus(storedDirEntries).forEach {
-                insertDirEntry(it)
+            Utils.diffChanges(storedDirEntries, currentDirEntries).let { (added, deleted, _) ->
+                deleted.forEach {
+                    deleteDirEntry(it.rule, it.dir)
+                }
+                added.forEach {
+                    insertDirEntry(it)
+                }
             }
 
             updateEntity(IncludeRuleEntity(rule.entityId, rule.share))
         }
 
+        fun delete(rule: IncludeRule) {
+            delete(rule.entityId)
+        }
+
         @Transaction
-        open fun delete(rule: IncludeRule) {
-            deleteAllFileEntries(rule.entityId)
-            deleteAllDirEntries(rule.entityId)
-            deleteEntity(rule.entityId)
+        open fun delete(id: Long) {
+            deleteAllFileEntries(id)
+            deleteAllDirEntries(id)
+            deleteEntity(id)
         }
 
         fun getEntityId(rule: IncludeRule): Long {
