@@ -290,6 +290,9 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
 
         val name = file.uri.lastPathSegment ?: throw IllegalArgumentException("media has invalid path")
 
+        if(!file.isParsed)
+            file.parse(IMedia.Parse.ParseLocal or IMedia.Parse.DoInteract)
+
         // parse type
         var type = MediaFile.Type.OTHER
         for(i in 0 until file.trackCount) {
