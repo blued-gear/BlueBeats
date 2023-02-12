@@ -213,6 +213,8 @@ private class StaticPlaylistIterator(
      * @throws IllegalArgumentException if seeking results in out-of-bounds
      */
     override fun seek(amount: Int) {
+        if(amount == 0) return
+
         val newPos = currentPosition + amount
 
         if(newPos == totalItems && repeat) {
