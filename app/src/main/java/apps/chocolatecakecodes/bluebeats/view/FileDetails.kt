@@ -20,7 +20,7 @@ import kotlinx.coroutines.*
 
 private const val STATE_FILE = "key:filePath"
 
-class FileDetails() : Fragment(R.layout.filedetails_fragment) {
+internal class FileDetails() : Fragment(R.layout.filedetails_fragment) {
 
     var file: MediaFile by OnceSettable()
 

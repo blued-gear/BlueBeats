@@ -4,7 +4,7 @@ import apps.chocolatecakecodes.bluebeats.media.MediaDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import java.util.concurrent.atomic.AtomicReference
 
-class MediaDBEventRelay() : MediaDB.ScanEventHandler(null) {
+internal class MediaDBEventRelay : MediaDB.ScanEventHandler(null) {
 
     private val subscribers = mutableListOf<MediaDB.ScanEventHandler>()
     private var subject: AtomicReference<MediaDB> = AtomicReference(null)

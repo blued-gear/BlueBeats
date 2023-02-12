@@ -5,7 +5,7 @@ import apps.chocolatecakecodes.bluebeats.taglib.TagFields
 import apps.chocolatecakecodes.bluebeats.util.CachedReference
 import apps.chocolatecakecodes.bluebeats.util.LazyVar
 
-class MediaFile internal constructor(
+internal class MediaFile private constructor(
     internal val entityId: Long,
     override val name: String,
     var type: Type,
@@ -14,6 +14,21 @@ class MediaFile internal constructor(
     chaptersSupplier: () -> List<Chapter>? = { null },
     usertagsSupplier: () -> List<String> = { emptyList() }
 ): MediaNode(){
+
+    companion object {
+        fun new(
+            entityId: Long,
+            name: String,
+            type: Type,
+            parentSupplier: () -> MediaDir,
+            mediaTagsSupplier: () -> TagFields = { TagFields() },
+            chaptersSupplier: () -> List<Chapter>? = { null },
+            usertagsSupplier: () -> List<String> = { emptyList() }
+        ) = MediaFile(entityId, name, type, parentSupplier, mediaTagsSupplier, chaptersSupplier, usertagsSupplier).also {
+            // trigger caching of hashCode (else it might happen that a DB-query in the UI-Thread gets executed)
+            it.hashCode()
+        }
+    }
 
     override val parent: MediaDir by CachedReference(this, NODE_CACHE_TIME){
         parentSupplier()

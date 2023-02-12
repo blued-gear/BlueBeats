@@ -31,7 +31,7 @@ private typealias DirContents = Pair<List<IMedia>, List<IMedia>>
  * searches media files, extract metadata and index them, store in DB, manage tags
  * actions a synchronous but the progress can be monitored asynchronous by ScanEventHandler
  */
-class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler: ScanEventHandler){
+internal class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler: ScanEventHandler){
 
     companion object {
         val NOOP_EVENT_HANDLER: ScanEventHandler = object : ScanEventHandler(null) {}
@@ -137,7 +137,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
                 media.parse(IMedia.Parse.ParseLocal or IMedia.Parse.DoInteract)
 
                 if(media.type == IMedia.Type.Directory){
-                    val dir = MediaDir(
+                    val dir = MediaDir.new(
                         MediaNode.UNSPECIFIED_DIR.entityId,
                         media.uri.lastPathSegment!!,
                         { null }
@@ -145,7 +145,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
 
                     val contents = scanDir(media)
                     for(subdir in contents.first){
-                        dir.addDir(MediaDir(
+                        dir.addDir(MediaDir.new(
                             MediaNode.UNSPECIFIED_DIR.entityId,
                             subdir.uri.lastPathSegment!!,
                             { mediaDirDao.getForId(dir.entityId) }
@@ -352,7 +352,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
             }
         }
 
-        val mf = MediaFile(
+        val mf = MediaFile.new(
             MediaNode.UNALLOCATED_NODE_ID,
             name,
             type,
@@ -408,7 +408,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
                 file.userTags = parser.userTags?.tags ?: emptyList()
                 file.chapters = parser.chapters
             }catch (e: Exception){
-                Log.d(LOG_TAG, "exception in parser", e)
+                Log.d(LOG_TAG, "exception in parser; file: ${file.path}", e)
             }
         }
     }

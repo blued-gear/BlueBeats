@@ -4,11 +4,22 @@ import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.util.CachedReference
 import java.util.*
 
-class MediaDir internal constructor(
+internal class MediaDir private constructor(
     internal val entityId: Long,
     override val name: String,
     parentProvider: () -> MediaDir?
 ): MediaNode() {
+
+    companion object {
+        fun new(
+            entityId: Long,
+            name: String,
+            parentProvider: () -> MediaDir?
+        ) = MediaDir(entityId, name, parentProvider).also {
+            // trigger caching of hashCode (else it might happen that a DB-query in the UI-Thread gets executed)
+            it.hashCode()
+        }
+    }
 
     private val dirs: MutableSet<MediaDir> by CachedReference(this, NODE_CACHE_TIME) {
         val collection = TreeSet<MediaDir>(compareBy { it.name })

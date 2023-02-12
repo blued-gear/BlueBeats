@@ -56,7 +56,7 @@ internal abstract class MediaDirDAO{
                     this.getForId(entity.parent)
             }
 
-            MediaDir(
+            MediaDir.new(
                 id,
                 entity.name,
                 parentSupplier
@@ -154,7 +154,7 @@ internal abstract class MediaFileDAO{
         val chaptersCpy = from.chapters
         val usertagsCpy = from.userTags
 
-        return MediaFile(
+        return MediaFile.new(
             MediaNode.UNALLOCATED_NODE_ID,
             from.name,
             from.type,
@@ -210,7 +210,7 @@ internal abstract class MediaFileDAO{
                     RoomDB.DB_INSTANCE.userTagDao().getUserTagsForFile(id)
             }
 
-            MediaFile(
+            MediaFile.new(
                 id,
                 entity.name,
                 entity.type,

@@ -7,7 +7,7 @@ import kotlinx.coroutines.launch
 import java.util.*
 import java.util.concurrent.TimeUnit
 
-abstract class MediaNode : Comparable<MediaNode> {
+internal abstract class MediaNode : Comparable<MediaNode> {
 
     companion object{
         const val NULL_PARENT_ID: Long = -1
@@ -15,7 +15,7 @@ abstract class MediaNode : Comparable<MediaNode> {
         /**
          * used for single parsed files
          */
-        val UNSPECIFIED_DIR: MediaDir = MediaDir(-2, "~UNSPECIFIED~", { null })
+        val UNSPECIFIED_DIR: MediaDir = MediaDir.new(-2, "~UNSPECIFIED~", { null })
 
         @JvmStatic
         protected val NODE_CACHE_TIME = TimeUnit.MINUTES.toMillis(5)
@@ -26,14 +26,6 @@ abstract class MediaNode : Comparable<MediaNode> {
     abstract val parent: MediaNode?// only for runtime-caching
 
     private var hash: Int = -1
-
-    init {
-        // trigger caching of hashCode (else it might happen that a DB-query in the UI-Thread gets executed)
-        CoroutineScope(Dispatchers.IO).launch {
-            delay(50)
-            this@MediaNode.hashCode()
-        }
-    }
 
     abstract override fun equals(other: Any?): Boolean
 
