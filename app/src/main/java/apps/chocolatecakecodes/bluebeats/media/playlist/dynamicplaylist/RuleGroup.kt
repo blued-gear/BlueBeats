@@ -195,10 +195,12 @@ internal class RuleGroup private constructor(
             return false
 
         return this.getRules() == other.getRules()
+                && this.combineWithAnd == other.combineWithAnd
+                && this.share == other.share
     }
 
     override fun hashCode(): Int {
-        return Objects.hash(this.javaClass.canonicalName, getRules())
+        return Objects.hash(this.javaClass.canonicalName, getRules(), combineWithAnd, share)
     }
 
     /**
@@ -219,7 +221,7 @@ internal class RuleGroup private constructor(
 
     override fun writeToParcel(dest: Parcel, flags: Int) {
         if(isOriginal)
-            throw IllegalStateException("only copies my be serialized (there must only be one original)")
+            throw IllegalStateException("only copies may be serialized (there must only be one original)")
 
         dest.writeLong(entityId)
         share.writeToParcel(dest, flags)

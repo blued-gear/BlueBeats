@@ -92,11 +92,13 @@ internal class IncludeRule private constructor(
         if(other !is IncludeRule)
             return false
 
-        return this.getFiles() == other.getFiles() && this.getDirs() == other.getDirs()
+        return this.getFiles() == other.getFiles()
+                && this.getDirs() == other.getDirs()
+                && this.share == other.share
     }
 
     override fun hashCode(): Int {
-        return Objects.hash(this.javaClass.canonicalName, getFiles(), getDirs())
+        return Objects.hash(this.javaClass.canonicalName, getFiles(), getDirs(), share)
     }
 
     private fun expandDirs(): Set<MediaFile> {
@@ -122,7 +124,7 @@ internal class IncludeRule private constructor(
 
     override fun writeToParcel(dest: Parcel, flags: Int) {
         if(isOriginal)
-            throw IllegalStateException("only copies my be serialized (there must only be one original)")
+            throw IllegalStateException("only copies may be serialized (there must only be one original)")
 
         dest.writeLong(entityId)
         share.writeToParcel(dest, flags)

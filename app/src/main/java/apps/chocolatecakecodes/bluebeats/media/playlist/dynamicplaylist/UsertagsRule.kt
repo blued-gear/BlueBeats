@@ -69,10 +69,12 @@ internal class UsertagsRule private constructor(
             return false
 
         return this.getTags() == other.getTags()
+                && this.combineWithAnd == other.combineWithAnd
+                && this.share == other.share
     }
 
     override fun hashCode(): Int {
-        return Objects.hash(this.javaClass.canonicalName, getTags())
+        return Objects.hash(this.javaClass.canonicalName, getTags(), combineWithAnd, share)
     }
 
     private fun combineAnd(results: Map<MediaFile, List<String>>): Set<MediaFile> {
@@ -92,7 +94,7 @@ internal class UsertagsRule private constructor(
 
     override fun writeToParcel(dest: Parcel, flags: Int) {
         if(isOriginal)
-            throw IllegalStateException("only copies my be serialized (there must only be one original)")
+            throw IllegalStateException("only copies may be serialized (there must only be one original)")
 
         share.writeToParcel(dest, flags)
         Utils.parcelWriteBoolean(dest, combineWithAnd)
