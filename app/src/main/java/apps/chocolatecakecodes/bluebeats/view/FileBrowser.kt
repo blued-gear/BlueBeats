@@ -27,7 +27,6 @@ import apps.chocolatecakecodes.bluebeats.util.Utils
 import com.mikepenz.fastadapter.FastAdapter
 import com.mikepenz.fastadapter.GenericItem
 import com.mikepenz.fastadapter.ISelectionListener
-import com.mikepenz.fastadapter.adapters.FastItemAdapter
 import com.mikepenz.fastadapter.adapters.GenericFastItemAdapter
 import com.mikepenz.fastadapter.items.AbstractItem
 import com.mikepenz.fastadapter.select.getSelectExtension
@@ -455,59 +454,17 @@ private fun mediaNodeToItem(node: MediaNode) = when(node) {
     else -> null
 }
 
-private abstract class NodeItem<Holder : RecyclerView.ViewHolder> : AbstractItem<Holder>() {
-
-    private val selectedObservable = SimpleObservable<Boolean>(super.isSelected)
+private class DirItem(val dir: MediaDir) : SelectableItem<DirItem.ViewHolder>() {
 
     override val layoutRes: Int = R.layout.view_media_node
-
-    override var isSelected: Boolean
-        get() = selectedObservable.get()
-        set(value) {
-            selectedObservable.set(value)
-        }
-
-    abstract class ViewHolder<Item : NodeItem<*>>(view: View) : FastAdapter.ViewHolder<Item>(view) {
-
-        protected val text: TextView = view.findViewById(R.id.v_mn_text)
-
-        private var selectedObserver: Observer? = null
-
-        // must be called from subclasses
-        override fun bindView(item: Item, payloads: List<Any>) {
-            selectedObserver = item.selectedObservable.addObserverCallback { _, selected ->
-                setSelected(selected)
-            }
-
-            setSelected(item.isSelected)
-        }
-
-        // must be called from subclasses
-        override fun unbindView(item: Item) {
-            item.selectedObservable.deleteObserver(selectedObserver)
-            selectedObserver = null
-
-            setSelected(false)
-            text.text = null
-        }
-
-        open fun setSelected(selected: Boolean) {
-            if(selected)
-                this.itemView.setBackgroundResource(R.color.selection_highlight)
-            else
-                this.itemView.setBackgroundResource(R.color.design_default_color_background)
-        }
-    }
-}
-
-private class DirItem(val dir: MediaDir) : NodeItem<DirItem.ViewHolder>() {
-
     override val type: Int = R.layout.filebrowser_fragment.shl(4) + 1
     override var identifier: Long = Objects.hash(type, dir).toLong()
 
     override fun getViewHolder(v: View) = ViewHolder(v)
 
-    class ViewHolder(view: View) : NodeItem.ViewHolder<DirItem>(view) {
+    class ViewHolder(view: View) : SelectableItem.ViewHolder<DirItem>(view) {
+
+        private val text: TextView = view.findViewById(R.id.v_mn_text)
 
         override fun bindView(item: DirItem, payloads: List<Any>) {
             super.bindView(item, payloads)
@@ -516,14 +473,17 @@ private class DirItem(val dir: MediaDir) : NodeItem<DirItem.ViewHolder>() {
     }
 }
 
-private class FileItem(val file: MediaFile) : NodeItem<FileItem.ViewHolder>() {
+private class FileItem(val file: MediaFile) : SelectableItem<FileItem.ViewHolder>() {
 
+    override val layoutRes: Int = R.layout.view_media_node
     override val type: Int = R.layout.filebrowser_fragment.shl(4) + 2
     override var identifier: Long = Objects.hash(type, file).toLong()
 
     override fun getViewHolder(v: View) = ViewHolder(v)
 
-    class ViewHolder(view: View) : NodeItem.ViewHolder<FileItem>(view) {
+    class ViewHolder(view: View) : SelectableItem.ViewHolder<FileItem>(view) {
+
+        private val text: TextView = view.findViewById(R.id.v_mn_text)
 
         override fun bindView(item: FileItem, payloads: List<Any>) {
             super.bindView(item, payloads)
