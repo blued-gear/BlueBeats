@@ -181,7 +181,10 @@ class Player : Fragment() {
         viewModel.playPos.observe(this.viewLifecycleOwner){
             if((it !== null)){
                 if(abs(it - player.time) > 5)// threshold of 5ms to prevent cyclic calls from this and PlayerEventHandler
-                    player.time = it
+                    if(seekHandler.isSeeking)
+                        player.setTime(it, true)
+                    else
+                        player.setTime(it, false)
 
                 if(!seekHandler.isSeeking) {
                     seekBar.progress = ((it / player.length.toDouble()) * SEEK_STEP).toInt().coerceAtLeast(1)
@@ -395,7 +398,10 @@ class Player : Fragment() {
 
         var isSeeking = false
 
-        override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {}
+        override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+            if(isSeeking)
+                viewModel.updatePlayPosition((player.length * (this@Player.seekBar.progress / SEEK_STEP)).toLong())
+        }
 
         override fun onStartTrackingTouch(seekBar: SeekBar?) {
             isSeeking = true
@@ -407,7 +413,6 @@ class Player : Fragment() {
 
         override fun onStopTrackingTouch(seekBar: SeekBar?) {
             isSeeking = false
-            viewModel.updatePlayPosition((player.length * (this@Player.seekBar.progress / SEEK_STEP)).toLong())
 
             // re-schedule control-hiding
             if(viewModel.isPlaying.value == true) {// only re-hide if playing
