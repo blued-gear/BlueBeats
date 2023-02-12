@@ -42,7 +42,7 @@ class Player : Fragment() {
     private var playerContainer: ViewGroup by OnceSettable()
     private var seekBar: SegmentedSeekBar by OnceSettable()
     private var timeTextView: TextView by OnceSettable()
-    private lateinit var mainMenu: Menu
+    private var mainMenu: Menu? = null
     private var currentMedia: IMedia? = null
     private var controlsVisible: Boolean = true
     private var controlsHideCoroutine: Job? = null
@@ -237,6 +237,10 @@ class Player : Fragment() {
                 }
             }
         }
+
+        viewModel.currentPlaylist.observe(this.viewLifecycleOwner) {
+            updatePlaylistMenuItem()
+        }
     }
 
     private fun setupMainMenu(){
@@ -246,7 +250,17 @@ class Player : Fragment() {
             menuInflater.inflate(R.menu.player_menu, menu)
 
             // configure items
+            menu.findItem(R.id.player_menu_chapters).setOnMenuItemClickListener {
+                showChapterMenu()
+                return@setOnMenuItemClickListener true
+            }
+            menu.findItem(R.id.player_menu_playlist).setOnMenuItemClickListener {
+                showPlaylistOverview()
+                return@setOnMenuItemClickListener true
+            }
+
             updateChaptersMenuItem()
+            updatePlaylistMenuItem()
         }
     }
 
@@ -361,13 +375,11 @@ class Player : Fragment() {
     }
 
     private fun updateChaptersMenuItem(){
-        val chaptersItem = mainMenu.findItem(R.id.player_menu_chapters)
-        val chapters = viewModel.chapters.value
-        if(chapters === null || chapters.isEmpty())
-            chaptersItem.isEnabled = false
-        chaptersItem.setOnMenuItemClickListener {
-            showChapterMenu()
-            return@setOnMenuItemClickListener true
+        mainMenu?.let {
+            val chaptersItem = it.findItem(R.id.player_menu_chapters)
+            val chapters = viewModel.chapters.value
+            if(chapters === null || chapters.isEmpty())
+                chaptersItem.isEnabled = false
         }
     }
 
@@ -389,6 +401,29 @@ class Player : Fragment() {
         }
 
         dlgBuilder.create().show()
+    }
+
+    private fun updatePlaylistMenuItem() {
+        mainMenu?.let {
+            it.findItem(R.id.player_menu_playlist).isEnabled = viewModel.currentPlaylist.value != null
+        }
+    }
+
+    private fun showPlaylistOverview() {
+        val inflater = LayoutInflater.from(this.requireContext())
+        val content = inflater.inflate(R.layout.player_playlist_fragment, null)
+
+        val popup = PopupWindow(
+            content,
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
+        true
+        )
+        content.setOnTouchListener { v, event ->
+            popup.dismiss()
+            true
+        }
+
+        popup.showAtLocation(this.requireView(), Gravity.CENTER, 0, 0)
     }
 
     private fun formatPlayTime(time: Long, len: Long, remaining: Boolean): String{

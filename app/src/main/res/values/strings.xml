@@ -14,4 +14,5 @@
     <string name="misc_cancel">Cancel</string>
     <string name="misc_remove">Remove</string>
     <string name="tagname_filepath">Path</string>
+    <string name="player_show_playlist">Current Playlist</string>
 </resources>
