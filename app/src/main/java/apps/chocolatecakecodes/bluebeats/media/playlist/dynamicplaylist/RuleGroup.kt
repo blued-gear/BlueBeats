@@ -111,7 +111,8 @@ internal class RuleGroup private constructor(
         private enum class KnownRuleTypes {
             RULE_GROUP,
             EXCLUDE_RULE,
-            INCLUDE_RULE
+            INCLUDE_RULE,
+            USERTAGS_RULE
         }
 
         //region api
@@ -224,6 +225,7 @@ internal class RuleGroup private constructor(
                 KnownRuleTypes.RULE_GROUP -> this.load(id)
                 KnownRuleTypes.EXCLUDE_RULE -> RoomDB.DB_INSTANCE.dplExcludeRuleDao().load(id)
                 KnownRuleTypes.INCLUDE_RULE -> RoomDB.DB_INSTANCE.dplIncludeRuleDao().load(id)
+                KnownRuleTypes.USERTAGS_RULE -> RoomDB.DB_INSTANCE.dplUsertagsRuleDao().load(id)
             }
         }
 
@@ -252,6 +254,13 @@ internal class RuleGroup private constructor(
 
                     Pair(dao.getEntityId(rule), type)
                 }
+                KnownRuleTypes.USERTAGS_RULE -> {
+                    val rule = rule as UsertagsRule
+                    val dao = RoomDB.DB_INSTANCE.dplUsertagsRuleDao()
+                    dao.save(rule)
+
+                    Pair(dao.getEntityId(rule), type)
+                }
             }
         }
 
@@ -274,6 +283,12 @@ internal class RuleGroup private constructor(
                     deleteEntry(group, dao.getEntityId(rule), type.ordinal)
                     dao.delete(rule)
                 }
+                KnownRuleTypes.USERTAGS_RULE -> {
+                    val rule = rule as UsertagsRule
+                    val dao = RoomDB.DB_INSTANCE.dplUsertagsRuleDao()
+                    deleteEntry(group, dao.getEntityId(rule), type.ordinal)
+                    dao.delete(rule)
+                }
             }
         }
 
@@ -293,6 +308,11 @@ internal class RuleGroup private constructor(
                     deleteEntry(group, ruleId, ruleType.ordinal)
                     dao.delete(ruleId)
                 }
+                KnownRuleTypes.USERTAGS_RULE -> {
+                    val dao = RoomDB.DB_INSTANCE.dplUsertagsRuleDao()
+                    deleteEntry(group, ruleId, ruleType.ordinal)
+                    dao.delete(ruleId)
+                }
             }
         }
 
@@ -300,6 +320,7 @@ internal class RuleGroup private constructor(
             is RuleGroup -> KnownRuleTypes.RULE_GROUP
             is ExcludeRule -> KnownRuleTypes.EXCLUDE_RULE
             is IncludeRule -> KnownRuleTypes.INCLUDE_RULE
+            is UsertagsRule -> KnownRuleTypes.USERTAGS_RULE
             else -> throw IllegalArgumentException("unsupported type")
         }
 
@@ -308,7 +329,7 @@ internal class RuleGroup private constructor(
                 KnownRuleTypes.RULE_GROUP -> (rule as RuleGroup).entityId
                 KnownRuleTypes.EXCLUDE_RULE -> RoomDB.DB_INSTANCE.dplExcludeRuleDao().getEntityId(rule as ExcludeRule)
                 KnownRuleTypes.INCLUDE_RULE -> RoomDB.DB_INSTANCE.dplIncludeRuleDao().getEntityId(rule as IncludeRule)
-
+                KnownRuleTypes.USERTAGS_RULE -> RoomDB.DB_INSTANCE.dplUsertagsRuleDao().getEntityId(rule as UsertagsRule)
             }
         }
 

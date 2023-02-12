@@ -180,12 +180,15 @@ internal abstract class UserTagsDAO{
 
     /**
      * tags are OR combined
+     * @return Map<file, List<tags>>
      */
-    fun getFilesForTags(tags: List<String>): List<MediaFile>{
+    fun getFilesForTags(tags: List<String>): Map<MediaFile, List<String>>{
         val fileDAO = RoomDB.DB_INSTANCE.mediaFileDao()
-        return getFileIdsWithTags(tags).map{
-            fileDAO.getForId(it)
-        }
+        return getFileIdsWithTags(tags)
+            .groupBy({ it.fileId }, { it.tag })
+            .mapKeys {
+                fileDAO.getForId(it.key)
+            }
     }
 
     fun saveUserTagsOfFile(file: MediaFile, tags: List<String>){
@@ -234,11 +237,12 @@ internal abstract class UserTagsDAO{
     @Query("SELECT * FROM UserTagEntity")
     protected abstract fun getAllUserTagEntities(): List<UserTagEntity>
 
-    @Query("SELECT file.id FROM MediaFileEntity AS file " +
+    @Query("SELECT file.id AS fileId, tag.name AS tagVal " +
+            "FROM MediaFileEntity AS file " +
             "INNER JOIN UserTagRelation AS rel ON file.id = rel.file " +
             "INNER JOIN UserTagEntity AS tag ON tag.id = rel.tag " +
             "WHERE tag.name IN (:tags);")
-    protected abstract fun getFileIdsWithTags(tags: List<String>): List<Long>
+    protected abstract fun getFileIdsWithTags(tags: List<String>): List<FileWithTag>
 
     @Query("SELECT * FROM UserTagEntity WHERE name IN (:names);")
     protected abstract fun getUserTagEntityForNames(names: List<String>): List<UserTagEntity>
@@ -254,5 +258,10 @@ internal abstract class UserTagsDAO{
 
     @Delete
     protected abstract fun removeUserTag(tag: UserTagEntity)
+
+    protected data class FileWithTag(
+        @ColumnInfo(name = "fileId") val fileId: Long,
+        @ColumnInfo(name = "tagVal") val tag: String
+    )
     //endregion
 }
