@@ -63,10 +63,6 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
         }
     }
 
-    fun saveDB(){
-        //TODO
-    }
-
     fun scanInAll() {
         val dirDao = RoomDB.DB_INSTANCE.mediaDirDao()
 
