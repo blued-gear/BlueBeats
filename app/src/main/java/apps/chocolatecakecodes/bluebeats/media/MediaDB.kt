@@ -1,6 +1,5 @@
 package apps.chocolatecakecodes.bluebeats.media
 
-import android.content.Context
 import android.os.Handler
 import android.util.Log
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
@@ -25,7 +24,7 @@ private typealias DirContents = Pair<List<IMedia>, List<IMedia>>
  * searches media files, extract metadata and index them, store in DB, manage tags
  * actions a synchronous but the progress can be monitored asynchronous by ScanEventHandler
  */
-class MediaDB constructor(private val libVLC: ILibVLC, private val appCtx: Context, private val eventHandler: ScanEventHandler){
+class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler: ScanEventHandler){
 
     companion object {
         val NOOP_EVENT_HANDLER: ScanEventHandler = object : ScanEventHandler(null) {}
@@ -38,7 +37,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val appCtx: Conte
     private var mediaTree: MediaDir = MediaNode.UNSPECIFIED_DIR
     //TODO collections that maps files to types, tags, ...
 
-    constructor(libVLC: ILibVLC, appCtx: Context): this(libVLC, appCtx, NOOP_EVENT_HANDLER){}
+    constructor(libVLC: ILibVLC): this(libVLC, NOOP_EVENT_HANDLER){}
 
     init{
         mediaFactory = FactoryManager.getFactory(IMediaFactory.factoryId) as IMediaFactory

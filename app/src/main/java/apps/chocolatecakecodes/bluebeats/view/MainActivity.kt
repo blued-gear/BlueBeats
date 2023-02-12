@@ -40,7 +40,7 @@ class MainActivity : AppCompatActivity() {
 
         vlcMng = VlcPlayerManager(this)
         mediaMngEventRelay = MediaDBEventRelay()
-        mediaMng = MediaDB(vlcMng.libVlc, this, mediaMngEventRelay)
+        mediaMng = MediaDB(vlcMng.libVlc, mediaMngEventRelay)
         mediaMngEventRelay.setSubject(mediaMng)
 
         listMediaRoots()
