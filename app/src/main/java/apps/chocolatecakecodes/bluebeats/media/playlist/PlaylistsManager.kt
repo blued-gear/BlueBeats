@@ -24,6 +24,9 @@ internal abstract class PlaylistsManager {
     @Query("DELETE FROM PlaylistName WHERE name = :name;")
     abstract fun deleteEntry(name: String)
 
+    @Query("DELETE FROM PlaylistName WHERE playlist = :id;")
+    abstract fun deleteEntry(id: Long)
+
     @Query("SELECT playlist FROM PlaylistName WHERE name = :name;")
     abstract fun getPlaylistId(name: String): Long
 

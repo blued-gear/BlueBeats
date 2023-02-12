@@ -6,7 +6,6 @@ import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
-import java.lang.Exception
 import java.util.*
 import kotlin.collections.ArrayList
 
@@ -102,13 +101,16 @@ internal class StaticPlaylist private constructor(
 
         @Transaction
         open fun delete(playlist: StaticPlaylist) {
-            val id = playlistsManager.getPlaylistId(playlist.name)
+            delete(playlistsManager.getPlaylistId(playlist.name))
+        }
 
-            playlistsManager.deleteEntry(playlist.name)
-            deleteEntries(id)
-            deleteEntity(StaticPlaylistEntity(id))
+        @Transaction
+        open fun delete(playlistId: Long) {
+            playlistsManager.deleteEntry(playlistId)
+            deleteEntries(playlistId)
+            deleteEntity(StaticPlaylistEntity(playlistId))
 
-            cache.invalidate(id)
+            cache.invalidate(playlistId)
         }
 
         fun changeName(playlist: StaticPlaylist, newName: String) {
