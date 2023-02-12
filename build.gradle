@@ -2,17 +2,17 @@
 buildscript {
     ext {
         version_sdk = 33
-        version_buildtools = '33.0.0'
+        version_buildtools = '33.0.1'
         version_cmake = '3.22.1'
 
-        version_kotlin = '1.7.20'
+        version_kotlin = '1.8.0'
 
         version_android_ktx = '1.9.0'
         version_appcompat = '1.5.1'
 
         version_junit = '4.13.2'
-        version_android_junit = '1.1.3'
-        version_espresso = '3.4.0'
+        version_android_junit = '1.1.5'
+        version_espresso = '3.5.1'
     }
 
     repositories {
@@ -28,6 +28,7 @@ buildscript {
 plugins{
     id 'idea'
     id 'org.jetbrains.kotlin.android' version "$version_kotlin" apply false
+    id 'com.github.ben-manes.versions' version '0.44.0'
 }
 
 idea{
@@ -46,4 +47,11 @@ allprojects {
 
 task clean(type: Delete) {
     delete rootProject.buildDir
+}
+
+tasks.named("dependencyUpdates").configure {
+    rejectVersionIf {
+        ['ALPHA', 'BETA', 'RC', 'EAP'].any{ keyword ->
+            it.candidate.version.toUpperCase().contains(keyword) }
+    }
 }
