@@ -77,8 +77,12 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
                 for(part in pathParts){
                     // create dir-struct from root to scanRoot
                     if(part == "") continue
-                    currentParent = (currentParent.findChild(part) as? MediaDir)
-                        ?: dirDao.newDir(part, currentParent.entity.id)
+                    var nextParent = currentParent.findChild(part) as? MediaDir
+                    if(nextParent === null){
+                        nextParent = dirDao.newDir(part, currentParent.entity.id)
+                        currentParent.addDir(nextParent)
+                    }
+                    currentParent = nextParent
                     eventHandler.onNewNodeFound(currentParent)
                 }
 
