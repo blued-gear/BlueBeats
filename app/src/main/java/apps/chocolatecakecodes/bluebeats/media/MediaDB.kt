@@ -16,7 +16,7 @@ import org.videolan.libvlc.interfaces.IMedia
 import org.videolan.libvlc.interfaces.IMediaFactory
 import org.videolan.libvlc.util.MediaBrowser
 
-import java.io.File
+import java.io.FileNotFoundException
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -87,9 +87,11 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val appCtx: Conte
     }
 
     fun fileToMedia(path: String): MediaFile{
-        return MediaFile(mediaFactory.getFromLocalPath(libVLC, path), MediaNode.UNSPECIFIED_DIR)
+        val vlcMedia = fileToVlcMedia(path)
+        if(vlcMedia === null)
+            throw FileNotFoundException("file $path can not be converted to vlc-media")
+        return MediaFile(vlcMedia, MediaNode.UNSPECIFIED_DIR)
     }
-
     fun fileToVlcMedia(path: String): IMedia?{
         return mediaFactory.getFromLocalPath(libVLC, path);
     }
