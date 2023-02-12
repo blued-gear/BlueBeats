@@ -22,20 +22,17 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.ExcludeR
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.IncludeRule
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.Rule
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGroup
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.Rulelike
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.UsertagsRule
 import kotlinx.coroutines.*
 
-internal typealias ChangedCallback = (Rulelike) -> Unit
+internal typealias ChangedCallback = (Rule) -> Unit
 
-internal fun createEditor(item: Rulelike, cb: ChangedCallback, ctx: Context): View {
-    return when(item) {
-        is RuleGroup -> DynplaylistGroupEditor(item, cb, ctx)
-        is ExcludeRule -> DynplaylistExcludeEditor(item, cb, ctx)
-        is IncludeRule -> DynplaylistIncludeEditor(item, cb, ctx)
-        is UsertagsRule -> DynplaylistUsertagsEditor(item, cb, ctx)
-        else -> throw IllegalArgumentException("unsupported rule")
-    }
+internal fun createEditorRoot(
+    root: RuleGroup,
+    cb: ChangedCallback,
+    ctx: Context
+): View {
+    return DynplaylistGroupEditor(root, cb, ctx)
 }
 
 //region editors
@@ -420,7 +417,7 @@ private class DynplaylistUsertagsEditor(
 private const val SUBITEM_INSET = 40
 
 private fun createEditor(
-    item: Rulelike,
+    item: Rule,
     cb: ChangedCallback,
     ctx: Context
 ): AbstractDynplaylistEditorView {

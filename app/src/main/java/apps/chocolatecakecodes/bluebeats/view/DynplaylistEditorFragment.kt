@@ -9,7 +9,7 @@ import androidx.fragment.app.Fragment
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylist
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.Rulelike
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.Rule
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.view.specialviews.createEditorRoot
 import kotlinx.coroutines.*
@@ -90,7 +90,7 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
         )
     }
 
-    private fun onRuleEdited(rule: Rulelike) {
+    private fun onRuleEdited(rule: Rule) {
         modified = true
     }
 }
