@@ -1,12 +1,18 @@
 package apps.chocolatecakecodes.bluebeats.view
 
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Toast
+import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylist
@@ -15,7 +21,6 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGrou
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.view.specialviews.createEditorRoot
 import kotlinx.coroutines.*
-import java.lang.Exception
 import kotlin.math.abs
 
 private const val LOG_TAG = "DynplaylistEditor"
@@ -35,6 +40,11 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
     private var plBufferSize: EditText by OnceSettable()
     private var plRules: LinearLayout by OnceSettable()
 
+    private var mainVm: MainActivityViewModel by OnceSettable()
+    private var myMnu: (Menu, MenuInflater) -> Unit by OnceSettable()
+    private var orgMnu: ((Menu, MenuInflater) -> Unit)? = null
+    private var mnuItemReset: MenuItem? = null
+
     private var modified: Boolean = false
 
     constructor(playlist: DynamicPlaylist) : this() {
@@ -44,6 +54,8 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        mainVm = ViewModelProvider(this.requireActivity()).get(MainActivityViewModel::class.java)
 
         if(savedInstanceState !== null){
             modified = savedInstanceState.getBoolean(STATE_MODIFIED)
@@ -74,14 +86,45 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        plName = view.findViewById(R.id.dyneditor_name)
-        plBufferSize = view.findViewById(R.id.dyneditor_buffersize)
         plRules = view.findViewById(R.id.dyneditor_rules)
+
+        plBufferSize = view.findViewById<EditText>(R.id.dyneditor_buffersize).apply {
+            this.doAfterTextChanged {
+                if(it.toString() != playlist.name)
+                    mnuItemReset?.isEnabled = true
+            }
+        }
+        plName = view.findViewById<EditText>(R.id.dyneditor_name).apply {
+            this.doAfterTextChanged {
+                if(it.toString() != playlist.name)
+                    mnuItemReset?.isEnabled = true
+            }
+        }
+
+        myMnu = { mnu, _ ->
+            buildMenu(mnu)
+        }
 
         showData()
 
+        mnuItemReset?.isEnabled = modified
+
         // catch all clicks
         view.setOnClickListener {}
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        orgMnu = mainVm.menuProvider.value
+        mainVm.menuProvider.value = myMnu
+    }
+
+    override fun onPause() {
+        super.onPause()
+
+        if(mainVm.menuProvider.value == myMnu)
+            mainVm.menuProvider.value = orgMnu
     }
 
     suspend fun saveChanges(): Boolean {
@@ -97,21 +140,57 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
             saveSuccessful = saveSuccessful and savePlName()
         if(modified || plBufferSize.text.toString() != playlist.iterationSize.toString())
             saveSuccessful = saveSuccessful and savePlData()
+
+        if(saveSuccessful){
+            withContext(Dispatchers.Main) {
+                mnuItemReset?.isEnabled = false
+            }
+        }
+
         return saveSuccessful
     }
 
     private fun showData() {
         plName.text.clear()
         plName.text.append(playlist.name)
+
         plBufferSize.setText(playlist.iterationSize.toString())
+
+        plRules.removeAllViews()
         plRules.addView(
             createEditorRoot(editCopy, this::onRuleEdited, this.requireContext()),
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
         )
     }
 
-    private fun onRuleEdited(rule: Rule) {
+    private fun buildMenu(menu: Menu) {
+        mnuItemReset = menu.add(Menu.NONE, Menu.NONE, Menu.NONE, R.string.dynpl_edit_mnu_reset).apply {
+            setOnMenuItemClickListener {
+                onResetRules()
+                true
+            }
+            isEnabled = false
+        }
+    }
+
+    private fun onRuleEdited(rule: GenericRule) {
         modified = true
+        mnuItemReset?.isEnabled = true
+    }
+
+    private fun onResetRules() {
+        plName.text.clear()
+        plName.text.append(playlist.name)
+
+        CoroutineScope(Dispatchers.IO).launch {
+            editCopy.applyFrom(playlist.rootRuleGroup)
+
+            modified = false
+            withContext(Dispatchers.Main) {
+                showData()
+                mnuItemReset?.isEnabled = false
+            }
+        }
     }
 
     private fun checkRuleShares(group: RuleGroup): Boolean{

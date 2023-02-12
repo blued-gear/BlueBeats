@@ -1,6 +1,5 @@
 package apps.chocolatecakecodes.bluebeats.view
 
-import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.view.*
@@ -8,7 +7,6 @@ import android.widget.Button
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
@@ -308,7 +306,7 @@ internal class Playlists : Fragment() {
 
         Utils.trySetValueImmediately(mainVM.currentDialog, MainActivityViewModel.Dialogs.DYNPLAYLIST_EDITOR)
 
-        updateMenu()
+        menu = null// will be handled by editor
     }
 
     private fun onCloseEditDynplDlg() {
