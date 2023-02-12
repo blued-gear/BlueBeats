@@ -23,4 +23,5 @@
     <string name="dynpl_type_exclude">Exclude-Rule</string>
     <string name="dynpl_edit_select_rule_type">Select Rule Type</string>
     <string name="misc_add">Add</string>
+    <string name="dynpl_edit_deep_dir">Inc. Subdirs</string>
 </resources>

@@ -53,6 +53,14 @@ internal class IncludeRule private constructor(
         dirs.remove(dir)
     }
 
+    /**
+     * Sets the deep value for the given dir.
+     * If the dir did not exist, it will be added.
+     */
+    fun setDirDeep(dir: MediaDir, deep: Boolean) {
+        dirs.put(dir, deep)
+    }
+
     fun addFile(file: MediaFile) {
         files.add(file)
     }

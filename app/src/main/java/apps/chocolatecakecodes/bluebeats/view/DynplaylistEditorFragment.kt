@@ -65,13 +65,10 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
         plBufferSize = view.findViewById(R.id.dyneditor_buffersize)
         plRules = view.findViewById(R.id.dyneditor_rules)
 
+        showData()
+
         // catch all clicks
         view.setOnClickListener {}
-    }
-
-    override fun onStart() {
-        super.onStart()
-        showData()
     }
 
     override fun onStop() {

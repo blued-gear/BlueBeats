@@ -78,6 +78,8 @@ internal class DynplaylistGroupEditor(
     }
 
     private fun listItems() {
+        contentList.removeAllViews()
+
         val lp = LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
         group.getExcludesAndRules().map {
             createEditor(it, changedCallback, this.context)
@@ -146,16 +148,39 @@ internal class DynplaylistExcludeEditor(
         contentList.removeAllViews()
 
         val lp = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
-        rule.getDirs().map {
-            MediaNodeView(it.first, this.context)
-        }.forEach {
-            contentList.addView(it, lp)
-        }
-        rule.getFiles().map {
-            MediaNodeView(it, this.context)
-        }.forEach {
-            contentList.addView(it, lp)
-        }
+        rule.getDirs()
+            .sortedBy {
+                it.first.path
+            }.map { item ->
+                MediaNodeView(item.first, this.context).apply {
+                    removeBtn.setOnClickListener {
+                        rule.removeDir(item.first)
+                        contentList.removeView(this)
+                        changedCallback(rule)
+                    }
+                    deepCB.isChecked = item.second
+                    deepCB.setOnCheckedChangeListener { _, checked ->
+                        rule.setDirDeep(item.first, checked)
+                        changedCallback(rule)
+                    }
+                }
+            }.forEach {
+                contentList.addView(it, lp)
+            }
+        rule.getFiles()
+            .sortedBy {
+                it.path
+            }.map { item ->
+                MediaNodeView(item, this.context).apply {
+                    removeBtn.setOnClickListener {
+                        rule.removeFile(item)
+                        contentList.removeView(this)
+                        changedCallback(rule)
+                    }
+                }
+            }.forEach {
+                contentList.addView(it, lp)
+            }
     }
 
     private fun onAddEntry() {
@@ -222,16 +247,39 @@ internal class DynplaylistIncludeEditor(
         contentList.removeAllViews()
 
         val lp = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
-        rule.getDirs().map {
-            MediaNodeView(it.first, this.context)
-        }.forEach {
-            contentList.addView(it, lp)
-        }
-        rule.getFiles().map {
-            MediaNodeView(it, this.context)
-        }.forEach {
-            contentList.addView(it, lp)
-        }
+        rule.getDirs()
+            .sortedBy {
+                it.first.path
+            }.map { item ->
+                MediaNodeView(item.first, this.context).apply {
+                    removeBtn.setOnClickListener {
+                        rule.removeDir(item.first)
+                        contentList.removeView(this)
+                        changedCallback(rule)
+                    }
+                    deepCB.isChecked = item.second
+                    deepCB.setOnCheckedChangeListener { _, checked ->
+                        rule.setDirDeep(item.first, checked)
+                        changedCallback(rule)
+                    }
+                }
+            }.forEach {
+                contentList.addView(it, lp)
+            }
+        rule.getFiles()
+            .sortedBy {
+                it.path
+            }.map { item ->
+                MediaNodeView(item, this.context).apply {
+                    removeBtn.setOnClickListener {
+                        rule.removeFile(item)
+                        contentList.removeView(this)
+                        changedCallback(rule)
+                    }
+                }
+            }.forEach {
+                contentList.addView(it, lp)
+            }
     }
 
     private fun onAddEntry() {
@@ -290,19 +338,32 @@ private class SimpleAddableRuleHeaderView(ctx: Context) : LinearLayout(ctx) {
     }
 }
 
-private class MediaNodeView(val path: MediaNode, context: Context) : LinearLayout(context) {
+private class MediaNodeView(val path: MediaNode, context: Context, showDeepCB: Boolean = true) : LinearLayout(context) {
 
     //TODO extend visible information; add button for remove; checkbox for deep (opt.); ...
 
-    private val text = TextView(context).apply {
+    val text = TextView(context).apply {
+        setSingleLine()
         ellipsize = TextUtils.TruncateAt.MIDDLE
         text = path.path
+        gravity = Gravity.START
+    }
+    val removeBtn = ImageButton(context).apply {
+        setImageResource(R.drawable.ic_baseline_remove_24)
+        gravity = Gravity.END
+    }
+    val deepCB = CheckBox(context).apply {
+        text = context.getString(R.string.dynpl_edit_deep_dir)
+        gravity = Gravity.END
     }
 
     init {
         orientation = HORIZONTAL
 
-        addView(text)
+        addView(text, LayoutParams(0, LayoutParams.MATCH_PARENT, 10f))
+        if(showDeepCB && path is MediaDir)
+            addView(deepCB, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT))
+        addView(removeBtn, LayoutParams(100, LayoutParams.WRAP_CONTENT))
     }
 }
 
