@@ -1,7 +1,6 @@
 package apps.chocolatecakecodes.bluebeats.service
 
 import android.annotation.SuppressLint
-import android.app.Notification
 import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
@@ -13,11 +12,9 @@ import android.view.KeyEvent
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.app.TaskStackBuilder
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.media.app.NotificationCompat.MediaStyle
-import androidx.media2.common.ClassVerificationHelper
 import androidx.media2.common.MediaMetadata
 import androidx.media2.common.SessionPlayer
 import androidx.media2.session.MediaSession
@@ -28,7 +25,6 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.player.VlcPlayer
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.view.MainActivity
-import kotlinx.coroutines.*
 
 
 internal class PlayerService : MediaSessionService(){
@@ -111,12 +107,13 @@ private class NotificationProvider(
     }
 
     init {
-        contentAction = TaskStackBuilder.create(context).run {
-            addNextIntent(Intent(context, MainActivity::class.java))
-            //TODO change MainActivity so that it can handle events requesting tabs
-            //TODO request player-tab with this intent
-
-            getPendingIntent(0, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)!!
+        contentAction = Intent(context, MainActivity::class.java).apply {
+            putExtra(MainActivity.INTENT_OPTION_TAB, 2)
+        }.let {
+            PendingIntent.getActivity(
+                context, 0, it,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
         }
 
         playAction = NotificationCompat.Action(
