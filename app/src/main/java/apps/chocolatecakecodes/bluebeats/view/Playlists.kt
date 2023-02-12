@@ -287,7 +287,9 @@ internal class Playlists : Fragment() {
                 .commit()
 
             Utils.trySetValueImmediately(mainVM.currentDialog, MainActivityViewModel.Dialogs.NONE)
+
             updateMenu()
+            loadPlaylists(true)
         } else if(inSelection) {// deselect all
             itemsAdapter.getSelectExtension().deselect()
         } else if(viewModel.showOverview.value == false) {// go back to overview
