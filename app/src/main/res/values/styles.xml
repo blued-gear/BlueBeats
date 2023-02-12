@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
     <style name="default_SegmentedSeekBarStyle" parent="@style/Widget.AppCompat.SeekBar" />
+
+    <style name="Widget.Theme.BlueBeats.MyView" parent="">
+        <item name="android:background">@color/gray_400</item>
+        <item name="exampleColor">@color/light_blue_400</item>
+    </style>
 </resources>

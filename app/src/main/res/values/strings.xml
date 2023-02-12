@@ -6,4 +6,7 @@
     <string name="filebrowser_perm_needed">This App need storage permissions to scan for media-files</string>
     <string name="player_chapters">Chapters</string>
     <string name="filebrowser_menu_fileinfo">File Info</string>
+    <string name="tagname_title">Title</string>
+    <string name="tagname_length">Length</string>
+    <string name="tagname_artist">Artist</string>
 </resources>
