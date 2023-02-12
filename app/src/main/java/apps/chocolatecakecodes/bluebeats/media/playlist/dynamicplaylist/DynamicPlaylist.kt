@@ -56,7 +56,9 @@ internal class DynamicPlaylistIterator(
     override var currentPosition: Int = -1
         private set
 
+    @Suppress("SuspiciousVarProperty")
     override var repeat: Boolean = true
+        get() = true
     @Suppress("SetterBackingFieldAssignment")
     override var shuffle: Boolean = true
         set(_) {
@@ -113,7 +115,7 @@ internal class DynamicPlaylistIterator(
         }
 
         mediaBuffer.clear()
-        mediaBuffer.addAll(rootRuleGroup.generateItems(bufferSize, toExclude))
+        mediaBuffer.addAll(rootRuleGroup.generateItems(bufferSize, toExclude).shuffled())
 
         if(currentMedia !== null)
             mediaBuffer.add(0, currentMedia)
