@@ -4,17 +4,27 @@ import androidx.room.*
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.util.Utils
+import apps.chocolatecakecodes.bluebeats.util.takeOrAll
 import java.util.*
+import kotlin.NoSuchElementException
+
+/*TODO
+    - all rules in a group should be negateable -> handle them as excludes (before share trimming)
+        -> rules do not need to take an amount for generation
+        -> (alternatively make an union of all excludes an give it as predicate to the generate-method (and keep the amount))
+    - group get a logic-mode: all entries are either ANDed or ORed
+        -> in AND-mode shares are ignored
+ */
 
 internal class RuleGroup private constructor(
     private val entityId: Long,
     override var share: Rule.Share,
-    rules: List<Rule> = emptyList(),
+    rules: List<Pair<Rule, Boolean>> = emptyList(),
     excludes: List<ExcludeRule> = emptyList()
 ) : Rule {
 
-    private val rules = ArrayList(rules)
-    private val rulesRO: List<Rule> by lazy {
+    private val rules: MutableList<Pair<Rule, Boolean>> = ArrayList(rules)
+    private val rulesRO: List<Pair<Rule, Boolean>> by lazy {
         Collections.unmodifiableList(this.rules)
     }
     private val excludes = ArrayList(excludes)
@@ -22,35 +32,49 @@ internal class RuleGroup private constructor(
         Collections.unmodifiableList(this.excludes)
     }
 
-    override fun generateItems(amount: Int, exclude: ExcludeRule): List<MediaFile> {
-        val toExclude = getExcludes().fold(exclude) { a, b ->
-            a.union(b)
+    override fun generateItems(amount: Int, exclude: Set<MediaFile>): List<MediaFile> {
+        val (positiveRules, negativeRules) = getRules().partition { it.second }.let {
+            Pair(
+                it.first.map { it.first },
+                it.second.map { it.first }
+            )
         }
+        val (relativeRules, absoluteRules) = positiveRules.partition { it.share.isRelative }
 
-        val (relativeRules, absoluteRules) = getRules().partition { it.share.isRelative }
+        val excludeAcc = exclude + negativeRules.flatMap { it.generateItems(-1, emptySet()) }
 
         val absoluteItems = absoluteRules.flatMap {
-            it.generateItems(it.share.value.toInt(), toExclude)
-        }.take(amount)
+            it.generateItems(it.share.value.toInt(), excludeAcc)
+        }.distinct()
 
         val relativeAmount = amount - absoluteItems.size
         val relativeItems = relativeRules.flatMap {
-            it.generateItems((relativeAmount * it.share.value).toInt(), toExclude)
-        }
+            it.generateItems((relativeAmount * it.share.value).toInt(), excludeAcc)
+        }.distinct()
 
-        return (absoluteItems + relativeItems).take(amount)
+        return absoluteItems.plus(relativeItems).takeOrAll(amount)
     }
 
-    fun getRules(): List<Rule> {
+    /**
+     * @return List<Pair<rule, negate>>
+     */
+    fun getRules(): List<Pair<Rule, Boolean>> {
         return rulesRO
     }
 
-    fun addRule(rule: Rule) {
-        rules.add(rule)
+    fun addRule(rule: Rule, negate: Boolean = false) {
+        rules.add(Pair(rule, negate))
+    }
+
+    fun setRuleNegated(rule: Rule, negated: Boolean) {
+        val idx = rules.indexOfFirst { it.first == rule }
+        if(idx == -1)
+            throw NoSuchElementException("rule not found")
+        rules.set(idx, Pair(rule, negated))
     }
 
     fun removeRule(rule: Rule) {
-        rules.remove(rule)
+        rules.removeIf { it.first == rule }
     }
 
     fun removeRuleAt(idx: Int) {
@@ -73,10 +97,6 @@ internal class RuleGroup private constructor(
         excludes.removeAt(idx)
     }
 
-    fun getExcludesAndRules() : List<Rulelike> {
-        return excludesRO + rulesRO
-    }
-
     fun addRule(rule: Rulelike) {
         when (rule) {
             is ExcludeRule -> addExclude(rule)
@@ -97,7 +117,7 @@ internal class RuleGroup private constructor(
         if(other !is RuleGroup)
             return false
 
-        return this.getExcludesAndRules() == other.getExcludesAndRules()
+        return this.getRules() == other.getRules()
     }
 
     override fun hashCode(): Int {
@@ -125,26 +145,19 @@ internal class RuleGroup private constructor(
             val entity = getEntity(id)
             val (excludeEntries, ruleEntries) = getEntriesForGroup(id)
                 .sortedBy { it.pos }
-                .map { loadRule(it.rule, KnownRuleTypes.values()[it.type]) }
-                .partition { it is ExcludeRule }
+                .map { Pair(loadRule(it.rule, KnownRuleTypes.values()[it.type]), it.negated) }
+                .partition { it.first is ExcludeRule }
 
             return RuleGroup(
                 entity.id, entity.share,
-                ruleEntries.map { it as Rule },
-                excludeEntries.map { it as ExcludeRule }
+                ruleEntries.map { Pair(it.first as Rule, it.second) },
+                excludeEntries.map { it.first as ExcludeRule }
             )
         }
 
         @Transaction
         open fun save(group: RuleGroup) {
-            val existingRules = getEntriesForGroup(group.entityId).map {
-                Pair(it.rule, KnownRuleTypes.values()[it.type])
-            }.toSet()
-            val currentRules = group.excludes.associateBy {
-                Pair(getRuleEntityId(it), KnownRuleTypes.EXCLUDE_RULE)
-            } + group.rules.associateBy {
-                Pair(getRuleEntityId(it), getRuleType(it))
-            }
+            TODO("fix for this is deferred as mor changes are to come")
 
             Utils.diffChanges(existingRules, currentRules.keys).let { (added, deleted, unchanged) ->
                 deleted.forEach {
@@ -182,7 +195,7 @@ internal class RuleGroup private constructor(
 
         @Transaction
         open fun delete(group: RuleGroup) {
-            group.excludes.plus(group.rules).forEach {
+            group.excludes.plus(group.rules.map { it.first }).forEach {
                 deleteRule(group.entityId, it)
             }
 
@@ -364,6 +377,7 @@ internal data class RuleGroupEntry(
     @ColumnInfo(name = "rulegroup", index = true) val ruleGroup: Long,
     @ColumnInfo(name = "rule") val rule: Long,
     @ColumnInfo(name = "type") val type: Int,
-    @ColumnInfo(name = "pos") val pos: Int
+    @ColumnInfo(name = "pos") val pos: Int,
+    @ColumnInfo(name = "negated") val negated: Boolean
 )
 //endregion

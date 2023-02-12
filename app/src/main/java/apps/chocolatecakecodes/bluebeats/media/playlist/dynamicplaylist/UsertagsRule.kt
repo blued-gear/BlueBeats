@@ -4,6 +4,7 @@ import androidx.room.*
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.util.Utils
+import apps.chocolatecakecodes.bluebeats.util.takeOrAll
 import java.util.*
 import kotlin.collections.HashSet
 
@@ -29,16 +30,21 @@ internal class UsertagsRule private constructor(
         return tagsRO
     }
 
-    override fun generateItems(amount: Int, exclude: ExcludeRule): List<MediaFile> {
+    override fun generateItems(amount: Int, exclude: Set<MediaFile>): List<MediaFile> {
         // and-combine results (all tags must match)
         val tagsDao = RoomDB.DB_INSTANCE.userTagDao()
         val tags = getTags()
-        return tagsDao.getFilesForTags(tags.toList()).let {
-            if (combineWithAnd)
-                combineAnd(it)
-            else
-                combineOr(it)
-        }.toList().shuffled().take(amount)
+        return tagsDao.getFilesForTags(tags.toList())
+            .minus(exclude)
+            .let {
+                if (combineWithAnd)
+                    combineAnd(it)
+                else
+                    combineOr(it)
+            }
+            .toList()
+            .shuffled()
+            .takeOrAll(amount)
     }
 
     override fun equals(other: Any?): Boolean {

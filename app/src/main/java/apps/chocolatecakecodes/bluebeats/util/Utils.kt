@@ -153,3 +153,13 @@ inline fun <T : IVLCObject<E>, E : AbstractVLCEvent?> T.using(retain: Boolean = 
         this.release()
     }
 }
+
+/**
+ * returns n elements of this Iterable or all if amount == -1
+ */
+fun <T, I : Iterable<T>> I.takeOrAll(amount: Int): List<T> {
+    return if(amount == -1)
+        this.toList()
+    else
+        this.take(amount)
+}

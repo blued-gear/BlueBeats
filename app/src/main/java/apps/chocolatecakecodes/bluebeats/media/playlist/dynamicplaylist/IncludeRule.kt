@@ -5,6 +5,7 @@ import apps.chocolatecakecodes.bluebeats.database.*
 import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.util.Utils
+import apps.chocolatecakecodes.bluebeats.util.takeOrAll
 import java.util.*
 
 internal class IncludeRule private constructor(
@@ -22,13 +23,13 @@ internal class IncludeRule private constructor(
 
     override var share = initialShare
 
-    override fun generateItems(amount: Int, exclude: ExcludeRule): List<MediaFile> {
+    override fun generateItems(amount: Int, exclude: Set<MediaFile>): List<MediaFile> {
         return expandDirs()
             .union(getFiles())
-            .filterNot(exclude::isExcluded)
+            .minus(exclude)
             .shuffled()
-            .take(amount)
             .toList()
+            .takeOrAll(amount)
     }
 
     fun getDirs(): Set<DirPathInclude> {

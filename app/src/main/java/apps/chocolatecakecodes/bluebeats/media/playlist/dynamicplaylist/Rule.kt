@@ -18,10 +18,10 @@ internal interface Rule : Rulelike{
 
     /**
      * returns a collection of media from this rule
-     * @param amount the expected amount of media to return
-     * @param exclude collection of paths to exclude from item-generation
+     * @param amount the expected amount of media to return; if -1 then the amount is unlimited
+     * @param exclude set of files which must not be contained in the resulting set
      */
-    fun generateItems(amount: Int, exclude: ExcludeRule = ExcludeRule.EMPTY_EXCLUDE): List<MediaFile>
+    fun generateItems(amount: Int, exclude: Set<MediaFile>): List<MediaFile>
 
     override fun equals(other: Any?): Boolean
 

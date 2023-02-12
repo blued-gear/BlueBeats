@@ -27,7 +27,7 @@ internal class DynamicPlaylist private constructor(
     var iterationSize = EXAMPLE_ITEM_COUNT
 
     override fun items(): List<MediaFile> {
-        return rootRuleGroup.generateItems(iterationSize.coerceAtLeast(EXAMPLE_ITEM_COUNT))
+        return rootRuleGroup.generateItems(iterationSize.coerceAtLeast(EXAMPLE_ITEM_COUNT), emptySet())
     }
 
     override fun getIterator(repeat: Boolean, shuffle: Boolean): PlaylistIterator {
@@ -187,13 +187,13 @@ internal class DynamicPlaylistIterator(
     private fun generateItems() {
         // retain current media (if existing) and place at top
         val currentMedia: MediaFile?
-        val toExclude: ExcludeRule
+        val toExclude: Set<MediaFile>
         if(currentPosition >= 0) {
             currentMedia = currentMedia()
-            toExclude = ExcludeRule.temporaryExclude(files = setOf(currentMedia))// exclude to prevent repetition
+            toExclude = setOf(currentMedia)// exclude to prevent repetition
         } else {
             currentMedia = null
-            toExclude = ExcludeRule.EMPTY_EXCLUDE
+            toExclude = emptySet()
         }
 
         mediaBuffer.clear()
