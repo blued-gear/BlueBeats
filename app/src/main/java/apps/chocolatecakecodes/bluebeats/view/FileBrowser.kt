@@ -43,7 +43,6 @@ class FileBrowser : Fragment() {
     private var progressBar: ProgressBar? = null
     private lateinit var scanListener: MediaDB.ScanEventHandler
     private var scanRequested = false
-    private var dialogOpen = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -112,12 +111,12 @@ class FileBrowser : Fragment() {
     private fun wireObservers(){
         // add handler for back button (to get one dir up)
         mainVM.addBackPressListener(this.viewLifecycleOwner){
-            if(dialogOpen){// close dialog
+            if(mainVM.currentDialog.value == MainActivityViewModel.Dialogs.FILE_DETAILS){// close dialog
                 this.parentFragmentManager.beginTransaction()
                     .remove(this.parentFragmentManager.findFragmentByTag(FILE_DETAILS_DLG_TAG)!!)
                     .commit()
 
-                dialogOpen = false
+                mainVM.currentDialog.setValue(MainActivityViewModel.Dialogs.NONE)
                 updateMenuFileInfo()
             }else{// go one dir up
                 // check if we can go up by one dir
@@ -307,13 +306,14 @@ class FileBrowser : Fragment() {
 
     private fun updateMenuFileInfo(){
         val chaptersItem = mainMenu.findItem(R.id.filebrowser_menu_details)
+        val dialogOpen = mainVM.currentDialog.value == MainActivityViewModel.Dialogs.FILE_DETAILS
         chaptersItem.isEnabled = viewModel.selectedFile.value !== null
                 && !dialogOpen
     }
 
     private fun onFileDetailsClicked(){
         viewModel.selectedFile.value?.let {
-            dialogOpen = true
+            mainVM.currentDialog.setValue(MainActivityViewModel.Dialogs.FILE_DETAILS)
 
             val dlg = FileDetails(it)
             this.parentFragmentManager.beginTransaction()

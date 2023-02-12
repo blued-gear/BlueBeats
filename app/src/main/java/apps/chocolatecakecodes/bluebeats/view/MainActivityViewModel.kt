@@ -12,9 +12,14 @@ internal class MainActivityViewModel : ViewModel(){
         MEDIA, PLAYER
     }
 
+    enum class Dialogs{
+        NONE, FILE_DETAILS
+    }
+
     val currentTab = MutableLiveData<Tabs>(Tabs.MEDIA)
     val fullScreenContent = MutableLiveData<View>()
     val menuProvider = MutableLiveData<((Menu, MenuInflater) -> Unit)?>()
+    val currentDialog = MutableLiveData<Dialogs>(Dialogs.NONE)
 
     private val backPressListeners = MutableList<BackPressListener>(0){throw AssertionError("none should be initialized")}
 

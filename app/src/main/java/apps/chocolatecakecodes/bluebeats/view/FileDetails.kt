@@ -9,14 +9,40 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import apps.chocolatecakecodes.bluebeats.R
+import apps.chocolatecakecodes.bluebeats.media.MediaDB
+import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.taglib.TagFields
+import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 
-class FileDetails(private val file: MediaFile) : Fragment(R.layout.filedetails_fragment) {
+private const val STATE_FILE = "key:filePath"
+
+class FileDetails() : Fragment(R.layout.filedetails_fragment) {
+
+    var file: MediaFile by OnceSettable()
 
     private lateinit var tagListView: LinearLayout
     private lateinit var usertagListView: LinearLayout
     private lateinit var usertagListTitle: TextView
+
+    constructor(file: MediaFile) : this() {
+        this.file = file
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        if(savedInstanceState !== null){
+            val filePath = savedInstanceState.getString(STATE_FILE)!!
+            file = VlcManagers.getMediaDB().getSubject().pathToMedia(filePath) as MediaFile
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+
+        outState.putString(STATE_FILE, file.path)
+    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
