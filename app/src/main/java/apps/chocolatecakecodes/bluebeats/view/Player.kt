@@ -97,7 +97,6 @@ class Player : Fragment() {
 
         wireObservers()
         wireActionHandlers(view)
-        refreshPlayerControls()
     }
 
     override fun onResume() {
@@ -107,6 +106,7 @@ class Player : Fragment() {
         player.registerPlayerCallback(ContextCompat.getMainExecutor(this.requireContext()), playerCallback)
 
         setupMainMenu()
+        refreshPlayerControls()
     }
 
     override fun onPause() {
