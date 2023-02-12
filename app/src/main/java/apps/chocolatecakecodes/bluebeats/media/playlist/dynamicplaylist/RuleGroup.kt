@@ -68,6 +68,12 @@ internal class RuleGroup private constructor(
         rules.add(Pair(rule, negate))
     }
 
+    fun getRuleNegated(rule: Rule): Boolean? {
+        return getRules().find {
+            it.first == rule
+        }?.second
+    }
+
     fun setRuleNegated(rule: Rule, negated: Boolean) {
         val idx = rules.indexOfFirst { it.first == rule }
         if(idx == -1)
