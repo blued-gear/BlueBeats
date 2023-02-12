@@ -32,7 +32,7 @@ import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import kotlin.math.truncate
 
-internal typealias ChangedCallback = (Rule) -> Unit
+internal typealias ChangedCallback = (GenericRule) -> Unit
 
 internal fun createEditorRoot(
     root: RuleGroup,
@@ -130,7 +130,7 @@ private class DynplaylistGroupEditor(
             .show()
     }
 
-    private fun createItem(ruleItem: Pair<Rule, Boolean>): AbstractDynplaylistEditorView {
+    private fun createItem(ruleItem: Pair<GenericRule, Boolean>): AbstractDynplaylistEditorView {
         return createEditor(ruleItem.first, changedCallback, this.context).apply editorView@{
             SimpleAddableRuleHeaderView.CommonVisuals.negateCheckbox(context).apply {
                 setOnCheckedChangeListener { _, checked ->
@@ -369,7 +369,7 @@ private class DynplaylistUsertagsEditor(
 private const val SUBITEM_INSET = 40
 
 private fun createEditor(
-    item: Rule,
+    item: GenericRule,
     cb: ChangedCallback,
     ctx: Context
 ): AbstractDynplaylistEditorView {

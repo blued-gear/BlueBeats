@@ -10,7 +10,7 @@ import androidx.fragment.app.Fragment
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylist
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.Rule
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.GenericRule
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGroup
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.view.specialviews.createEditorRoot
@@ -20,6 +20,7 @@ import kotlin.math.abs
 
 private const val LOG_TAG = "DynplaylistEditor"
 private const val STATE_PLAYLIST_ID = "key:plId"
+private const val STATE_RULES = "key:rules"
 private const val STATE_MODIFIED = "key:mod"
 
 internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dyneditor_fragment) {
@@ -28,6 +29,7 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
     private val playlistManager = RoomDB.DB_INSTANCE.playlistManager()
 
     private var playlist: DynamicPlaylist by OnceSettable()
+    private var editCopy: RuleGroup by OnceSettable()
 
     private var plName: EditText by OnceSettable()
     private var plBufferSize: EditText by OnceSettable()
@@ -37,6 +39,7 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
 
     constructor(playlist: DynamicPlaylist) : this() {
         this.playlist = playlist
+        this.editCopy = playlist.rootRuleGroup.copy()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,6 +50,11 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
             val plId = savedInstanceState.getLong(STATE_PLAYLIST_ID)
             CoroutineScope(Dispatchers.IO).launch {
                 playlist = playlistDao.load(plId)
+                editCopy = if (Build.VERSION.SDK_INT >= 33) {
+                    savedInstanceState.getParcelable(STATE_RULES, RuleGroup::class.java)!!
+                }else{
+                    savedInstanceState.getParcelable(STATE_RULES)!!
+                }
             }
         }
     }
@@ -58,6 +66,7 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
         runBlocking {
             withContext(Dispatchers.IO) {
                 outState.putLong(STATE_PLAYLIST_ID, playlistManager.getPlaylistId(playlist.name))
+                outState.putParcelable(STATE_RULES, editCopy)
             }
         }
     }
@@ -96,7 +105,7 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
         plName.text.append(playlist.name)
         plBufferSize.setText(playlist.iterationSize.toString())
         plRules.addView(
-            createEditorRoot(playlist.rootRuleGroup, this::onRuleEdited, this.requireContext()),
+            createEditorRoot(editCopy, this::onRuleEdited, this.requireContext()),
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
         )
     }
@@ -115,6 +124,7 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
         }.let {
             if(it.isNotEmpty()){
                 val epsilon = 0.0001f
+                @Suppress("NAME_SHADOWING")
                 val shareSum = it.fold(0f) { acc, it ->
                     acc + it.value
                 }
@@ -173,6 +183,7 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
 
         return withContext(Dispatchers.IO) {
             try {
+                playlist.rootRuleGroup.applyFrom(editCopy)
 
                 RoomDB.DB_INSTANCE.dynamicPlaylistDao().save(playlist)
                 modified = false
