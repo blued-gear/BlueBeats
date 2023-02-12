@@ -40,6 +40,18 @@ public final class TagFields implements Cloneable{
         return length;
     }
 
+    public void setTitle(String title){
+        this.title = title;
+    }
+
+    public void setArtist(String artist){
+        this.artist = artist;
+    }
+
+    public void setLength(long length){
+        this.length = length;
+    }
+
     @SuppressWarnings ("MethodDoesntCallSuperMethod")
     @NotNull
     @Override
