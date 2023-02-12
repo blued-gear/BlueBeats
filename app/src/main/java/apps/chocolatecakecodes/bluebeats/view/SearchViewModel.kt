@@ -82,6 +82,7 @@ internal class SearchViewModel : ViewModel() {
             Grouping.ID3_TAG -> {
                 RoomDB.DB_INSTANCE.id3TagDao().getAllTagTypes().filterNot {
                     it == "length"
+                        || it == "title"
                 }.let {
                     subgroupsRW.postValue(it)
                     setSubgroup(if(it.isNotEmpty()) it.first() else null)
