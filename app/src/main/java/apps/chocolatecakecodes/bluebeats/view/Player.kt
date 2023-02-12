@@ -349,40 +349,15 @@ class Player : Fragment() {
     }
 
     private fun formatPlayTime(time: Long, len: Long, remaining: Boolean): String{
-        fun formatTime(ms: Long, withHours: Boolean): String{// returns [hh:]mm:ss
-            var varMs = ms
-            var factor: Long = if(withHours) 60 * 60 * 1000 else 60 * 1000
-
-            val hours: Long
-            if(withHours){
-                hours = varMs / factor
-                varMs -= hours * factor
-                factor /= 60
-            }else{
-                hours = -1
-            }
-
-            val minutes = varMs / factor
-            varMs -= minutes * factor
-            factor /= 60
-
-            val seconds = varMs / factor
-
-            if(withHours)
-                return String.format("%02d:%02d:%02d", hours, minutes, seconds)
-            else
-                return String.format("%02d:%02d", minutes, seconds)
-        }
-
         val timeCapped = time.coerceAtLeast(0)
         val lenCapped = len.coerceAtLeast(0)
 
         val withHours = (lenCapped / (60 * 60 * 1000)) > 0
 
         val timeStr =
-            if(remaining) "-" + formatTime(lenCapped - timeCapped, withHours)
-            else formatTime(timeCapped, withHours)
-        val lenStr = formatTime(lenCapped, withHours)
+            if(remaining) "-" + Utils.formatTime(lenCapped - timeCapped, withHours)
+            else Utils.formatTime(timeCapped, withHours)
+        val lenStr = Utils.formatTime(lenCapped, withHours)
 
         return "$timeStr / $lenStr"
     }
