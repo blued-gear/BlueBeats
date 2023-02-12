@@ -41,4 +41,9 @@
     <string name="dynpl_share_unlimited">Unlimited</string>
     <string name="dynpl_share_relative">Relative</string>
     <string name="dynpl_share_even">Even</string>
+    <string name="main_tab_search">Search</string>
+    <string name="search_cat_filename">Filename</string>
+    <string name="search_cat_title">Title</string>
+    <string name="search_cat_id3">ID3 Tag</string>
+    <string name="search_cat_usertag">User-Tags</string>
 </resources>
