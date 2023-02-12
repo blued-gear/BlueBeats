@@ -25,14 +25,11 @@ import com.mikepenz.fastadapter.GenericItem
 import com.mikepenz.fastadapter.ISelectionListener
 import com.mikepenz.fastadapter.adapters.GenericFastItemAdapter
 import com.mikepenz.fastadapter.drag.IDraggable
+import com.mikepenz.fastadapter.drag.ItemTouchCallback
 import com.mikepenz.fastadapter.drag.SimpleDragCallback
 import com.mikepenz.fastadapter.listeners.addTouchListener
 import com.mikepenz.fastadapter.select.getSelectExtension
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.SendChannel
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.debounce
 
 internal class Playlists : Fragment() {
 
@@ -43,9 +40,7 @@ internal class Playlists : Fragment() {
     private var viewModel: PlaylistsViewModel by OnceSettable()
     private var mainVM: MainActivityViewModel by OnceSettable()
     private var itemsAdapter: GenericFastItemAdapter by OnceSettable()
-    private var itemsDragCallback: SimpleDragCallback by OnceSettable()
     private var itemsTouchHelper: ItemTouchHelper by OnceSettable()
-    private var itemsMoveDebounceChannel: SendChannel<Unit> by OnceSettable()
     private var itemsView = RequireNotNull<RecyclerView>()
     private var titleText = RequireNotNull<TextView>()
     private var upBtn = RequireNotNull<ImageButton>()
@@ -99,12 +94,6 @@ internal class Playlists : Fragment() {
         super.onDestroyView()
     }
 
-    override fun onDestroy() {
-        itemsMoveDebounceChannel.close()
-
-        super.onDestroy()
-    }
-
     private fun setupFastAdapter() {
         itemsAdapter = GenericFastItemAdapter()
 
@@ -119,10 +108,25 @@ internal class Playlists : Fragment() {
             true
         }
 
-        itemsDragCallback = SimpleDragCallback()
+        setupItemDrag()
+    }
+    private fun setupItemDrag() {
+        val actionCallback = object : ItemTouchCallback {
+            override fun itemTouchOnMove(oldPosition: Int, newPosition: Int): Boolean {
+                itemsAdapter.move(oldPosition, newPosition)
+                return true
+            }
+            override fun itemTouchDropped(oldPosition: Int, newPosition: Int) {
+                if(oldPosition == newPosition) return
+                onItemMoved(oldPosition, newPosition)
+            }
+        }
+
+        val itemsDragCallback = SimpleDragCallback(actionCallback)
         itemsDragCallback.notifyAllDrops = false
         itemsDragCallback.isDragEnabled = false
         itemsTouchHelper = ItemTouchHelper(itemsDragCallback)
+
         itemsAdapter.addTouchListener<MediaItem.ViewHolder, GenericItem>(
             resolveView = { holder ->
                 holder.itemView.findViewById(R.id.v_mf_handle)
@@ -143,14 +147,6 @@ internal class Playlists : Fragment() {
                 }
             }
         )
-
-        //TODO simplify with SimpleDragCallback->ItemTouchCallback::itemTouchDropped
-        setupItemMoveDebounce()
-        itemsAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
-            override fun onItemRangeMoved(fromPosition: Int, toPosition: Int, itemCount: Int) {
-                onItemsMoved(fromPosition, toPosition, itemCount)
-            }
-        })
     }
 
     private fun setupRecycleView() {
@@ -229,33 +225,12 @@ internal class Playlists : Fragment() {
         inSelection = itemsAdapter.getSelectExtension().selectedItems.isNotEmpty()
     }
 
-    @OptIn(FlowPreview::class)
-    private fun setupItemMoveDebounce() {
-        CoroutineScope(Dispatchers.Default).launch {
-            callbackFlow<Unit> {
-                itemsMoveDebounceChannel = channel
-                awaitClose()
-            }.debounce(2000).collect {
-                (viewModel.selectedPlaylist as? StaticPlaylist)?.let {
-                    withContext(Dispatchers.IO) {
-                        RoomDB.DB_INSTANCE.staticPlaylistDao().save(it)
-                    }
-                }
-            }
-        }
-    }
-
-    private fun onItemsMoved(fromPosition: Int, toPosition: Int, itemCount: Int) {
+    private fun onItemMoved(from: Int, to: Int) {
         val playlist = viewModel.selectedPlaylist!! as StaticPlaylist// only supported static playlist
 
         CoroutineScope(Dispatchers.IO).launch {
-            (0 until itemCount).map {
-                val from = fromPosition + it
-                val to = toPosition + it
-                playlist.moveMedia(from, to)
-            }
-
-            itemsMoveDebounceChannel.send(Unit)
+            playlist.moveMedia(from, to)
+            RoomDB.DB_INSTANCE.staticPlaylistDao().save(playlist)
         }
     }
 
