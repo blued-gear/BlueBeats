@@ -4,12 +4,15 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistIterator
 import apps.chocolatecakecodes.bluebeats.taglib.Chapter
 
 internal class PlayerViewModel : ViewModel() {
 
     private val currentMediaRW: MutableLiveData<MediaFile> = MutableLiveData(null)
     val currentMedia: LiveData<MediaFile> = currentMediaRW// public read-only property
+    private val currentPlaylistRW: MutableLiveData<PlaylistIterator> = MutableLiveData(null)
+    val currentPlaylist: LiveData<PlaylistIterator> = currentPlaylistRW// public read-only property
     private val isPlayingRW: MutableLiveData<Boolean> = MutableLiveData(false)
     val isPlaying: LiveData<Boolean> = isPlayingRW// public read-only property
     private val playPosRW: MutableLiveData<Long> = MutableLiveData(0)
@@ -26,6 +29,11 @@ internal class PlayerViewModel : ViewModel() {
         currentMediaRW.postValue(media)
         updatePlayPosition(0)
         resume()
+    }
+
+    fun playPlaylist(pl: PlaylistIterator) {
+        currentPlaylistRW.postValue(pl)
+        play(pl.nextMedia())
     }
 
     fun pause(){

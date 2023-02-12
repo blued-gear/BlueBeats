@@ -41,6 +41,7 @@ internal class Playlists : Fragment() {
 
     private var viewModel: PlaylistsViewModel by OnceSettable()
     private var mainVM: MainActivityViewModel by OnceSettable()
+    private var playerVM: PlayerViewModel by OnceSettable()
     private var itemsAdapter: GenericFastItemAdapter by OnceSettable()
     private var itemsTouchHelper: ItemTouchHelper by OnceSettable()
     private var itemsView = RequireNotNull<RecyclerView>()
@@ -55,6 +56,7 @@ internal class Playlists : Fragment() {
         val vmProvider = ViewModelProvider(this.requireActivity())
         viewModel = vmProvider.get(PlaylistsViewModel::class.java)
         mainVM = vmProvider.get(MainActivityViewModel::class.java)
+        playerVM = vmProvider.get(PlayerViewModel::class.java)
 
         setupFastAdapter()
     }
@@ -193,7 +195,7 @@ internal class Playlists : Fragment() {
                 if (viewModel.selectedPlaylist === null) {
                     onSelectPlaylist((item as ListsItem).playlist)
                 } else {
-                    onPlayPlaylistAt((item as MediaItem).media)
+                    onPlayPlaylistAt(pos)
                 }
 
                 false
@@ -211,8 +213,12 @@ internal class Playlists : Fragment() {
             viewModel.showOverview.postValue(false)
         }
     }
-    private fun onPlayPlaylistAt(media: MediaFile) {
-        TODO()
+    private fun onPlayPlaylistAt(idx: Int) {
+        val iter = viewModel.selectedPlaylist!!.getIterator(false, false)
+        iter.seek(idx)
+
+        mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
+        playerVM.playPlaylist(iter)
     }
 
     private fun onItemSelectionChanged(item: GenericItem, selected: Boolean) {
