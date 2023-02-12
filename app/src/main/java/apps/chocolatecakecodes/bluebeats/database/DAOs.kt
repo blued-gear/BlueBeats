@@ -27,14 +27,8 @@ internal abstract class MediaDirDAO{
     }
 
     fun getForId(id: Long): MediaDir{
-        synchronized(this) {
-            val cached = cache.getIfPresent(id)
-            if (cached !== null) return cached
-
-            val entity = getEntityForId(id)
-            val dir = MediaDir(entity)
-            cache.put(id, dir)
-            return dir
+        return cache.get(id) {
+            MediaDir(getEntityForId(id))
         }
     }
 
@@ -116,14 +110,8 @@ internal abstract class MediaFileDAO{
     }
 
     fun getForId(id: Long): MediaFile{
-        synchronized(this) {
-            val cached = cache.getIfPresent(id)
-            if (cached !== null) return cached
-
-            val entity = getEntityForId(id)
-            val file = MediaFile(entity)
-            cache.put(id, file)
-            return file
+        return cache.get(id) {
+            MediaFile(getEntityForId(id))
         }
     }
 
