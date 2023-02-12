@@ -50,7 +50,7 @@ public final class UserTags implements Cloneable{
 
     @Override
     public int hashCode(){
-        return Objects.hash(tags, "TagLib::UserTags");
+        return Objects.hash(Arrays.hashCode(tags), "TagLib::UserTags");
     }
 
     @Override
