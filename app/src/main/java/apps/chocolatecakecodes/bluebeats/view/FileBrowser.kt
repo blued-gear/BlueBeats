@@ -22,6 +22,7 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
+import apps.chocolatecakecodes.bluebeats.service.PlayerService
 import apps.chocolatecakecodes.bluebeats.taglib.BuildConfig
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.SmartBackPressedCallback
@@ -42,7 +43,6 @@ class FileBrowser : Fragment() {
     }
 
     private var viewModel: FileBrowserViewModel by OnceSettable()
-    private var playerVM: PlayerViewModel by OnceSettable()
     private var mainVM: MainActivityViewModel by OnceSettable()
     private lateinit var mainMenu: Menu
     private var progressBar: ProgressBar? = null
@@ -55,7 +55,6 @@ class FileBrowser : Fragment() {
 
         val vmProvider = ViewModelProvider(this.requireActivity())
         viewModel = vmProvider.get(FileBrowserViewModel::class.java)
-        playerVM = vmProvider.get(PlayerViewModel::class.java)
         mainVM = vmProvider.get(MainActivityViewModel::class.java)
     }
 
@@ -296,7 +295,7 @@ class FileBrowser : Fragment() {
                 viewModel.selectFile(item)
 
                 mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
-                playerVM.play(item)
+                PlayerService.getInstancePlayer().playMedia(item)
             }
         }
     }

@@ -7,28 +7,30 @@ import android.util.Log
 import android.view.*
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
 import androidx.core.view.GestureDetectorCompat
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import androidx.media2.common.MediaItem
+import androidx.media2.common.SessionPlayer
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import apps.chocolatecakecodes.bluebeats.media.player.VlcPlayer
+import apps.chocolatecakecodes.bluebeats.service.PlayerService
 import apps.chocolatecakecodes.bluebeats.taglib.Chapter
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.SmartBackPressedCallback
 import apps.chocolatecakecodes.bluebeats.util.Utils
+import apps.chocolatecakecodes.bluebeats.util.castTo
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
 import apps.chocolatecakecodes.bluebeats.view.specialviews.SegmentedSeekBar
 import com.mikepenz.fastadapter.adapters.FastItemAdapter
 import com.mikepenz.fastadapter.select.getSelectExtension
 import kotlinx.coroutines.*
-import org.videolan.libvlc.MediaPlayer
-import org.videolan.libvlc.interfaces.IMedia
 import org.videolan.libvlc.util.VLCVideoLayout
-import kotlin.math.abs
 
 private const val CONTROLS_FADE_IN_TIME = 200L
 private const val CONTROLS_FADE_OUT_TIME = 100L
@@ -44,19 +46,20 @@ class Player : Fragment() {
         private const val SEEK_AMOUNT = 5000L// in ms TODO make changeable by user
     }
 
+    private val playerCallback = PlayerListener()
     private var viewModel: PlayerViewModel by OnceSettable()
     private var mainVM: MainActivityViewModel by OnceSettable()
-    private var player: MediaPlayer by OnceSettable()
+    private var player: VlcPlayer by OnceSettable()
     private var playerView: VLCVideoLayout by OnceSettable()
     private var playerContainer: ViewGroup by OnceSettable()
     private var seekBar: SegmentedSeekBar by OnceSettable()
     private var timeTextView: TextView by OnceSettable()
     private var altImgView: ImageView by OnceSettable()
     private var mainMenu: Menu? = null
-    private var currentMedia: IMedia? = null
     private var controlsVisible: Boolean = true
     private var controlsHideCoroutine: Job? = null
     private val seekHandler = SeekHandler()
+    private var fullscreenState: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,15 +68,7 @@ class Player : Fragment() {
         viewModel = vmProvider.get(PlayerViewModel::class.java)
         mainVM = vmProvider.get(MainActivityViewModel::class.java)
 
-        player = MediaPlayer(VlcManagers.getLibVlc())
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-
-        player.release()
-        if(currentMedia !== null)
-            currentMedia!!.release()
+        player = PlayerService.getInstancePlayer()
     }
 
     override fun onCreateView(
@@ -96,7 +91,6 @@ class Player : Fragment() {
         // setup player-view
         playerView = VLCVideoLayout(this.requireContext())
         view.findViewById<FrameLayout>(R.id.player_playerholder).addView(playerView)
-        attachPlayer()
 
         wireObservers()
         wireActionHandlers(view)
@@ -106,18 +100,31 @@ class Player : Fragment() {
         super.onResume()
 
         attachPlayer()
+        player.registerPlayerCallback(ContextCompat.getMainExecutor(this.requireContext()), playerCallback)
+        refreshPlayerControls()
+
         setupMainMenu()
     }
 
     override fun onPause() {
         super.onPause()
 
+        player.clearVideoOutput()
+        player.unregisterPlayerCallback(playerCallback)
+
         mainMenu = null
     }
 
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        viewModel.updatePlayPosition(player.time)
+    private fun refreshPlayerControls() {
+        if (player.castTo<VlcPlayer>().isPlaying()) {
+            playerContainer.findViewById<ImageButton>(R.id.player_controls_play).setImageResource(R.drawable.ic_baseline_pause)
+        }else {
+            playerContainer.findViewById<ImageButton>(R.id.player_controls_play).setImageResource(R.drawable.ic_baseline_play)
+        }
+    }
+
+    private fun attachPlayer() {
+        player.setVideoOutput(playerView)
     }
 
     //region action-handlers
@@ -145,9 +152,6 @@ class Player : Fragment() {
             viewModel.setTimeTextAsRemaining(!viewModel.timeTextAsRemaining.value!!)
         }
 
-        // player-event-listener
-        player.setEventListener(PlayerEventHandler())
-
         // back-pressed
         this.requireActivity().onBackPressedDispatcher.addCallback(SmartBackPressedCallback(this.lifecycle, this::onBackPressed))
     }
@@ -166,10 +170,10 @@ class Player : Fragment() {
     }
 
     private fun onPlayPauseClick() {
-        if(viewModel.isPlaying.value == true)
-            viewModel.pause()
-        else if(viewModel.currentMedia.value !== null)
-            viewModel.resume()
+        if(player.isPlaying())
+            player.pause()
+        else if(player.getCurrentMedia() !== null)
+            player.play()
     }
 
     private fun onFullscreenClick() {
@@ -186,68 +190,12 @@ class Player : Fragment() {
 
     //region livedata-handlers
     private fun wireObservers(){
-        viewModel.currentMedia.observe(this.viewLifecycleOwner){
-            if(it !== null) {
-                playMedia(it)
-            }
-        }
-
-        viewModel.isPlaying.observe(this.viewLifecycleOwner){
-            onIsPlayingChanged(it)
-        }
-
-        viewModel.playPos.observe(this.viewLifecycleOwner){
-            onPlayPosChanged(it)
-        }
-
         viewModel.isFullscreen.observe(this.viewLifecycleOwner){
             onIsFullscreenChanged(it)
         }
 
         viewModel.timeTextAsRemaining.observe(this.viewLifecycleOwner){
-            timeTextView.text = formatPlayTime(player.time, player.length, it!!)
-        }
-
-        viewModel.chapters.observe(this.viewLifecycleOwner){
-            onChaptersChanged(it)
-        }
-
-        viewModel.currentPlaylist.observe(this.viewLifecycleOwner) {
-            updatePlaylistMenuItem()
-        }
-    }
-
-    private fun onIsPlayingChanged(value: Boolean?) {
-        if(value !== null) {
-            if (value) {
-                player.play()
-
-                playerContainer.findViewById<ImageButton>(R.id.player_controls_play).setImageResource(R.drawable.ic_baseline_pause)
-            }else {
-                player.pause()
-
-                playerContainer.findViewById<ImageButton>(R.id.player_controls_play).setImageResource(R.drawable.ic_baseline_play)
-            }
-
-            if (value){
-                hideControlsWithDelay()
-            }
-        }
-    }
-
-    private fun onPlayPosChanged(value: Long?) {
-        if((value !== null)){
-            if(abs(value - player.time) > 5)// threshold of 5ms to prevent cyclic calls from this and PlayerEventHandler
-                if(seekHandler.isSeeking)
-                    player.setTime(value, true)
-                else
-                    player.setTime(value, false)
-
-            if(!seekHandler.isSeeking) {
-                seekBar.value = ((value / player.length.toDouble()) * SEEK_STEP).toInt().coerceAtLeast(1)
-            }
-
-            timeTextView.text = formatPlayTime(value, player.length, viewModel.timeTextAsRemaining.value!!)
+            timeTextView.text = formatPlayTime(player.currentPosition, player.duration, it!!)
         }
     }
 
@@ -260,30 +208,6 @@ class Player : Fragment() {
             else
                 playerContainer.findViewById<ImageButton>(R.id.player_controls_fullscreen).setImageResource(R.drawable.ic_baseline_fullscreen)
         }
-    }
-
-    private fun onChaptersChanged(value: List<Chapter>?) {
-        if(value === null || value.isEmpty()){
-            seekBar.segments = emptyArray()
-            seekBar.showTitle = false
-        }else{
-            val totalTime = player.length.toDouble()
-
-            // if fragment was recreated, this will be triggered before player was fully loaded (then totalTime == -1)
-            if(totalTime > 0) {
-                val segments = Array<SegmentedSeekBar.Segment>(value.size) {
-                    val chapter = value[it]
-                    val start = ((chapter.start.toDouble() / totalTime) * SEEK_STEP).toInt()
-                    val end = ((chapter.end.toDouble() / totalTime) * SEEK_STEP).toInt()
-                    return@Array SegmentedSeekBar.Segment(start, end, chapter.name)
-                }
-
-                seekBar.segments = segments
-                seekBar.showTitle = true
-            }
-        }
-
-        updateChaptersMenuItem()
     }
     //endregion
 
@@ -312,8 +236,7 @@ class Player : Fragment() {
     private fun updateChaptersMenuItem(){
         mainMenu?.let {
             val chaptersItem = it.findItem(R.id.player_menu_chapters)
-            val chapters = viewModel.chapters.value
-            chaptersItem.isEnabled = chapters !== null && chapters.isNotEmpty()
+            chaptersItem.isEnabled = player.getChapters().isNotEmpty()
         }
     }
 
@@ -321,7 +244,7 @@ class Player : Fragment() {
         val dlgBuilder = AlertDialog.Builder(this.requireContext())
 
         // generate chapter items
-        val chapters = viewModel.chapters.value!!
+        val chapters = player.getChapters()
         val itemTexts = chapters.map {
             val start = Utils.formatTime(it.start)
             val end = Utils.formatTime(it.end)
@@ -331,7 +254,7 @@ class Player : Fragment() {
         dlgBuilder.setItems(itemTexts){ _, itemIdx ->
             // jump to chapter
             val chapter = chapters[itemIdx]
-            viewModel.updatePlayPosition(chapter.start)
+            player.seekTo(chapter.start)
         }
 
         dlgBuilder.create().show()
@@ -339,7 +262,7 @@ class Player : Fragment() {
 
     private fun updatePlaylistMenuItem() {
         mainMenu?.let {
-            it.findItem(R.id.player_menu_playlist).isEnabled = viewModel.currentPlaylist.value != null
+            it.findItem(R.id.player_menu_playlist).isEnabled = player.getCurrentPlaylist() != null
         }
     }
 
@@ -347,12 +270,6 @@ class Player : Fragment() {
         PlaylistOverviewPopup().createAndShow()
     }
     //endregion
-
-    private fun attachPlayer(){
-        if(!player.vlcVout.areViewsAttached()){
-            player.attachViews(playerView, null, false, false)//TODO in future version subtitle option should be settable
-        }
-    }
 
     private fun runControlsTransition(fadeIn: Boolean){
         if(!(fadeIn xor controlsVisible))// do nothing if the desired state is already set
@@ -381,7 +298,7 @@ class Player : Fragment() {
         controlsHideCoroutine = CoroutineScope(Dispatchers.Default).launch {
             delay(CONTROLS_FADE_OUT_DELAY)
             launch(Dispatchers.Main) {
-                if (viewModel.isPlaying.value == true) {// only re-hide if playing
+                if (player.isPlaying()) {// only re-hide if playing
                     runControlsTransition(false)
                 }
 
@@ -390,34 +307,10 @@ class Player : Fragment() {
         }
     }
 
-    private fun playMedia(mediaFile: MediaFile){
-        player.stop()
-
-        val newMedia = VlcManagers.getMediaDB().getSubject().fileToVlcMedia(mediaFile.path)
-        if(newMedia === null)
-            throw IllegalArgumentException("can not create media from file")
-
-        if(currentMedia !== null)
-            currentMedia!!.release()
-
-        this.currentMedia = newMedia
-
-        attachPlayer()
-        updateAltImg(mediaFile)
-
-        player.play(newMedia)
-
-        // this will prevent from autoplay after rotate
-        CoroutineScope(Dispatchers.Default).launch {
-            delay(5)
-            withContext(Dispatchers.Main){
-                if(viewModel.isPlaying.value != true)
-                    player.pause()
-            }
-        }
-    }
-
     private fun showFullscreen(fullscreen: Boolean){
+        if(fullscreen == fullscreenState) return
+        fullscreenState = fullscreen
+
         if(fullscreen){
             val parent = playerContainer.parent as ViewGroup
             parent.removeView(playerContainer)
@@ -426,7 +319,7 @@ class Player : Fragment() {
             // wait until view is attached to re-attach player
             CoroutineScope(Dispatchers.Main).launch {
                 var success = false
-                for(i in 0..10){
+                for(i in 0..100){
                     delay(10)
                     if(playerContainer.parent !== null){
                         success = true
@@ -445,7 +338,7 @@ class Player : Fragment() {
             // wait until view is attached to re-attach playerView
             CoroutineScope(Dispatchers.Main).launch {
                 var success = false
-                for(i in 0..10){
+                for(i in 0..100){
                     delay(10)
                     if(playerContainer.parent === null){
                         success = true
@@ -455,6 +348,7 @@ class Player : Fragment() {
                 if(success){
                     this@Player.requireView().findViewById<FrameLayout>(R.id.player_player_container_container)
                         .addView(playerContainer, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                    delay(10)
                     attachPlayer()
                 }else{
                     Log.e("Player", "could not re-attach playerView: not released by parent")
@@ -509,19 +403,19 @@ class Player : Fragment() {
 
         override fun onDoubleTapEvent(e: MotionEvent): Boolean {
             if(e.actionMasked != MotionEvent.ACTION_UP) return false
-            if(viewModel.currentMedia.value === null) return false
+            if(player.getCurrentMedia() === null) return false
 
             val width = view.width
             val x = e.x
 
             if(x <= width * SEEK_AREA_WIDTH){
                 // seek back
-                viewModel.updatePlayPosition((player.time - SEEK_AMOUNT).coerceAtLeast(0))
+                player.seekTo(-SEEK_AMOUNT)
 
                 return true
             }else if(x >= width * (1.0f - SEEK_AREA_WIDTH)){
                 // seek forward
-                viewModel.updatePlayPosition((player.time + SEEK_AMOUNT).coerceAtMost(player.length))
+                player.seekTo(SEEK_AMOUNT)
 
                 return true
             }
@@ -536,7 +430,7 @@ class Player : Fragment() {
 
         override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
             if(isSeeking)
-                viewModel.updatePlayPosition((player.length * (this@Player.seekBar.value / SEEK_STEP)).toLong())
+                player.seekTo((player.duration * (this@Player.seekBar.value / SEEK_STEP)).toLong())
         }
 
         override fun onStartTrackingTouch(seekBar: SeekBar?) {
@@ -551,79 +445,9 @@ class Player : Fragment() {
             isSeeking = false
 
             // re-schedule control-hiding
-            if(viewModel.isPlaying.value == true) {// only re-hide if playing
+            if(player.isPlaying()) {// only re-hide if playing
                 hideControlsWithDelay()
             }
-        }
-    }
-
-    private inner class PlayerEventHandler : MediaPlayer.EventListener{
-
-        private var newMediaLoading = false
-
-        override fun onEvent(event: MediaPlayer.Event?) {
-            if(event === null) return
-
-            when(event.type){
-                MediaPlayer.Event.TimeChanged -> onTimeChanged()
-                MediaPlayer.Event.EndReached -> onEndReached()
-                MediaPlayer.Event.MediaChanged -> onMediaChanged()
-                MediaPlayer.Event.Playing -> onPlaying()
-            }
-        }
-
-        private fun onTimeChanged() {
-            viewModel.updatePlayPosition(player.time)
-        }
-
-        private fun onEndReached() {
-            val pl = viewModel.currentPlaylist.value
-            if(pl !== null) {
-                if(!pl.isAtEnd()) {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        viewModel.play(pl.nextMedia(), true)
-                    }
-                } else {
-                    onTotalEndReached()
-                }
-            } else {
-                onTotalEndReached()
-            }
-        }
-
-        private fun onMediaChanged() {
-            newMediaLoading = true
-        }
-
-        private fun onPlaying() {
-            if(newMediaLoading){
-                newMediaLoading = false
-
-                // chapter-info should now be loaded
-                // 1.: use chapters from MediaFile; 2.: if not available use from player; 3.: leve empty
-                val chapters: List<Chapter>
-                val mediaChapters = viewModel.currentMedia.value!!.chapters
-                if(!mediaChapters.isNullOrEmpty()){
-                    chapters = mediaChapters
-                }else{
-                    val vlcChapters: Array<MediaPlayer.Chapter>? = player.getChapters(-1)
-                    if(vlcChapters !== null){
-                        chapters = vlcChapters.map {
-                            Chapter(it.timeOffset, it.timeOffset + it.duration, it.name)
-                        }
-                    }else{
-                        chapters = emptyList()
-                    }
-                }
-                viewModel.setChapters(chapters)
-            }
-        }
-
-        private fun onTotalEndReached() {
-            // reset player, or else seek will break
-            player.play(currentMedia!!)
-            viewModel.updatePlayPosition(0)
-            viewModel.pause()
         }
     }
 
@@ -678,9 +502,8 @@ class Player : Fragment() {
             btnRepeat = repeat
             btnShuffle = shuffle
 
-            val pl = viewModel.currentPlaylist.value!!
-            repeat.backgroundTintList = if(pl.repeat) tintSelected else tintNotSelected
-            shuffle.backgroundTintList = if(pl.shuffle) tintSelected else tintNotSelected
+            repeat.backgroundTintList = if(player.repeatMode == SessionPlayer.REPEAT_MODE_ALL) tintSelected else tintNotSelected
+            shuffle.backgroundTintList = if(player.shuffleMode == SessionPlayer.SHUFFLE_MODE_ALL) tintSelected else tintNotSelected
 
             repeat.setOnClickListener {
                 onRepeatClick()
@@ -691,19 +514,24 @@ class Player : Fragment() {
         }
 
         private fun setupCurrentItemObserver() {
-            val observer = Observer<MediaFile> {
-                val select = listAdapter.getSelectExtension()
-                select.deselect()
-                select.select(
-                    viewModel.currentPlaylist.value!!.currentPosition,
-                    false,
-                    false
-                )
+            val mediaChangedListener = object : VlcPlayer.PlayerCallback() {
+                override fun onCurrentMediaItemChanged(player: SessionPlayer, item: MediaItem?) {
+                    val select = listAdapter.getSelectExtension()
+                    select.deselect()
+
+                    if(player.currentMediaItemIndex != SessionPlayer.INVALID_ITEM_INDEX){
+                        select.select(
+                            player.currentMediaItemIndex,
+                            false,
+                            false
+                        )
+                    }
+                }
             }
 
-            viewModel.currentMedia.observe(this@Player.viewLifecycleOwner, observer)
+            player.registerPlayerCallback(ContextCompat.getMainExecutor(this@Player.requireContext()), mediaChangedListener)
             popup.setOnDismissListener {
-                viewModel.currentMedia.removeObserver(observer)
+                player.unregisterPlayerCallback(mediaChangedListener)
             }
         }
 
@@ -726,28 +554,29 @@ class Player : Fragment() {
         }
 
         private fun onItemClick(position: Int) {
-            viewModel.currentPlaylist.value!!.let {
-                it.seek(position - it.currentPosition)
-                viewModel.play(it.currentMedia(), true)
-            }
-
+            player.skipToPlaylistItem(position)
             popup.dismiss()
         }
 
         private fun onRepeatClick() {
-            val pl = viewModel.currentPlaylist.value!!
-            pl.repeat = !pl.repeat
-            btnRepeat.backgroundTintList = if(pl.repeat) tintSelected else tintNotSelected
+            player.repeatMode = if(player.repeatMode == SessionPlayer.REPEAT_MODE_ALL)
+                    SessionPlayer.REPEAT_MODE_NONE
+                else
+                    SessionPlayer.REPEAT_MODE_ALL
+
+            btnRepeat.backgroundTintList = if(player.repeatMode == SessionPlayer.REPEAT_MODE_ALL) tintSelected else tintNotSelected
         }
 
         private fun onShuffleClick() {
             // DynamicPlaylist will run DB-Queries when re-shuffling
             CoroutineScope(Dispatchers.IO).launch {
-                val pl = viewModel.currentPlaylist.value!!
-                pl.shuffle = !pl.shuffle
-                btnShuffle.backgroundTintList = if(pl.shuffle) tintSelected else tintNotSelected
+                player.shuffleMode = if(player.shuffleMode == SessionPlayer.SHUFFLE_MODE_ALL)
+                        SessionPlayer.SHUFFLE_MODE_NONE
+                    else
+                        SessionPlayer.SHUFFLE_MODE_ALL
 
                 withContext(Dispatchers.Main) {
+                    btnShuffle.backgroundTintList = if(player.shuffleMode == SessionPlayer.SHUFFLE_MODE_ALL) tintSelected else tintNotSelected
                     // shuffle can change the items
                     loadItems()
                 }
@@ -755,7 +584,7 @@ class Player : Fragment() {
         }
 
         private fun loadItems() {
-            val pl = viewModel.currentPlaylist.value!!
+            val pl = player.getCurrentPlaylist()!!
             CoroutineScope(Dispatchers.IO).launch {
                 pl.getItems().map {
                     MediaFileItem(it, isDraggable = false, useTitle = true, showThumb = true)
@@ -764,13 +593,62 @@ class Player : Fragment() {
                         listAdapter.setNewList(it)
 
                         listAdapter.getSelectExtension().select(
-                            viewModel.currentPlaylist.value!!.currentPosition.coerceAtLeast(0),
+                            pl.currentPosition.coerceAtLeast(0),
                             false,
                             false
                         )
                     }
                 }
             }
+        }
+    }
+
+    private inner class PlayerListener : VlcPlayer.PlayerCallback() {
+
+        override fun onPlayerStateChanged(player: SessionPlayer, playerState: Int) {
+            if (player.castTo<VlcPlayer>().isPlaying()) {
+                playerContainer.findViewById<ImageButton>(R.id.player_controls_play).setImageResource(R.drawable.ic_baseline_pause)
+                hideControlsWithDelay()
+            }else {
+                playerContainer.findViewById<ImageButton>(R.id.player_controls_play).setImageResource(R.drawable.ic_baseline_play)
+            }
+        }
+
+        override fun onTimeChanged(player: VlcPlayer, time: Long) {
+            if(!seekHandler.isSeeking) {
+                seekBar.value = ((time / player.duration.toDouble()) * SEEK_STEP).toInt().coerceAtLeast(1)
+            }
+
+            timeTextView.text = formatPlayTime(time, player.duration, viewModel.timeTextAsRemaining.value!!)
+        }
+
+        override fun onChaptersChanged(player: VlcPlayer, chapters: List<Chapter>) {
+            if(chapters.isEmpty()){
+                seekBar.segments = emptyArray()
+                seekBar.showTitle = false
+            }else{
+                val totalTime = player.duration.toDouble()
+                assert(totalTime > 0)
+
+                seekBar.segments = chapters.map {
+                    val start = ((it.start.toDouble() / totalTime) * SEEK_STEP).toInt()
+                    val end = ((it.end.toDouble() / totalTime) * SEEK_STEP).toInt()
+                    SegmentedSeekBar.Segment(start, end, it.name)
+                }.toTypedArray()
+
+                seekBar.showTitle = true
+            }
+
+            updateChaptersMenuItem()
+        }
+
+        override fun onCurrentMediaItemChanged(player: SessionPlayer, item: MediaItem?) {
+            if(item !== null)
+                updateAltImg(player.castTo<VlcPlayer>().getCurrentMedia()!!)
+        }
+
+        override fun onPlaylistChanged(player: VlcPlayer) {
+            updatePlaylistMenuItem()
         }
     }
     //endregion

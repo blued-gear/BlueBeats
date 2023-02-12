@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import apps.chocolatecakecodes.bluebeats.service.PlayerService
 import apps.chocolatecakecodes.bluebeats.util.*
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
 import com.google.android.material.tabs.TabLayout
@@ -32,7 +33,6 @@ internal class Search : Fragment(R.layout.search_fragment) {
 
     private var viewModel: SearchViewModel by OnceSettable()
     private var mainVM: MainActivityViewModel by OnceSettable()
-    private var playerVM: PlayerViewModel by OnceSettable()
 
     private var subgroupsAdapter: ArrayAdapter<String> by OnceSettable()
     private var itemListAdapter: FastItemAdapter<GroupItem> by OnceSettable()
@@ -53,7 +53,6 @@ internal class Search : Fragment(R.layout.search_fragment) {
             contextProvider = { this@Search.requireContext() }
         }
         mainVM = vmProvider.get(MainActivityViewModel::class.java)
-        playerVM = vmProvider.get(PlayerViewModel::class.java)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -235,7 +234,7 @@ internal class Search : Fragment(R.layout.search_fragment) {
             itemListAdapter.getSelectExtension().toggleSelection(pos)
         } else {
             mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
-            playerVM.play(item.file)
+            PlayerService.getInstancePlayer().playMedia(item.file)
         }
     }
 

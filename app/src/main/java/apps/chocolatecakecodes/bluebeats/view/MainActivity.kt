@@ -1,6 +1,7 @@
 package apps.chocolatecakecodes.bluebeats.view
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -8,6 +9,7 @@ import android.util.Log
 import android.view.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
@@ -17,6 +19,7 @@ import androidx.viewpager2.widget.ViewPager2
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
+import apps.chocolatecakecodes.bluebeats.service.PlayerService
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 import kotlinx.coroutines.CoroutineScope
@@ -55,12 +58,20 @@ class MainActivity : AppCompatActivity() {
         if(!VlcManagers.isInitialized())
             VlcManagers.init(this)
 
-        wireObservers()
-        listMediaRoots()
+        this.startService(Intent(this, PlayerService::class.java))
+
         setupTabs()
         setupSystemBarsHider()
+        wireObservers()
+        listMediaRoots()
 
         getAppPermissions()
+    }
+
+    override fun onPause() {
+        super.onPause()
+
+        viewModel.currentTab.value = MainActivityViewModel.Tabs.values()[mainTabContent.currentItem]
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -123,7 +134,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun wireObservers(){
         viewModel.currentTab.observe(this){
-            mainTabContent.currentItem = it.ordinal
+            //mainTabContent.currentItem = it.ordinal
+            mainTabContent.setCurrentItem(it.ordinal, false)
         }
 
         viewModel.fullScreenContent.observe(this){

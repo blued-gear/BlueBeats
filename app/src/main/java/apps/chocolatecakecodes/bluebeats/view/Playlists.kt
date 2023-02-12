@@ -19,6 +19,7 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
 import apps.chocolatecakecodes.bluebeats.media.playlist.StaticPlaylist
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylist
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylistIterator
+import apps.chocolatecakecodes.bluebeats.service.PlayerService
 import apps.chocolatecakecodes.bluebeats.util.*
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
 import apps.chocolatecakecodes.bluebeats.view.specialitems.SelectableItem
@@ -52,7 +53,6 @@ internal class Playlists : Fragment() {
 
     private var viewModel: PlaylistsViewModel by OnceSettable()
     private var mainVM: MainActivityViewModel by OnceSettable()
-    private var playerVM: PlayerViewModel by OnceSettable()
     private var itemsAdapter: GenericFastItemAdapter by OnceSettable()
     private var itemsTouchHelper: ItemTouchHelper by OnceSettable()
     private var itemsView = RequireNotNull<RecyclerView>()
@@ -67,7 +67,6 @@ internal class Playlists : Fragment() {
         val vmProvider = ViewModelProvider(this.requireActivity())
         viewModel = vmProvider.get(PlaylistsViewModel::class.java)
         mainVM = vmProvider.get(MainActivityViewModel::class.java)
-        playerVM = vmProvider.get(PlayerViewModel::class.java)
 
         setupFastAdapter()
     }
@@ -235,7 +234,7 @@ internal class Playlists : Fragment() {
             }
 
             mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
-            playerVM.playPlaylist(iter)
+            PlayerService.getInstancePlayer().playPlaylist(iter)
         }
     }
 

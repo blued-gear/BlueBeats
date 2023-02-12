@@ -6,7 +6,7 @@ import org.videolan.libvlc.FactoryManager
 import org.videolan.libvlc.interfaces.ILibVLC
 import org.videolan.libvlc.interfaces.ILibVLCFactory
 
-object VlcManagers {
+internal object VlcManagers {
 
     private var vlc: ILibVLC? = null
     private var mediaDB: MediaDBEventRelay? = null

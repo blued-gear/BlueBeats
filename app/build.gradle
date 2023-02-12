@@ -58,6 +58,7 @@ android {
 dependencies {
     def room_version = "2.4.+"
     def fastadapter_version = "5.6.0"
+    def media2_version = "1.2.1"
 
     implementation project(':taglib')
 
@@ -67,6 +68,7 @@ dependencies {
     implementation "androidx.core:core-ktx:$version_android_ktx"
 
     implementation "androidx.appcompat:appcompat:$version_appcompat"
+    implementation "androidx.media2:media2-common:1.2.1"
     implementation 'com.google.android.material:material:1.6.1'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.constraintlayout:constraintlayout-compose:1.0.1'
@@ -79,6 +81,7 @@ dependencies {
     implementation "androidx.room:room-runtime:$room_version"
     kapt "androidx.room:room-compiler:$room_version"
     implementation 'com.google.guava:guava:31.0.1-android'
+    implementation "androidx.media2:media2-session:$media2_version"
 
     implementation "com.mikepenz:fastadapter:${fastadapter_version}"
     implementation "com.mikepenz:fastadapter-extensions-expandable:${fastadapter_version}"
