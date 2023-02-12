@@ -100,6 +100,10 @@ internal abstract class MediaFileDAO{
         return getForId(id)
     }
 
+    fun newFile(from: MediaFile): MediaFile{
+        return newFile(from.name, from.type, from.parent.entity.id)
+    }
+
     fun getForId(id: Long): MediaFile{
         synchronized(this) {
             val cached = cache.getIfPresent(id)

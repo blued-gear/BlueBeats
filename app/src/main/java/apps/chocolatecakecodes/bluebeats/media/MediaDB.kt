@@ -263,7 +263,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
         newDiscoveredFiles.forEach {
             wasChanged = true
             val fileMedia = discoveredFilesWithName[it]!!
-            val newFile = parseFile(fileMedia, dir)
+            val newFile = fileDao.newFile(parseFile(fileMedia, dir))
             dir.addFile(newFile)
             eventHandler.onNewNodeFound(newFile)
         }
@@ -275,7 +275,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
             fileDao.delete(child)
             eventHandler.onNodeRemoved(child)
         }
-        // update files (do not re-check added files as they wre just parsed)
+        // update files (do not re-check added files as they were just parsed)
         existingFilesWithName.keys.minus(newDiscoveredFiles).forEach {
             val child = existingFilesWithName[it]!!
             updateFile(child)
@@ -309,7 +309,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
 
         //TODO parse more attributes
 
-        return RoomDB.DB_INSTANCE.mediaFileDao().newFile(name, type, parent.entity.id)
+        return MediaFile(MediaFileEntity(MediaNode.UNALLOCATED_NODE_ID, name, parent.entity.id, type))
     }
 
     private fun updateFile(file: MediaFile){
