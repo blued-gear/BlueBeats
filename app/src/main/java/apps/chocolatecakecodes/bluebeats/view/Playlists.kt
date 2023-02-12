@@ -538,7 +538,7 @@ internal class Playlists : Fragment() {
 //region RecycleView-Items
 private class ListsItem(val playlist: PlaylistInfo) : SelectableItem<ListsItem.ViewHolder>() {
 
-    override val type: Int = R.layout.playlists_fragment * 100 + 1
+    override val type: Int = R.layout.playlists_fragment.shl(3) + 1
     override val layoutRes: Int = R.layout.playlists_entry_list
 
     override fun getViewHolder(v: View) = ViewHolder(v)
@@ -562,7 +562,7 @@ private class ListsItem(val playlist: PlaylistInfo) : SelectableItem<ListsItem.V
 
 internal class MediaItem(val media: MediaFile, draggable: Boolean = true) : SelectableItem<MediaItem.ViewHolder>(), IDraggable {
 
-    override val type: Int = R.layout.playlists_fragment * 100 + 2
+    override val type: Int = R.layout.playlists_fragment.shl(3) + 2
     override val layoutRes: Int = R.layout.view_media_file
 
     override val isDraggable: Boolean = draggable
