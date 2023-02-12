@@ -19,6 +19,7 @@ import org.videolan.libvlc.FactoryManager
 import org.videolan.libvlc.interfaces.ILibVLC
 import org.videolan.libvlc.interfaces.IMedia
 import org.videolan.libvlc.interfaces.IMediaFactory
+import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
 
@@ -189,6 +190,9 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
 
     @SuppressLint("Range")
     fun getThumbnail(file: MediaFile, width: Int, height: Int): Bitmap? {
+        if(!File(file.path).exists())
+            return null
+
         return when(file.type) {
             MediaFile.Type.AUDIO -> {
                 tryLoadThumbnail(file.path)?.let {

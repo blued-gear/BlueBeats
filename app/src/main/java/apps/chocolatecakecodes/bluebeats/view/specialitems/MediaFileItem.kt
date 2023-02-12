@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * @param file the MediaFile to represent
@@ -79,21 +80,27 @@ internal open class MediaFileItem(
         private fun loadThumbnail(file: MediaFile) {
             if(thumb.height > 0) {
                 CoroutineScope(Dispatchers.IO).launch {
-                    VlcManagers.getMediaDB().getSubject()
-                        .getThumbnail(file, -1, thumb.height).let {
-                            withContext(Dispatchers.Main) {
-                                if(it !== null) {
-                                    thumb.imageTintList = null
-                                    thumb.setImageBitmap(it)
-                                } else {
-                                    when(file.type) {
-                                        MediaFile.Type.AUDIO -> thumb.setImageResource(R.drawable.ic_baseline_audiotrack_24)
-                                        MediaFile.Type.VIDEO -> thumb.setImageResource(R.drawable.ic_baseline_local_movies_24)
-                                        MediaFile.Type.OTHER -> thumb.setImageResource(R.drawable.ic_baseline_insert_drive_file_24)
+                    if(File(file.path).exists()) {
+                        VlcManagers.getMediaDB().getSubject()
+                            .getThumbnail(file, -1, thumb.height).let {
+                                withContext(Dispatchers.Main) {
+                                    if(it !== null) {
+                                        thumb.imageTintList = null
+                                        thumb.setImageBitmap(it)
+                                    } else {
+                                        when(file.type) {
+                                            MediaFile.Type.AUDIO -> thumb.setImageResource(R.drawable.ic_baseline_audiotrack_24)
+                                            MediaFile.Type.VIDEO -> thumb.setImageResource(R.drawable.ic_baseline_local_movies_24)
+                                            MediaFile.Type.OTHER -> thumb.setImageResource(R.drawable.ic_baseline_insert_drive_file_24)
+                                        }
                                     }
                                 }
                             }
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            thumb.setImageResource(R.drawable.ic_baseline_file_removed)
                         }
+                    }
                 }
             }
         }
