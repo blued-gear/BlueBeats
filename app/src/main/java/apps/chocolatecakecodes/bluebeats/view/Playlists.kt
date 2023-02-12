@@ -119,7 +119,7 @@ internal class Playlists : Fragment() {
 
     private fun wireUpBtn() {
         upBtn.get().setOnClickListener {
-            viewModel.showOverview.postValue(false)
+            viewModel.showOverview.postValue(true)
         }
     }
     //endregion
