@@ -16,6 +16,24 @@
             android:layout_marginTop="16dp"
             android:layout_marginBottom="16dp">
 
+        <ImageView
+                android:src="@drawable/background_control"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:id="@+id/filedetails_thumb"
+                app:layout_constraintBottom_toTopOf="@+id/guideline2"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintVertical_bias="0.0" />
+
+        <androidx.constraintlayout.widget.Guideline
+                android:orientation="horizontal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/guideline2"
+                app:layout_constraintGuide_percent="0.3" />
+
         <androidx.constraintlayout.widget.Guideline
                 android:orientation="horizontal"
                 android:layout_width="wrap_content"
@@ -29,11 +47,11 @@
                 android:id="@+id/scrollView2"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
                 tools:visibility="visible"
                 app:layout_constraintBottom_toTopOf="@+id/guideline6"
                 app:layout_constraintHorizontal_bias="0.0"
-                app:layout_constraintVertical_bias="1.0">
+                app:layout_constraintTop_toBottomOf="@+id/filedetails_thumb"
+                android:layout_marginTop="4dp">
 
             <LinearLayout
                     android:layout_width="match_parent"

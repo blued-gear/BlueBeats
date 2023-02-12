@@ -5,8 +5,10 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.view.doOnNextLayout
 import androidx.fragment.app.Fragment
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
@@ -14,10 +16,7 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.taglib.TagFields
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.Utils
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 
 private const val STATE_FILE = "key:filePath"
 
@@ -28,6 +27,9 @@ class FileDetails() : Fragment(R.layout.filedetails_fragment) {
     private lateinit var tagListView: LinearLayout
     private lateinit var usertagListView: LinearLayout
     private lateinit var usertagListTitle: TextView
+    private lateinit var thumbView: ImageView
+
+    private var stateLoaderJob: Job? = null
 
     constructor(file: MediaFile) : this() {
         this.file = file
@@ -38,7 +40,9 @@ class FileDetails() : Fragment(R.layout.filedetails_fragment) {
 
         if(savedInstanceState !== null){
             val filePath = savedInstanceState.getString(STATE_FILE)!!
-            file = VlcManagers.getMediaDB().getSubject().pathToMedia(filePath) as MediaFile
+            stateLoaderJob = CoroutineScope(Dispatchers.IO).launch {
+                file = VlcManagers.getMediaDB().getSubject().pathToMedia(filePath) as MediaFile
+            }
         }
     }
 
@@ -54,13 +58,19 @@ class FileDetails() : Fragment(R.layout.filedetails_fragment) {
         tagListView = view.findViewById(R.id.filedetails_taglist)
         usertagListView = view.findViewById(R.id.filedetails_usertaglist)
         usertagListTitle = view.findViewById(R.id.filedetails_usertags_title)
+        thumbView = view.findViewById(R.id.filedetails_thumb)
 
         showData()
     }
 
     private fun showData(){
-        // tags could be loaded from DB
         CoroutineScope(Dispatchers.IO).launch {
+            if(stateLoaderJob !== null) {
+                stateLoaderJob!!.join()
+                stateLoaderJob = null
+            }
+
+            showThumb()
             showName()
 
             file.mediaTags.let {
@@ -114,6 +124,25 @@ class FileDetails() : Fragment(R.layout.filedetails_fragment) {
         }
 
         usertagListTitle.visibility = if(tags.isEmpty()) View.INVISIBLE else View.VISIBLE
+    }
+
+    private fun showThumb() {
+        this.requireView().doOnNextLayout { view ->
+            CoroutineScope(Dispatchers.IO).launch {
+                VlcManagers.getMediaDB().getSubject()
+                    .getThumbnail(file, view.width, -1)
+                    .let {
+                        withContext(Dispatchers.Main) {
+                            if (it !== null) {
+                                thumbView.visibility = View.VISIBLE
+                                thumbView.setImageBitmap(it)
+                            } else {
+                                thumbView.visibility = View.GONE
+                            }
+                        }
+                    }
+            }
+        }
     }
 
     private fun addTag(name: Int, value: String?){
