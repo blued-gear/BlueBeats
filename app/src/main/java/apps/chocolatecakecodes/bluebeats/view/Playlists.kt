@@ -399,7 +399,7 @@ internal class Playlists : Fragment() {
             withContext(Dispatchers.Main) {
                 val isStaticPl = viewModel.selectedPlaylist is StaticPlaylist
                 itemsAdapter.setNewList(viewModel.playlistItems!!.map {
-                    MediaFileItem(it, isStaticPl)
+                    MediaFileItem(it, isStaticPl, useTitle = true, showThumb = true)
                 })
 
                 updateMenu()
