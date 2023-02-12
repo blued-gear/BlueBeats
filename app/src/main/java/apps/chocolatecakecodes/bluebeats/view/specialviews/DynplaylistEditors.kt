@@ -1,5 +1,6 @@
 package apps.chocolatecakecodes.bluebeats.view.specialviews
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
@@ -7,6 +8,7 @@ import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatImageButton
@@ -22,8 +24,12 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.IncludeR
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.Rule
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGroup
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.UsertagsRule
+import apps.chocolatecakecodes.bluebeats.util.RequireNotNull
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import kotlinx.coroutines.*
+import java.math.RoundingMode
+import java.text.DecimalFormat
+import kotlin.math.truncate
 
 internal typealias ChangedCallback = (Rule) -> Unit
 
@@ -32,10 +38,10 @@ internal fun createEditorRoot(
     cb: ChangedCallback,
     ctx: Context
 ): View {
-    return DynplaylistGroupEditor(root, cb, ctx)
+    return DynplaylistGroupEditor(root, cb, ctx).apply {
+        header.shareBtn.visibility = View.GONE// root-group always has 100% share
+    }
 }
-
-//TODO add edit for share to editors
 
 //region editors
 private class DynplaylistGroupEditor(
@@ -74,6 +80,10 @@ private class DynplaylistGroupEditor(
 
         header.apply {
             title.text = "Group"//TODO rules should have names
+            setupShareEdit(group.share) {
+                group.share = it
+                changedCallback(group)
+            }
             addVisual(addBtn, true)
             addVisual(logicBtn, false)
         }
@@ -123,6 +133,7 @@ private class DynplaylistGroupEditor(
             SimpleAddableRuleHeaderView.CommonVisuals.negateCheckbox(context).apply {
                 setOnCheckedChangeListener { _, checked ->
                     group.setRuleNegated(ruleItem.first, checked)
+                    this@editorView.header.shareBtn.visibility = if(checked) View.GONE else View.VISIBLE
                 }
                 this.isChecked = ruleItem.second
             }.let {
@@ -155,6 +166,11 @@ private class DynplaylistIncludeEditor(
 
     init {
         header.title.text = "Include"//TODO rules should have names
+
+        header.setupShareEdit(rule.share) {
+            rule.share = it
+            changedCallback(rule)
+        }
 
         SimpleAddableRuleHeaderView.CommonVisuals.addButton(context).apply {
             setOnClickListener {
@@ -262,6 +278,11 @@ private class DynplaylistUsertagsEditor(
 
     init {
         header.title.text = "Tags"//TODO rules should have names
+
+        header.setupShareEdit(rule.share) {
+            rule.share = it
+            changedCallback(rule)
+        }
 
         logicBtn.apply {
             setOnClickListener {
@@ -405,6 +426,9 @@ private class SimpleAddableRuleHeaderView(ctx: Context) : LinearLayout(ctx) {
     }
 
     val title = TextView(context)
+    val shareBtn = Button(context)
+
+    private lateinit var ruleShare: Rule.Share
 
     init {
         this.orientation = HORIZONTAL
@@ -413,14 +437,152 @@ private class SimpleAddableRuleHeaderView(ctx: Context) : LinearLayout(ctx) {
     }
 
     /**
-     * @param atEnd if true item will be placed as the last view; else it will be placed after the title
+     * @param atEnd if true item will be placed as the last view; else it will be placed after the share-btn
      */
     fun addVisual(item: View, atEnd: Boolean) {
         val lp = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, 0f)
         if(atEnd)
             this.addView(item, lp)
         else
-            this.addView(item, 1, lp)
+            this.addView(item, 2, lp)
+    }
+
+    fun setupShareEdit(initialShare: Rule.Share, onEdited: (Rule.Share) -> Unit) {
+        ruleShare = initialShare
+        setShareBtnText(initialShare)
+        shareBtn.setOnClickListener(onEditShareHandler(onEdited))
+
+        if(shareBtn.parent === null)
+            addVisual(shareBtn, true)
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun setShareBtnText(share: Rule.Share) {
+        if(share.isRelative) {
+            val sharePercentage = DecimalFormat("#.#").apply {
+                roundingMode = RoundingMode.HALF_UP
+            }.format(share.value * 100)
+            shareBtn.text = "S: ${sharePercentage}%"
+        } else {
+            shareBtn.text = "S: ${share.value.toInt()}"
+        }
+    }
+
+    private fun onEditShareHandler(onEditedHandler: (Rule.Share) -> Unit): OnClickListener {
+        return OnClickListener{
+            var popup: PopupWindow? = null
+            val popupContent = ShareEditor(ruleShare, context) { newVal ->
+                newVal?.let {
+                    onEditedHandler(it)
+                    ruleShare = it
+                    setShareBtnText(it)
+                }
+
+                popup!!.dismiss()
+            }
+
+            popup = PopupWindow(
+                popupContent,
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
+                true
+            )
+
+            popup.showAtLocation(this, Gravity.CENTER, 0, 0)
+        }
+    }
+}
+
+private class ShareEditor(
+    initialShare: Rule.Share,
+    ctx: Context,
+    private val onResult: (Rule.Share?) -> Unit
+) : FrameLayout(ctx) {
+
+    private val absoluteCb: CheckBox
+    private val valueInp: EditText
+    private val okBtn: Button
+    private val cancelBtn: Button
+
+    init {
+        setBackgroundColor(Color.WHITE)
+
+        LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+
+            absoluteCb = CheckBox(context).apply {
+                text = context.getString(R.string.dynpl_share_absolute)
+                isChecked = !initialShare.isRelative
+                setOnCheckedChangeListener { _, checked ->
+                    onAbsoluteCheckedChanged(checked)
+                }
+            }.also {
+                addView(it)
+            }
+
+            valueInp = EditText(context).apply {
+                inputType = EditorInfo.TYPE_CLASS_NUMBER
+                setSingleLine()
+                if(initialShare.isRelative)
+                    inputType = inputType or EditorInfo.TYPE_NUMBER_FLAG_DECIMAL
+                text.append(initialShare.value.toString())
+
+            }.also {
+                addView(it)
+            }
+
+            okBtn = Button(context).apply {
+                text = context.getString(R.string.misc_ok)
+                setOnClickListener {
+                    onOk()
+                }
+            }
+            cancelBtn = Button(context).apply {
+                text = context.getString(R.string.misc_cancel)
+                setOnClickListener {
+                    onCancel()
+                }
+            }
+
+            // bottom bar
+            LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                this.addView(okBtn, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+                this.addView(View(context), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 5f))
+                this.addView(cancelBtn, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+            }.let {
+                this.addView(it, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+            }
+        }.let {
+            this.addView(it)
+        }
+    }
+
+    private fun onOk() {
+        var shareVal = valueInp.text.toString().toFloat()
+        val relative = !absoluteCb.isChecked
+        if(relative)
+            shareVal = shareVal.coerceAtMost(1f)
+        onResult(Rule.Share(
+            if(relative) shareVal else truncate(shareVal),
+            relative
+        ))
+    }
+
+    private fun onCancel() {
+        onResult(null)
+    }
+
+    private fun onAbsoluteCheckedChanged(isAbs: Boolean) {
+        if(isAbs) {
+            valueInp.inputType = valueInp.inputType and EditorInfo.TYPE_NUMBER_FLAG_DECIMAL.inv()
+            valueInp.text.apply {
+                val currentVal = toString().toFloat()
+                clear()
+                append(currentVal.toInt().toString())
+            }
+        } else {
+            valueInp.inputType = valueInp.inputType or EditorInfo.TYPE_NUMBER_FLAG_DECIMAL
+        }
     }
 }
 

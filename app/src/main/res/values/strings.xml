@@ -26,4 +26,6 @@
     <string name="dynpl_edit_deep_dir">Inc. Subdirs</string>
     <string name="dynpl_type_usertags">Usertags-Rule</string>
     <string name="misc_saved">Changes saved</string>
+    <string name="dynpl_share_absolute">Absolute</string>
+    <string name="dynpl_share_value">Value</string>
 </resources>
