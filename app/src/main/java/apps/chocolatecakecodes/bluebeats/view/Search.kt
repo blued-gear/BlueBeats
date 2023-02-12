@@ -179,6 +179,12 @@ internal class Search : Fragment(R.layout.search_fragment) {
                     true
                 }
             }
+            menu.findItem(R.id.search_mnu_sela).apply {
+                setOnMenuItemClickListener {
+                    onSelectAll()
+                    true
+                }
+            }
 
             updateMenu()
         }
@@ -291,6 +297,20 @@ internal class Search : Fragment(R.layout.search_fragment) {
         menu?.let {
             it.findItem(R.id.search_mnu_addpl).isEnabled = false
             it.findItem(R.id.search_mnu_fi).isEnabled = false
+        }
+    }
+
+    private fun onSelectAll() {
+        // select all files in all expanded groups
+        itemListAdapter.adapterItems
+        .filterIsInstance<GroupItem>()// necessary because adapterItems also returns items of groups
+        .filter {
+            it.isExpanded
+        }.forEach {
+            it.subItems.forEach {
+                val pos = itemListAdapter.getAdapterPosition(it.identifier)
+                itemListAdapter.getSelectExtension().select(pos, false, true)
+            }
         }
     }
     //endregion

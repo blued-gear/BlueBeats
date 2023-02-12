@@ -8,6 +8,9 @@
             android:title="@string/search_mnu_collapse_all"
             android:id="@+id/search_mnu_colp" />
     <item
+            android:title="@string/filebrowser_menu_select_all_files"
+            android:id="@+id/search_mnu_sela" />
+    <item
             android:title="@string/filebrowser_menu_add_playlist"
             android:id="@+id/search_mnu_addpl" />
     <item
