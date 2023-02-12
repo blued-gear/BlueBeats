@@ -35,8 +35,6 @@ internal class StaticPlaylist private constructor(
     }
 
     fun addMedia(toAdd: MediaFile) {
-        if (media.contains(toAdd))
-            return
         media.add(toAdd)
     }
 
