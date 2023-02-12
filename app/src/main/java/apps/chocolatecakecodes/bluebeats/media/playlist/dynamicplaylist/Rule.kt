@@ -14,13 +14,23 @@ internal typealias GenericRule = Rule<*>
  */
 internal interface Rule<T> : Parcelable {
 
-    /** determines how much items a rule should add to the resulting collection */
+    /**
+     * determines how much items a rule should add to the resulting collection <br/>
+     * there are four modes: relative (isRelative = true, value >= 0), absolute (isRelative = false, value >= 0),
+     *  even (isRelative = true, value = -1; all with even will get the same relative value),
+     *  unlimited (isRelative = false, value = -1)
+     */
     data class Share(
         val value: Float,
         /** if true the value is a percentage between 0 and 1.0;
          *     else it is the absolute amount of items which should be generated (should be cast to int) */
         val isRelative: Boolean
     ) : Parcelable {
+
+        fun modeRelative() = isRelative && value >= 0
+        fun modeAbsolute() = !isRelative && value >= 0
+        fun modeEven() = isRelative && value == -1f
+        fun modeUnlimited() = !isRelative && value == -1f
 
         override fun describeContents(): Int {
             return 0

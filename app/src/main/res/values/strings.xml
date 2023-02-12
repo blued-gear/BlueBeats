@@ -40,4 +40,5 @@
     <string name="dynpl_edit_tag_type">Tag Type:</string>
     <string name="dynpl_share_unlimited">Unlimited</string>
     <string name="dynpl_share_relative">Relative</string>
+    <string name="dynpl_share_even">Even</string>
 </resources>

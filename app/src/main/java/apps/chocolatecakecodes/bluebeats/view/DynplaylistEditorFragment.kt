@@ -193,22 +193,26 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
         }
     }
 
-    private fun checkRuleShares(group: RuleGroup): Boolean{
+    private fun checkRuleShares(group: RuleGroup): Boolean {
         group.getRules().filterNot {
             it.second
         }.map {
             it.first.share
-        }.filter {
-            it.isRelative
-        }.let {
-            if(it.isNotEmpty()){
-                val epsilon = 0.0001f
-                @Suppress("NAME_SHADOWING")
-                val shareSum = it.fold(0f) { acc, it ->
-                    acc + it.value
+        }.let { shares ->
+            if(!shares.any { it.modeEven() }) {
+                shares.filter {
+                    it.modeRelative()
+                }.let {
+                    if(it.isNotEmpty()){
+                        val epsilon = 0.0001f
+                        @Suppress("NAME_SHADOWING")
+                        val shareSum = it.fold(0f) { acc, it ->
+                            acc + it.value
+                        }
+                        if(abs(1f - shareSum) > epsilon)
+                            return false
+                    }
                 }
-                if(abs(1f - shareSum) > epsilon)
-                    return false
             }
         }
 

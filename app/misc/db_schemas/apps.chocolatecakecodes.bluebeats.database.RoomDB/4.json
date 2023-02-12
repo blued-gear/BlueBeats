@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 4,
-    "identityHash": "e27973c5d920327834309a664e4302a9",
+    "identityHash": "67f470125dac9cd2c06f7ed4030703c8",
     "entities": [
       {
         "tableName": "MediaDirEntity",
@@ -553,6 +553,15 @@
         },
         "indices": [
           {
+            "name": "index_StaticPlaylistEntry_media",
+            "unique": false,
+            "columnNames": [
+              "media"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_StaticPlaylistEntry_media` ON `${TABLE_NAME}` (`media`)"
+          },
+          {
             "name": "index_StaticPlaylistEntry_playlist",
             "unique": false,
             "columnNames": [
@@ -616,7 +625,17 @@
           ],
           "autoGenerate": false
         },
-        "indices": [],
+        "indices": [
+          {
+            "name": "index_DynamicPlaylistEntity_ruleRoot",
+            "unique": true,
+            "columnNames": [
+              "ruleRoot"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_DynamicPlaylistEntity_ruleRoot` ON `${TABLE_NAME}` (`ruleRoot`)"
+          }
+        ],
         "foreignKeys": [
           {
             "table": "RuleGroupEntity",
@@ -823,6 +842,15 @@
             ],
             "orders": [],
             "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_IncludeRuleFileEntry_rule_file` ON `${TABLE_NAME}` (`rule`, `file`)"
+          },
+          {
+            "name": "index_IncludeRuleFileEntry_file",
+            "unique": false,
+            "columnNames": [
+              "file"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_IncludeRuleFileEntry_file` ON `${TABLE_NAME}` (`file`)"
           }
         ],
         "foreignKeys": [
@@ -895,6 +923,15 @@
             ],
             "orders": [],
             "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_IncludeRuleDirEntry_rule_dir` ON `${TABLE_NAME}` (`rule`, `dir`)"
+          },
+          {
+            "name": "index_IncludeRuleDirEntry_dir",
+            "unique": false,
+            "columnNames": [
+              "dir"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_IncludeRuleDirEntry_dir` ON `${TABLE_NAME}` (`dir`)"
           }
         ],
         "foreignKeys": [
@@ -989,7 +1026,17 @@
           ],
           "autoGenerate": true
         },
-        "indices": [],
+        "indices": [
+          {
+            "name": "index_UsertagsRuleEntry_rule",
+            "unique": false,
+            "columnNames": [
+              "rule"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_UsertagsRuleEntry_rule` ON `${TABLE_NAME}` (`rule`)"
+          }
+        ],
         "foreignKeys": [
           {
             "table": "UsertagsRuleEntity",
@@ -1101,7 +1148,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e27973c5d920327834309a664e4302a9')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '67f470125dac9cd2c06f7ed4030703c8')"
     ]
   }
 }

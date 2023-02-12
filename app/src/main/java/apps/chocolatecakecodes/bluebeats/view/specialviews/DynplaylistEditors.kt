@@ -613,17 +613,18 @@ private class SimpleAddableRuleHeaderView(ctx: Context) : LinearLayout(ctx) {
 
     @SuppressLint("SetTextI18n")
     private fun setShareBtnText(share: Rule.Share) {
-        if(share.isRelative) {
+        if(share.modeRelative()) {
             val sharePercentage = DecimalFormat("#.#").apply {
                 roundingMode = RoundingMode.HALF_UP
                 multiplier = 100
             }.format(share.value)
             shareBtn.text = "S: ${sharePercentage}%"
-        } else {
-            if(share.value == -1f)// unlimited
-                shareBtn.text = "inf"
-            else
+        } else if(share.modeAbsolute()) {
                 shareBtn.text = "S: ${share.value.toInt()}"
+        } else if(share.modeEven()) {
+            shareBtn.text = "evn"
+        } else if (share.modeUnlimited()) {
+            shareBtn.text = "inf"
         }
     }
 
@@ -659,9 +660,10 @@ private class ShareEditor(
     private val onResult: (Rule.Share?) -> Unit
 ) : FrameLayout(ctx) {
 
-    private enum class ShareMode { RELATIVE, ABSOLUTE, UNLIMITED }
+    private enum class ShareMode { RELATIVE, EVEN, ABSOLUTE, UNLIMITED }
 
     private val relativeRb: RadioButton
+    private val evenRb: RadioButton
     private val absoluteRb: RadioButton
     private val unlimitedRb: RadioButton
     private val valueInp: EditText
@@ -676,10 +678,20 @@ private class ShareEditor(
 
             relativeRb = RadioButton(ctx).apply {
                 setText(R.string.dynpl_share_relative)
-                isChecked = initialShare.isRelative
+                isChecked = initialShare.isRelative && initialShare.value >= 0
                 setOnCheckedChangeListener { _, checked ->
                     if(checked)
                         onShareModeChanged(ShareMode.RELATIVE)
+                }
+            }.also {
+                addView(it)
+            }
+            evenRb = RadioButton(ctx).apply {
+                setText(R.string.dynpl_share_even)
+                isChecked = initialShare.isRelative && initialShare.value < 0
+                setOnCheckedChangeListener { _, checked ->
+                    if(checked)
+                        onShareModeChanged(ShareMode.EVEN)
                 }
             }.also {
                 addView(it)
@@ -757,6 +769,8 @@ private class ShareEditor(
         var shareVal = valueInp.text.toString().toFloat()
         if(unlimitedRb.isChecked) {
             onResult(Rule.Share(-1f, false))
+        } else if(evenRb.isChecked) {
+            onResult(Rule.Share(-1f, true))
         } else {
             val relative = relativeRb.isChecked
             if(relative)
@@ -778,6 +792,14 @@ private class ShareEditor(
                 valueInp.isEnabled = true
                 valueInp.inputType = valueInp.inputType or EditorInfo.TYPE_NUMBER_FLAG_DECIMAL
 
+                evenRb.isChecked = false
+                absoluteRb.isChecked = false
+                unlimitedRb.isChecked = false
+            }
+            ShareMode.EVEN -> {
+                valueInp.isEnabled = false
+
+                relativeRb.isChecked = false
                 absoluteRb.isChecked = false
                 unlimitedRb.isChecked = false
             }
@@ -791,12 +813,14 @@ private class ShareEditor(
                 }
 
                 relativeRb.isChecked = false
+                evenRb.isChecked = false
                 unlimitedRb.isChecked = false
             }
             ShareMode.UNLIMITED -> {
                 valueInp.isEnabled = false
 
                 relativeRb.isChecked = false
+                evenRb.isChecked = false
                 absoluteRb.isChecked = false
             }
         }

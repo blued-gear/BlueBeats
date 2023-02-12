@@ -33,7 +33,15 @@ internal class RuleGroup private constructor(
                 it.second.map { it.first }
             )
         }
-        val (relativeRules, absoluteRules) = positiveRules.partition { it.share.isRelative }
+        val (relativeRules, evenRules, absoluteRules) = positiveRules.partition {
+            it.share.isRelative
+        }.let { (relativeRules, absoluteRules) ->
+            relativeRules.partition {
+                it.share.modeRelative()
+            }.let {
+                Triple(it.first, it.second, absoluteRules)
+            }
+        }
 
         val excludeAcc = exclude + negativeRules.flatMap { it.generateItems(-1, emptySet()) }
 
@@ -54,25 +62,28 @@ internal class RuleGroup private constructor(
             it.generateItems(localAmount, excludeAcc)
         }
 
+        val evenAmount = if(amount >= 0 && !combineWithAnd)
+                (((1.0 - relativeRules.sumOf { it.share.value.toDouble() }) / evenRules.size) * relativeAmount).toInt()
+            else
+                -1
+        val evenItems = evenRules.map {
+            it.generateItems(evenAmount, excludeAcc)
+        }
+
         return let {
             if(combineWithAnd){
-                absoluteItems
-                    .map { it.toSet() }
-                    .reduceOrNull { acc, cur ->
-                        acc.intersect(cur)
-                    }?.let { absoluteIntersect ->
-                        relativeItems
-                            .map { it.toSet() }
-                            .fold(absoluteIntersect) { acc, cur ->
-                                acc.intersect(cur)
-                            }
-                    } ?: emptySet()
+                (absoluteItems + relativeItems + evenItems).map {
+                    it.toSet()
+                }.reduceOrNull { acc, cur ->
+                    acc.intersect(cur)
+                } ?: emptySet()
             } else {
                 val absoluteCombined = LinkedHashSet<MediaFile>()
                 absoluteItems.forEach { absoluteCombined.addAll(it) }
 
                 val relativeCombined = LinkedHashSet<MediaFile>()
                 relativeItems.forEach { relativeCombined.addAll(it) }
+                evenItems.forEach { relativeCombined.addAll(it) }
 
                 absoluteCombined + relativeCombined.shuffled()
             }
