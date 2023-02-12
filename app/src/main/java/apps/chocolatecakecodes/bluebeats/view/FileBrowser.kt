@@ -388,14 +388,8 @@ class FileBrowser : Fragment() {
             }
 
             withContext(Dispatchers.Main) {
-                //TODO create custom view with combination of TextEdit and Spinner
-                val plSelect = AutoCompleteTextView(ctx).apply {
-                    setAdapter(ArrayAdapter(
-                        ctx,
-                        R.layout.support_simple_spinner_dropdown_item,
-                        existingPlaylist.keys.toList()
-                    ))
-                    threshold = 0
+                val plSelect = SpinnerTextbox(ctx).apply {
+                    setItems(existingPlaylist.keys.toList())
                 }
 
                 AlertDialog.Builder(ctx)
@@ -406,7 +400,7 @@ class FileBrowser : Fragment() {
                     }
                     .setPositiveButton("OK") { dlg, _ ->
                         CoroutineScope(Dispatchers.IO).launch {
-                            val plName = plSelect.text.toString()
+                            val plName = plSelect.text
                             val dao = RoomDB.DB_INSTANCE.staticPlaylistDao()
 
                             val pl = if(existingPlaylist.containsKey(plName)){
