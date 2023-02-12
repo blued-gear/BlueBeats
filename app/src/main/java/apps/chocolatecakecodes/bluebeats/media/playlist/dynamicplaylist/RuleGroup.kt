@@ -142,8 +142,11 @@ internal class RuleGroup private constructor(
         this.combineWithAnd = other.combineWithAnd
         this.share = other.share.copy()
 
-        val thisRules = this.rules.associateBy { RuleGroupDao.getRuleEntityId(it.first) }
-        val otherRules = other.rules.associateBy { RuleGroupDao.getRuleEntityId(it.first) }
+        data class RuleId(val type: Int, val instance: Long)
+        fun ruleId(rule: GenericRule) = RuleId(rule.javaClass.hashCode(), RuleGroupDao.getRuleEntityId(rule))
+
+        val thisRules = this.rules.associateBy { ruleId(it.first) }
+        val otherRules = other.rules.associateBy { ruleId(it.first) }
         Utils.diffChanges(thisRules.keys, otherRules.keys).let { (added, deleted, same) ->
             added.map {
                 otherRules[it]!!
