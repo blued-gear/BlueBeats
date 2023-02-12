@@ -98,6 +98,12 @@ class Player : Fragment() {
         setupMainMenu()
     }
 
+    override fun onPause() {
+        super.onPause()
+
+        mainMenu = null
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         viewModel.updatePlayPosition(player.time)
