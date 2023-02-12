@@ -486,23 +486,25 @@ private class ListsItem(val playlist: PlaylistInfo) : SelectableItem<ListsItem.V
     }
 }
 
-private class MediaItem(val media: MediaFile) : SelectableItem<MediaItem.ViewHolder>(), IDraggable {
+internal class MediaItem(val media: MediaFile, draggable: Boolean = true) : SelectableItem<MediaItem.ViewHolder>(), IDraggable {
 
     override val type: Int = R.layout.playlists_fragment * 100 + 2
     override val layoutRes: Int = R.layout.view_media_file
 
-    override val isDraggable: Boolean = true
+    override val isDraggable: Boolean = draggable
 
     override fun getViewHolder(v: View) = ViewHolder(v)
 
     class ViewHolder(view: View) : SelectableItem.ViewHolder<MediaItem>(view) {
 
         private val title: TextView = view.findViewById(R.id.v_mf_text)
+        private val dragHandle: View = view.findViewById(R.id.v_mf_handle)
 
         override fun bindView(item: MediaItem, payloads: List<Any>) {
             super.bindView(item, payloads)
 
             title.text = item.media.name
+            dragHandle.visibility = if(item.isDraggable) View.VISIBLE else View.GONE
         }
         override fun unbindView(item: MediaItem) {
             super.unbindView(item)
