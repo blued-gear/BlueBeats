@@ -1,6 +1,7 @@
 package apps.chocolatecakecodes.bluebeats.media.playlist
 
 import androidx.room.*
+import apps.chocolatecakecodes.bluebeats.database.MediaFileEntity
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import com.google.common.cache.Cache
@@ -140,10 +141,18 @@ internal data class StaticPlaylistEntity(
 )
 
 @Entity(
-    foreignKeys = [ForeignKey(entity = StaticPlaylistEntry::class,
-        parentColumns = ["id"], childColumns = ["playlist"],
-        onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.RESTRICT
-    )]
+    foreignKeys = [
+        ForeignKey(
+            entity = StaticPlaylistEntity::class,
+            parentColumns = ["id"], childColumns = ["playlist"],
+            onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.RESTRICT
+        ),
+        ForeignKey(
+            entity = MediaFileEntity::class,
+            parentColumns = ["id"], childColumns = ["media"],
+            onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE//TODO maybe remap to _DELETE_ITEM_ entry
+        )
+    ]
 )
 internal data class StaticPlaylistEntry(
     @PrimaryKey(autoGenerate = true) val id: Long,
