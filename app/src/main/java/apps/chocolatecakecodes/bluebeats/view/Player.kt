@@ -360,7 +360,7 @@ class Player : Fragment() {
     }
 
     private fun refreshPlayerControls() {
-        if (player.castTo<VlcPlayer>().isPlaying()) {
+        if (player.isPlaying()) {
             playerContainer.findViewById<ImageButton>(R.id.player_controls_play).setImageResource(R.drawable.ic_baseline_pause)
         }else {
             playerContainer.findViewById<ImageButton>(R.id.player_controls_play).setImageResource(R.drawable.ic_baseline_play)
@@ -368,7 +368,20 @@ class Player : Fragment() {
 
         player.getCurrentMedia()?.let {
             updateAltImg(it)
+            updateChapters(player.getChapters())
+
+            if(!seekHandler.isSeeking) {
+                seekBar.value = ((player.currentPosition / player.duration.toDouble()) * SEEK_STEP).toInt().coerceAtLeast(1)
+            }
+            timeTextView.text = formatPlayTime(player.currentPosition, player.duration, viewModel.timeTextAsRemaining.value!!)
+        } ?: run {
+            updateChapters(emptyList())
+
+            seekBar.value = 1
+            timeTextView.text = formatPlayTime(0, 0, viewModel.timeTextAsRemaining.value!!)
         }
+
+        updatePlaylistMenuItem()
     }
 
     private fun updateAltImg(mediaFile: MediaFile) {
@@ -388,6 +401,26 @@ class Player : Fragment() {
                 }
             }
         }
+    }
+
+    private fun updateChapters(chapters: List<Chapter>) {
+        if(chapters.isEmpty()){
+            seekBar.segments = emptyArray()
+            seekBar.showTitle = false
+        }else{
+            val totalTime = player.duration.toDouble()
+            assert(totalTime > 0)
+
+            seekBar.segments = chapters.map {
+                val start = ((it.start.toDouble() / totalTime) * SEEK_STEP).toInt()
+                val end = ((it.end.toDouble() / totalTime) * SEEK_STEP).toInt()
+                SegmentedSeekBar.Segment(start, end, it.name)
+            }.toTypedArray()
+
+            seekBar.showTitle = true
+        }
+
+        updateChaptersMenuItem()
     }
 
     private fun formatPlayTime(time: Long, len: Long, remaining: Boolean): String{
@@ -640,23 +673,7 @@ class Player : Fragment() {
         }
 
         override fun onChaptersChanged(player: VlcPlayer, chapters: List<Chapter>) {
-            if(chapters.isEmpty()){
-                seekBar.segments = emptyArray()
-                seekBar.showTitle = false
-            }else{
-                val totalTime = player.duration.toDouble()
-                assert(totalTime > 0)
-
-                seekBar.segments = chapters.map {
-                    val start = ((it.start.toDouble() / totalTime) * SEEK_STEP).toInt()
-                    val end = ((it.end.toDouble() / totalTime) * SEEK_STEP).toInt()
-                    SegmentedSeekBar.Segment(start, end, it.name)
-                }.toTypedArray()
-
-                seekBar.showTitle = true
-            }
-
-            updateChaptersMenuItem()
+            updateChapters(chapters)
         }
 
         override fun onCurrentMediaItemChanged(player: SessionPlayer, item: MediaItem?) {
