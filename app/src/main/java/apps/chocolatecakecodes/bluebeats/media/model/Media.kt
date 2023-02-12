@@ -24,10 +24,12 @@ abstract class MediaNode{ //TODO make serializable (all subclasses should have c
     abstract val parent: MediaNode?// should only be for runtime-caching
 
     abstract override fun equals(other: Any?): Boolean
-    abstract override fun hashCode(): Int
 
     override fun toString(): String {
         return "$type: $path"
+    }
+    override fun hashCode(): Int {
+        return Objects.hash(path, type)
     }
 }
 
@@ -118,7 +120,7 @@ class MediaDir(override val name: String, parent: MediaDir?): MediaNode() {
     }
 
     override fun hashCode(): Int {
-        return path.hashCode() xor MediaDir::class.hashCode()
+        return super.hashCode()
     }
 }
 
@@ -203,6 +205,6 @@ class MediaFile(vlcMedia: IMedia, parent: MediaDir): MediaNode() {//TODO more at
     }
 
     override fun hashCode(): Int {
-        return Objects.hash(path, type) xor MediaFile::class.hashCode()
+        return super.hashCode()
     }
 }
