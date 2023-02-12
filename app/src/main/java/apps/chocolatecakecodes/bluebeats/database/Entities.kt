@@ -33,20 +33,51 @@ internal data class MediaFileEntity(
 )
 
 @Entity(
+    indices = [Index(value = ["str"], unique = true)]
+)
+internal data class ID3TagTypeEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long,
+    val str: String
+)
+
+@Entity(
     foreignKeys = [
-        ForeignKey(entity = MediaFileEntity::class,
+        ForeignKey(
+            entity = ID3TagTypeEntity::class,
+            parentColumns = ["id"], childColumns = ["type"],
+            onUpdate = ForeignKey.RESTRICT, onDelete = ForeignKey.RESTRICT
+        )
+    ],
+    indices = [Index(value = ["type", "str"], unique = true)]
+)
+internal data class ID3TagValueEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long,
+    val type: Long,
+    val str: String
+)
+
+@Entity(
+    foreignKeys = [
+        ForeignKey(
+            entity = ID3TagValueEntity::class,
+            parentColumns = ["id"], childColumns = ["tag"],
+            onUpdate = ForeignKey.RESTRICT, onDelete = ForeignKey.RESTRICT
+        ),
+        ForeignKey(
+            entity = MediaFileEntity::class,
             parentColumns = ["id"], childColumns = ["file"],
-            onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.RESTRICT)
+            onUpdate = ForeignKey.RESTRICT, onDelete = ForeignKey.RESTRICT
+        )
     ],
     indices = [
-        Index(value = ["file", "type"], unique = true)
+        Index(value = ["tag", "file"], unique = true),
+        Index(value = ["file"])
     ]
 )
-internal data class ID3TagEntity(
+internal data class ID3TagReferenceEntity(
     @PrimaryKey(autoGenerate = true) val id: Long,
-    val file: Long,
-    val type: String,
-    val value: String
+    val tag: Long,
+    val file: Long
 )
 
 @Entity(

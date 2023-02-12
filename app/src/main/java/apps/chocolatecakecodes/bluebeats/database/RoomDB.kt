@@ -14,7 +14,8 @@ import java.util.concurrent.atomic.AtomicReference
 
 @Database(version = 4, entities = [
     MediaDirEntity::class, MediaFileEntity::class,
-    ID3TagEntity::class, UserTagEntity::class, UserTagRelation::class,
+    ID3TagTypeEntity::class, ID3TagValueEntity::class, ID3TagReferenceEntity::class,
+    UserTagEntity::class, UserTagRelation::class,
     PlaylistName::class,
     StaticPlaylistEntity::class, StaticPlaylistEntry::class,
     DynamicPlaylistEntity::class,

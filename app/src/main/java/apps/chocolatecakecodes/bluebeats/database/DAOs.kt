@@ -279,7 +279,7 @@ internal abstract class ID3TagDAO {
     // region public methods
     fun getTagsOfFile(fileId: Long): TagFields {
         return findTagsForFile(fileId).associate {
-            it.type to it.value
+            it.type_str to it.value_str
         }.let {
             mapToTagFields(it)
         }
@@ -291,56 +291,116 @@ internal abstract class ID3TagDAO {
         }
     }
 
-    @Query("SELECT DISTINCT type FROM ID3TagEntity;")
+    @Query("SELECT DISTINCT str FROM ID3TagTypeEntity;")
     abstract fun getAllTagTypes(): List<String>
 
-    @Query("SELECT DISTINCT value FROM ID3TagEntity WHERE type = :type;")
+    @Query("SELECT DISTINCT val_e.str " +
+            "FROM ID3TagTypeEntity AS type_e INNER JOIN ID3TagValueEntity as val_e ON type_e.id = val_e.type " +
+            "WHERE type_e.str = :type;")
     abstract fun getAllTypeValues(type: String): List<String>
 
     @Transaction
-    open fun saveTagOfFile(file: MediaFile) {
-        val existingTagTypes = findTagsForFile(file.entityId).map { it.type }.toSet()
+    open fun saveTagOfFile(file: MediaFile) {//TODO there should be a test for this
         val currentTags = tagFieldsToMap(file.mediaTags)
-        val currentTagTypes = currentTags.map { it.key }.toSet()
+        val existingTags = findTagsForFile(file.entityId)
 
-        Utils.diffChanges(existingTagTypes, currentTagTypes).let { (added, deleted, same) ->
-            deleted.forEach {
-                deleteEntityForFile(file.entityId, it)
-            }
-
+        Utils.diffChanges(
+            existingTags.map { it.type_str }.toSet(),
+            currentTags.keys
+        ).let { (added, deleted, unchanged) ->
             added.forEach {
-                insertEntity(ID3TagEntity(0, file.entityId, it, currentTags[it]!!))
+                getTypeIdOrInsert(it).let { typeId ->
+                    getValueIdOrInsert(typeId, currentTags[it]!!).let { valId ->
+                        insertValueRefEntity(ID3TagReferenceEntity(0, valId, file.entityId))
+                    }
+                }
             }
 
-            same.forEach {
-                updateEntity(file.entityId, it, currentTags[it]!!)
+            unchanged.forEach { type ->
+                // if values are not equal then update them by replacing the entries
+                if(currentTags[type]!! != existingTags.find { it.type_str == type }!!.value_str){
+                    val typeId = existingTags.find { it.type_str == type }!!.type_id
+                    val valId = existingTags.find { it.type_str == type }!!.value_id
+
+                    listOf(valId).let {
+                        deleteValueRefsForFile(file.entityId, it)
+                        if(!isValueReferenced(valId, file.entityId))
+                            deleteValueEntities(it)
+                    }
+
+                    getValueIdOrInsert(typeId, currentTags[type]!!).let { newValId ->
+                        insertValueRefEntity(ID3TagReferenceEntity(0, newValId, file.entityId))
+                    }
+                }
+            }
+
+            deleted.map { toDelete ->
+                existingTags.find {
+                    it.type_str == toDelete
+                }!!
+            }.also {
+                deleteValueRefsForFile(file.entityId, it.map { it.value_id })
+                cleanupTagValues(it, file.entityId)
             }
         }
     }
 
-    fun deleteAllEntriesOfFile(file: MediaFile) {
-        deleteAllEntitiesForFile(file.entityId)
+    @Transaction
+    open fun deleteAllEntriesOfFile(file: MediaFile) {
+        findTagsForFile(file.entityId).let {
+            deleteValueRefsForFile(file.entityId, it.map { it.value_id })
+            cleanupTagValues(it, file.entityId)
+        }
     }
     //endregion
 
     //region db actions
-    @Query("SELECT * FROM ID3TagEntity WHERE file = :file;")
-    protected abstract fun findTagsForFile(file: Long): List<ID3TagEntity>
+    @Query("SELECT type.str AS type_str, type.id AS type_id, val.str AS value_str, val.id AS value_id " +
+            "FROM ID3TagReferenceEntity AS ref " +
+            "INNER JOIN ID3TagValueEntity AS val ON ref.tag = val.id " +
+            "INNER JOIN ID3TagTypeEntity AS type ON val.type = type.id " +
+            "WHERE ref.file = :file;")
+    protected abstract fun findTagsForFile(file: Long): List<FileTag>
 
-    @Query("SELECT file FROM ID3TagEntity WHERE type = :type AND value = :value;")
+    @Query("SELECT file " +
+            "FROM ID3TagReferenceEntity AS ref " +
+            "INNER JOIN ID3TagValueEntity val ON ref.tag = val.id " +
+            "INNER JOIN ID3TagTypeEntity AS type ON val.type = type.id " +
+            "WHERE type.str = :type AND val.str = :value;")
     protected abstract fun findFilesWithTag(type: String, value: String): List<Long>
 
+    @Query("SELECT id FROM ID3TagTypeEntity WHERE str = :typeValue;")
+    protected abstract fun findTypeIdForString(typeValue: String): Long?
+
     @Insert
-    protected abstract fun insertEntity(entity: ID3TagEntity)
+    protected abstract fun insertTypeEntity(entity: ID3TagTypeEntity): Long
 
-    @Query("UPDATE ID3TagEntity SET value = :value WHERE file = :file AND type = :type;")
-    protected abstract fun updateEntity(file: Long, type: String, value: String)
+    @Query("DELETE FROM ID3TagTypeEntity WHERE id IN (:ids);")
+    protected abstract fun deleteTypeEntities(ids: List<Long>)
 
-    @Query("DELETE FROM ID3TagEntity WHERE file = :file;")
-    protected abstract fun deleteAllEntitiesForFile(file: Long)
+    @Query("SELECT id FROM ID3TagValueEntity WHERE type = :type AND str = :value;")
+    protected abstract fun findValueIdForString(type: Long, value: String): Long?
 
-    @Query("DELETE FROM ID3TagEntity WHERE file = :file AND type = :type;")
-    protected abstract fun deleteEntityForFile(file: Long, type: String)
+    @Query("SELECT EXISTS (SELECT id FROM ID3TagValueEntity WHERE type = :type AND id != :exceptForValue);")
+    protected abstract fun isTypeReferenced(type: Long, exceptForValue: Long): Boolean
+
+    @Insert
+    protected abstract fun insertValueEntity(entity: ID3TagValueEntity): Long
+
+    @Query("DELETE FROM ID3TagValueEntity WHERE id IN (:ids);")
+    protected abstract fun deleteValueEntities(ids: List<Long>)
+
+    @Query("SELECT tag FROM ID3TagReferenceEntity WHERE file = :file;")
+    protected abstract fun findValueRefsForFile(file: Long): List<Long>
+
+    @Query("SELECT EXISTS (SELECT id FROM ID3TagReferenceEntity WHERE tag = :value AND file != :exceptForFile);")
+    protected abstract fun isValueReferenced(value: Long, exceptForFile: Long): Boolean
+
+    @Insert
+    protected abstract fun insertValueRefEntity(entity: ID3TagReferenceEntity)
+
+    @Query("DELETE FROM ID3TagReferenceEntity WHERE file = :file AND tag IN (:tags);")
+    protected abstract fun deleteValueRefsForFile(file: Long, tags: List<Long>)
     //endregion
 
     //region private methods
@@ -357,7 +417,7 @@ internal abstract class ID3TagDAO {
         return ret
     }
 
-    fun mapToTagFields(tags: Map<String, String>): TagFields {
+    private fun mapToTagFields(tags: Map<String, String>): TagFields {
         val ret = TagFields()
 
         tags["title"]?.let { ret.title = it }
@@ -366,7 +426,31 @@ internal abstract class ID3TagDAO {
 
         return ret
     }
+
+    private fun cleanupTagValues(values: List<FileTag>, fileId: Long) {
+        values.filterNot {// deleted unused values
+            isValueReferenced(it.value_id, fileId)
+        }.also {
+            deleteValueEntities(it.map { it.value_id })
+        }.filterNot { // deleted unused types
+            isTypeReferenced(it.type_id, it.value_id)
+        }.also {
+            deleteTypeEntities(it.map { it.type_id })
+        }
+    }
+
+    private fun getTypeIdOrInsert(str: String): Long {
+        return findTypeIdForString(str)
+            ?: insertTypeEntity(ID3TagTypeEntity(0, str))
+    }
+
+    private fun getValueIdOrInsert(type: Long, str: String): Long {
+        return findValueIdForString(type, str)
+            ?: insertValueEntity(ID3TagValueEntity(0, type, str))
+    }
     //endregion
+
+    protected data class FileTag(val type_str: String, val type_id: Long, val value_str: String, val value_id: Long)
 }
 
 @Dao
