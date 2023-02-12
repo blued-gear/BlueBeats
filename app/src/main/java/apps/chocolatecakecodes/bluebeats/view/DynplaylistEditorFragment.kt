@@ -75,12 +75,13 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
         super.onStop()
 
         if(modified) {
+            val ctx = context
             CoroutineScope(Dispatchers.IO).launch {
                 RoomDB.DB_INSTANCE.dynamicPlaylistDao().save(playlist)
                 modified = false
 
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, R.string.misc_saved, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(ctx, R.string.misc_saved, Toast.LENGTH_SHORT).show()
                 }
             }
         }
