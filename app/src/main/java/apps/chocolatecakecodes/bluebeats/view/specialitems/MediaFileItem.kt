@@ -46,13 +46,34 @@ internal open class MediaFileItem(
         override fun bindView(item: MediaFileItem, payloads: List<Any>) {
             super.bindView(item, payloads)
 
-            title.text = if(item.useTitle)
+            setTitle(item)
+            setThumb(item)
+
+            dragHandle.visibility = if(item.isDraggable) View.VISIBLE else View.GONE
+        }
+        override fun unbindView(item: MediaFileItem) {
+            super.unbindView(item)
+
+            title.text = null
+            thumb.setImageBitmap(null)
+        }
+
+        private fun setTitle(item: MediaFileItem) {
+            title.text = super.itemView.context.getString(R.string.misc_loading)
+
+            CoroutineScope(Dispatchers.IO).launch {
+                val text = if(item.useTitle)
                     item.file.title
                 else
                     item.file.name
 
-            dragHandle.visibility = if(item.isDraggable) View.VISIBLE else View.GONE
+                withContext(Dispatchers.Main) {
+                    title.text = text
+                }
+            }
+        }
 
+        private fun setThumb(item: MediaFileItem) {
             if(item.showThumb) {
                 thumb.visibility = View.VISIBLE
 
@@ -69,12 +90,6 @@ internal open class MediaFileItem(
             } else {
                 thumb.visibility = View.GONE
             }
-        }
-        override fun unbindView(item: MediaFileItem) {
-            super.unbindView(item)
-
-            title.text = null
-            thumb.setImageBitmap(null)
         }
 
         private fun loadThumbnail(file: MediaFile) {
