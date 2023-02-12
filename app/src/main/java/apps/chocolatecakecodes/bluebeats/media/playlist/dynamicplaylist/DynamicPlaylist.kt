@@ -61,9 +61,8 @@ internal class DynamicPlaylist private constructor(
         @Transaction
         open fun createNew(name: String): DynamicPlaylist {
             val playlist = DynamicPlaylist(name, ruleGroupDao.createNew(Rule.Share(1f, true)))
-            val id = insertEntity(generateEntity(playlist, false))
-
-            playlistsManager.createNewEntry(name, PlaylistType.DYNAMIC, id)
+            val id = playlistsManager.createNewEntry(name, playlist.type)
+            insertEntity(generateEntity(playlist, id))
 
             cache.put(id, playlist)
             return playlist
@@ -84,7 +83,7 @@ internal class DynamicPlaylist private constructor(
         @Transaction
         open fun save(playlist: DynamicPlaylist) {
             ruleGroupDao.save(playlist.rootRuleGroup)
-            updateEntity(generateEntity(playlist, true))
+            updateEntity(generateEntity(playlist, -1))
         }
 
         @Transaction
@@ -117,9 +116,13 @@ internal class DynamicPlaylist private constructor(
         @Query("SELECT * FROM DynamicPlaylistEntity WHERE id = :id;")
         protected abstract fun getEntity(id: Long): DynamicPlaylistEntity
 
-        private fun generateEntity(playlist: DynamicPlaylist, resolveId: Boolean): DynamicPlaylistEntity {
+        /**
+         * generates a new entity for the given playlist
+         * @param id the id to use or -1 to resolve the id by the name of the playlist
+         */
+        private fun generateEntity(playlist: DynamicPlaylist, id: Long): DynamicPlaylistEntity {
             return DynamicPlaylistEntity(
-                if(resolveId) playlistsManager.getPlaylistId(playlist.name) else 0,
+                if(id == -1L) playlistsManager.getPlaylistId(playlist.name) else id,
                 ruleGroupDao.getEntityId(playlist.rootRuleGroup),
                 playlist.iterationSize
             )
@@ -218,7 +221,7 @@ internal class DynamicPlaylistIterator(
     ]
 )
 internal data class DynamicPlaylistEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long,
+    @PrimaryKey(autoGenerate = false) val id: Long,
     val ruleRoot: Long,
     val iterationSize: Int
 )

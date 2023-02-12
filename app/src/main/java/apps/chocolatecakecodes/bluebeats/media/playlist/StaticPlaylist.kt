@@ -66,9 +66,8 @@ internal class StaticPlaylist private constructor(
         @Transaction
         open fun createNew(name: String): StaticPlaylist {
             val playlist = StaticPlaylist(name, emptyList())
-            val id = insertEntity(StaticPlaylistEntity(0))
-
-            playlistsManager.createNewEntry(name, playlist.type, id)
+            val id = playlistsManager.createNewEntry(name, playlist.type)
+            insertEntity(StaticPlaylistEntity(id))
 
             cache.put(id, playlist)
             return playlist
@@ -159,7 +158,7 @@ internal data class StaticPlaylistEntity(
     ]
 )
 internal data class StaticPlaylistEntry(
-    @PrimaryKey(autoGenerate = true) val id: Long,
+    @PrimaryKey(autoGenerate = false) val id: Long,
     @ColumnInfo(name = "playlist", index = true) val playlist: Long,
     @ColumnInfo(name = "media") val media: Long,
     @ColumnInfo(name = "pos") val pos: Int
