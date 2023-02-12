@@ -7,7 +7,7 @@ import kotlinx.coroutines.launch
 import java.util.*
 import java.util.concurrent.TimeUnit
 
-abstract class MediaNode {
+abstract class MediaNode : Comparable<MediaNode> {
 
     companion object{
         const val NULL_PARENT_ID: Long = -1
@@ -44,5 +44,26 @@ abstract class MediaNode {
         if(hash == -1)
             hash = Objects.hash(this.javaClass.canonicalName, path)
         return hash
+    }
+
+    override fun compareTo(other: MediaNode): Int {
+        // dirs before files
+        if(this is MediaDir && other !is MediaDir)
+            return -1
+        if(this !is MediaDir && other is MediaDir)
+            return 1
+
+        return compareStringNaturally(this.name, other.name)
+    }
+
+    private fun compareStringNaturally(o1: String, o2: String): Int {
+        if(o1 === o2)
+            return 0
+
+        val lcCmp = o1.lowercase().compareTo(o2.lowercase())
+        if(lcCmp != 0)
+            return lcCmp
+
+        return o1.compareTo(o2)
     }
 }

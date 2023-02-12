@@ -181,12 +181,8 @@ internal class FileBrowserView(context: Context): FrameLayout(context){
 
     private fun expandDir(dir: MediaDir) {
         CoroutineScope(Dispatchers.IO).launch {
-            dir.getDirs().sortedBy {
-                it.name
-            }.let { sortedDirs ->
-                dir.getFiles().sortedBy {
-                    it.name
-                }.let { sortedFiles ->
+            dir.getDirs().sorted().let { sortedDirs ->
+                dir.getFiles().sorted().let { sortedFiles ->
                     sortedDirs + sortedFiles
                 }
             }.mapNotNull {
