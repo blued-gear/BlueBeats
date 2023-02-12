@@ -738,7 +738,7 @@ class Player : Fragment() {
             val pl = viewModel.currentPlaylist.value!!
             CoroutineScope(Dispatchers.IO).launch {
                 pl.getItems().map {
-                    MediaFileItem(it, false)
+                    MediaFileItem(it, isDraggable = false, useTitle = true, showThumb = true)
                 }.let {
                     withContext(Dispatchers.Main) {
                         listAdapter.setNewList(it)
