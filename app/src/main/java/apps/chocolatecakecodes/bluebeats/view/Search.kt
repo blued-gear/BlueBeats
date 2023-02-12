@@ -158,19 +158,19 @@ internal class Search : Fragment(R.layout.search_fragment) {
                 true
             }
             menu.findItem(R.id.search_mnu_addpl).apply {
-                isEnabled = false
                 setOnMenuItemClickListener {
                     onAddToPlaylist()
                     true
                 }
             }
             menu.findItem(R.id.search_mnu_fi).apply {
-                isEnabled = false
                 setOnMenuItemClickListener {
                     onShowFileInfo()
                     true
                 }
             }
+
+            updateMenu()
         }
     }
     //endregion
