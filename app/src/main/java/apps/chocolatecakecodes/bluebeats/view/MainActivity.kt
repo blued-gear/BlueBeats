@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.view.WindowInsets
+import android.view.WindowInsetsController
 import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -21,6 +22,11 @@ import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.time.Duration
 
 class MainActivity : AppCompatActivity() {
 
@@ -52,6 +58,7 @@ class MainActivity : AppCompatActivity() {
         wireObservers()
         listMediaRoots()
         setupTabs()
+        setupSystemBarsHider()
     }
 
     override fun onBackPressed() {
@@ -90,7 +97,9 @@ class MainActivity : AppCompatActivity() {
             if(it !== null){// open fullscreen
                 // make fullscreen
                 if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
-                    this.window.insetsController!!.hide(WindowInsets.Type.systemBars())
+                    val insetsController = this.window.insetsController!!
+                    insetsController.systemBarsBehavior = WindowInsetsController.BEHAVIOR_DEFAULT
+                    insetsController.hide(WindowInsets.Type.systemBars())
                 }else{
                     this.window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
                 }
@@ -116,6 +125,44 @@ class MainActivity : AppCompatActivity() {
                     this.setContentView(mainContentView)
                 }else{
                     Log.w("MainActivity", "can not show main-content: still attached to a parent")
+                }
+            }
+        }
+    }
+
+    private fun setupSystemBarsHider() {
+        val decorView = this.window.decorView
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            decorView.setOnApplyWindowInsetsListener { v, insets ->
+                if(insets.isVisible(WindowInsets.Type.statusBars())
+                    and (viewModel.fullScreenContent.value !== null)){
+                    CoroutineScope(Dispatchers.Default).launch {
+                        delay(Duration.ofSeconds(3).toMillis())
+
+                        launch(Dispatchers.Main) {
+                            val insetsController = this@MainActivity.window.insetsController!!
+                            // check if still in fullscreen
+                            if (viewModel.fullScreenContent.value !== null)
+                                insetsController.hide(WindowInsets.Type.systemBars())
+                        }
+                    }
+                }
+
+                return@setOnApplyWindowInsetsListener v.onApplyWindowInsets(insets)
+            }
+        } else {
+            decorView.setOnSystemUiVisibilityChangeListener {
+                if(((it and View.SYSTEM_UI_FLAG_FULLSCREEN) == 0)
+                    and (viewModel.fullScreenContent.value !== null)){
+                    CoroutineScope(Dispatchers.Default).launch {
+                        delay(3000)
+
+                        launch(Dispatchers.Main){
+                            // check if still in fullscreen
+                            if (viewModel.fullScreenContent.value !== null)
+                                this@MainActivity.window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+                        }
+                    }
                 }
             }
         }
