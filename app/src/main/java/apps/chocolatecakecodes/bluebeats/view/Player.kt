@@ -103,30 +103,21 @@ class Player : Fragment() {
         viewModel.updatePlayPosition(player.time)
     }
 
+    //region action-handlers
     @SuppressLint("ClickableViewAccessibility")
     private fun wireActionHandlers(view: View){
         // player control by tapping
         val controlsPane = view.findViewById<ViewGroup>(R.id.player_controls_overlay)
-        val gestureHandler = ControlsGestureHandler(controlsPane)
-        val gestureDetector = GestureDetectorCompat(this.requireContext(), gestureHandler)
-        gestureDetector.setOnDoubleTapListener(gestureHandler)
-        gestureDetector.setIsLongpressEnabled(false)
-        controlsPane.setOnTouchListener { _, event ->
-            gestureDetector.onTouchEvent(event)
-            return@setOnTouchListener true
-        }
+        setupControlPaneGestures(controlsPane)
 
         // play/pause button
         view.findViewById<View>(R.id.player_controls_play).setOnClickListener {
-            if(viewModel.isPlaying.value == true)
-                viewModel.pause()
-            else if(viewModel.currentMedia.value !== null)
-                viewModel.resume()
+            onPlayPauseClick()
         }
 
         // fullscreen button
         view.findViewById<View>(R.id.player_controls_fullscreen).setOnClickListener {
-            viewModel.setFullscreenMode(!(viewModel.isFullscreen.value ?: false))
+            onFullscreenClick()
         }
 
         // fullscreen close on back
@@ -149,6 +140,32 @@ class Player : Fragment() {
         player.setEventListener(PlayerEventHandler())
     }
 
+    private fun setupControlPaneGestures(controlsPane: View) {
+        val gestureHandler = ControlsGestureHandler(controlsPane)
+
+        val gestureDetector = GestureDetectorCompat(this.requireContext(), gestureHandler)
+        gestureDetector.setOnDoubleTapListener(gestureHandler)
+        gestureDetector.setIsLongpressEnabled(false)
+
+        controlsPane.setOnTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
+            return@setOnTouchListener true
+        }
+    }
+
+    private fun onPlayPauseClick() {
+        if(viewModel.isPlaying.value == true)
+            viewModel.pause()
+        else if(viewModel.currentMedia.value !== null)
+            viewModel.resume()
+    }
+
+    private fun onFullscreenClick() {
+        viewModel.setFullscreenMode(!(viewModel.isFullscreen.value ?: false))
+    }
+    //endregion
+
+    //region livedata-handlers
     private fun wireObservers(){
         viewModel.currentMedia.observe(this.viewLifecycleOwner){
             if(it !== null) {
@@ -157,85 +174,23 @@ class Player : Fragment() {
         }
 
         viewModel.isPlaying.observe(this.viewLifecycleOwner){
-            if(it !== null) {
-                if (it) {
-                    player.play()
-
-                    playerContainer.findViewById<ImageButton>(R.id.player_controls_play).setImageResource(R.drawable.ic_baseline_pause)
-                }else {
-                    player.pause()
-
-                    playerContainer.findViewById<ImageButton>(R.id.player_controls_play).setImageResource(R.drawable.ic_baseline_play)
-                }
-
-                if (it){
-                    // hide controls
-                    controlsHideCoroutine?.cancel(null)
-                    controlsHideCoroutine = CoroutineScope(Dispatchers.Default).launch {
-                        delay(CONTROLS_FADE_OUT_DELAY)
-                        launch(Dispatchers.Main) {
-                            if (viewModel.isPlaying.value == true) {// only re-hide if playing
-                                runControlsTransition(false)
-                            }
-
-                            controlsHideCoroutine = null
-                        }
-                    }
-                }
-            }
+            onIsPlayingChanged(it)
         }
 
         viewModel.playPos.observe(this.viewLifecycleOwner){
-            if((it !== null)){
-                if(abs(it - player.time) > 5)// threshold of 5ms to prevent cyclic calls from this and PlayerEventHandler
-                    if(seekHandler.isSeeking)
-                        player.setTime(it, true)
-                    else
-                        player.setTime(it, false)
-
-                if(!seekHandler.isSeeking) {
-                    seekBar.value = ((it / player.length.toDouble()) * SEEK_STEP).toInt().coerceAtLeast(1)
-                }
-
-                timeTextView.text = formatPlayTime(it, player.length, viewModel.timeTextAsRemaining.value!!)
-            }
+            onPlayPosChanged(it)
         }
 
         viewModel.isFullscreen.observe(this.viewLifecycleOwner){
-            if(it !== null){
-                showFullscreen(it)
-
-                if(it)
-                    playerContainer.findViewById<ImageButton>(R.id.player_controls_fullscreen).setImageResource(R.drawable.ic_baseline_fullscreen_exit)
-                else
-                    playerContainer.findViewById<ImageButton>(R.id.player_controls_fullscreen).setImageResource(R.drawable.ic_baseline_fullscreen)
-            }
+            onIsFullscreenChanged(it)
         }
 
         viewModel.timeTextAsRemaining.observe(this.viewLifecycleOwner){
             timeTextView.text = formatPlayTime(player.time, player.length, it!!)
         }
 
-        viewModel.chapters.observe(this.viewLifecycleOwner){ chapters ->
-            if(chapters === null || chapters.isEmpty()){
-                seekBar.segments = emptyArray()
-                seekBar.showTitle = false
-            }else{
-                val totalTime = player.length.toDouble()
-
-                // if fragment was recreated, this will be triggered before player was fully loaded (then totalTime == -1)
-                if(totalTime > 0) {
-                    val segments = Array<SegmentedSeekBar.Segment>(chapters.size) {
-                        val chapter = chapters[it]
-                        val start = ((chapter.start.toDouble() / totalTime) * SEEK_STEP).toInt()
-                        val end = ((chapter.end.toDouble() / totalTime) * SEEK_STEP).toInt()
-                        return@Array SegmentedSeekBar.Segment(start, end, chapter.name)
-                    }
-
-                    seekBar.segments = segments
-                    seekBar.showTitle = true
-                }
-            }
+        viewModel.chapters.observe(this.viewLifecycleOwner){
+            onChaptersChanged(it)
         }
 
         viewModel.currentPlaylist.observe(this.viewLifecycleOwner) {
@@ -243,11 +198,80 @@ class Player : Fragment() {
         }
     }
 
+    private fun onIsPlayingChanged(value: Boolean?) {
+        if(value !== null) {
+            if (value) {
+                player.play()
+
+                playerContainer.findViewById<ImageButton>(R.id.player_controls_play).setImageResource(R.drawable.ic_baseline_pause)
+            }else {
+                player.pause()
+
+                playerContainer.findViewById<ImageButton>(R.id.player_controls_play).setImageResource(R.drawable.ic_baseline_play)
+            }
+
+            if (value){
+                hideControlsWithDelay()
+            }
+        }
+    }
+
+    private fun onPlayPosChanged(value: Long?) {
+        if((value !== null)){
+            if(abs(value - player.time) > 5)// threshold of 5ms to prevent cyclic calls from this and PlayerEventHandler
+                if(seekHandler.isSeeking)
+                    player.setTime(value, true)
+                else
+                    player.setTime(value, false)
+
+            if(!seekHandler.isSeeking) {
+                seekBar.value = ((value / player.length.toDouble()) * SEEK_STEP).toInt().coerceAtLeast(1)
+            }
+
+            timeTextView.text = formatPlayTime(value, player.length, viewModel.timeTextAsRemaining.value!!)
+        }
+    }
+
+    private fun onIsFullscreenChanged(value: Boolean?) {
+        if(value !== null){
+            showFullscreen(value)
+
+            if(value)
+                playerContainer.findViewById<ImageButton>(R.id.player_controls_fullscreen).setImageResource(R.drawable.ic_baseline_fullscreen_exit)
+            else
+                playerContainer.findViewById<ImageButton>(R.id.player_controls_fullscreen).setImageResource(R.drawable.ic_baseline_fullscreen)
+        }
+    }
+
+    private fun onChaptersChanged(value: List<Chapter>?) {
+        if(value === null || value.isEmpty()){
+            seekBar.segments = emptyArray()
+            seekBar.showTitle = false
+        }else{
+            val totalTime = player.length.toDouble()
+
+            // if fragment was recreated, this will be triggered before player was fully loaded (then totalTime == -1)
+            if(totalTime > 0) {
+                val segments = Array<SegmentedSeekBar.Segment>(value.size) {
+                    val chapter = value[it]
+                    val start = ((chapter.start.toDouble() / totalTime) * SEEK_STEP).toInt()
+                    val end = ((chapter.end.toDouble() / totalTime) * SEEK_STEP).toInt()
+                    return@Array SegmentedSeekBar.Segment(start, end, chapter.name)
+                }
+
+                seekBar.segments = segments
+                seekBar.showTitle = true
+            }
+        }
+    }
+    //endregion
+
+    //region menu
     private fun setupMainMenu(){
         mainVM.menuProvider.value = { menu, menuInflater ->
-            mainMenu = menu
-
             menuInflater.inflate(R.menu.player_menu, menu)
+
+            mainMenu = menu
 
             // configure items
             menu.findItem(R.id.player_menu_chapters).setOnMenuItemClickListener {
@@ -263,6 +287,59 @@ class Player : Fragment() {
             updatePlaylistMenuItem()
         }
     }
+
+    private fun updateChaptersMenuItem(){
+        mainMenu?.let {
+            val chaptersItem = it.findItem(R.id.player_menu_chapters)
+            val chapters = viewModel.chapters.value
+            if(chapters === null || chapters.isEmpty())
+                chaptersItem.isEnabled = false
+        }
+    }
+
+    private fun showChapterMenu(){
+        val dlgBuilder = AlertDialog.Builder(this.requireContext())
+
+        // generate chapter items
+        val chapters = viewModel.chapters.value!!
+        val itemTexts = chapters.map {
+            val start = Utils.formatTime(it.start)
+            val end = Utils.formatTime(it.end)
+            return@map "${it.name} ($start - $end)"
+        }.toTypedArray()
+
+        dlgBuilder.setItems(itemTexts){ _, itemIdx ->
+            // jump to chapter
+            val chapter = chapters[itemIdx]
+            viewModel.updatePlayPosition(chapter.start)
+        }
+
+        dlgBuilder.create().show()
+    }
+
+    private fun updatePlaylistMenuItem() {
+        mainMenu?.let {
+            it.findItem(R.id.player_menu_playlist).isEnabled = viewModel.currentPlaylist.value != null
+        }
+    }
+
+    private fun showPlaylistOverview() {
+        val inflater = LayoutInflater.from(this.requireContext())
+        val content = inflater.inflate(R.layout.player_playlist_fragment, null)
+
+        val popup = PopupWindow(
+            content,
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
+            true
+        )
+        content.setOnTouchListener { v, event ->
+            popup.dismiss()
+            true
+        }
+
+        popup.showAtLocation(this.requireView(), Gravity.CENTER, 0, 0)
+    }
+    //endregion
 
     private fun attachPlayer(){
         if(!player.vlcVout.areViewsAttached()){
@@ -286,20 +363,24 @@ class Player : Fragment() {
             .alpha(if(fadeIn) 1.0f else 0.0f)
             .setUpdateListener {
                 if(it.animatedFraction == 1.0f){// is finished
-                    controlsHideCoroutine?.cancel(null)
-                    controlsHideCoroutine = CoroutineScope(Dispatchers.Default).launch {
-                        delay(CONTROLS_FADE_OUT_DELAY)
-                        launch(Dispatchers.Main) {
-                            if(viewModel.isPlaying.value == true){// only re-hide if playing
-                                runControlsTransition(false)
-                            }
-
-                            controlsHideCoroutine = null
-                        }
-                    }
+                    hideControlsWithDelay()
                 }
             }
             .start()
+    }
+
+    private fun hideControlsWithDelay() {
+        controlsHideCoroutine?.cancel(null)
+        controlsHideCoroutine = CoroutineScope(Dispatchers.Default).launch {
+            delay(CONTROLS_FADE_OUT_DELAY)
+            launch(Dispatchers.Main) {
+                if (viewModel.isPlaying.value == true) {// only re-hide if playing
+                    runControlsTransition(false)
+                }
+
+                controlsHideCoroutine = null
+            }
+        }
     }
 
     private fun playMedia(mediaFile: MediaFile){
@@ -374,58 +455,6 @@ class Player : Fragment() {
         }
     }
 
-    private fun updateChaptersMenuItem(){
-        mainMenu?.let {
-            val chaptersItem = it.findItem(R.id.player_menu_chapters)
-            val chapters = viewModel.chapters.value
-            if(chapters === null || chapters.isEmpty())
-                chaptersItem.isEnabled = false
-        }
-    }
-
-    private fun showChapterMenu(){
-        val dlgBuilder = AlertDialog.Builder(this.requireContext())
-
-        // generate chapter items
-        val chapters = viewModel.chapters.value!!
-        val itemTexts = chapters.map {
-            val start = Utils.formatTime(it.start)
-            val end = Utils.formatTime(it.end)
-            return@map "${it.name} ($start - $end)"
-        }.toTypedArray()
-
-        dlgBuilder.setItems(itemTexts){ _, itemIdx ->
-            // jump to chapter
-            val chapter = chapters[itemIdx]
-            viewModel.updatePlayPosition(chapter.start)
-        }
-
-        dlgBuilder.create().show()
-    }
-
-    private fun updatePlaylistMenuItem() {
-        mainMenu?.let {
-            it.findItem(R.id.player_menu_playlist).isEnabled = viewModel.currentPlaylist.value != null
-        }
-    }
-
-    private fun showPlaylistOverview() {
-        val inflater = LayoutInflater.from(this.requireContext())
-        val content = inflater.inflate(R.layout.player_playlist_fragment, null)
-
-        val popup = PopupWindow(
-            content,
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
-        true
-        )
-        content.setOnTouchListener { v, event ->
-            popup.dismiss()
-            true
-        }
-
-        popup.showAtLocation(this.requireView(), Gravity.CENTER, 0, 0)
-    }
-
     private fun formatPlayTime(time: Long, len: Long, remaining: Boolean): String{
         val timeCapped = time.coerceAtLeast(0)
         val lenCapped = len.coerceAtLeast(0)
@@ -496,17 +525,7 @@ class Player : Fragment() {
 
             // re-schedule control-hiding
             if(viewModel.isPlaying.value == true) {// only re-hide if playing
-                controlsHideCoroutine?.cancel(null)
-                controlsHideCoroutine = CoroutineScope(Dispatchers.Default).launch {
-                    delay(CONTROLS_FADE_OUT_DELAY)
-                    launch(Dispatchers.Main) {
-                        if (viewModel.isPlaying.value == true) {// only re-hide if playing
-                            runControlsTransition(false)
-                        }
-
-                        controlsHideCoroutine = null
-                    }
-                }
+                hideControlsWithDelay()
             }
         }
     }
