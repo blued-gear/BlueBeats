@@ -8,6 +8,9 @@ import apps.chocolatecakecodes.bluebeats.util.Utils
 import apps.chocolatecakecodes.bluebeats.util.takeOrAll
 import java.util.*
 
+/** <dir, deep (include all subdirs)> */
+internal typealias DirPathInclude = Pair<MediaDir, Boolean>
+
 internal class IncludeRule private constructor(
     private val entityId: Long,
     dirs: Set<DirPathInclude> = emptySet(),
