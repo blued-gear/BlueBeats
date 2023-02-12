@@ -45,7 +45,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        this.setContentView(R.layout.activity_main)
+        this.setContentView(R.layout.main_activity)
 
         mainContentView = this.findViewById(R.id.main_content)
         viewModel = ViewModelProvider(this).get(MainActivityViewModel::class.java)
@@ -202,7 +202,7 @@ class MainActivity : AppCompatActivity() {
         if(content.parent === null) {
             this.setContentView(content)
         }else{
-            Log.w("MainActivity", "can not show fullscreen-content: still attached to a parent")
+            Log.e("MainActivity", "can not show fullscreen-content: still attached to a parent")
         }
     }
 
@@ -219,7 +219,7 @@ class MainActivity : AppCompatActivity() {
         if(mainContentView.parent === null) {
             this.setContentView(mainContentView)
         }else{
-            Log.w("MainActivity", "can not show main-content: still attached to a parent")
+            Log.e("MainActivity", "can not show main-content: still attached to a parent")
         }
     }
 

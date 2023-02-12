@@ -6,7 +6,7 @@ import android.view.MenuInflater
 import android.view.View
 import androidx.lifecycle.*
 
-class MainActivityViewModel : ViewModel(){
+internal class MainActivityViewModel : ViewModel(){
 
     enum class Tabs{
         MEDIA, PLAYER
