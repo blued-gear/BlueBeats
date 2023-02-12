@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.*
 import android.widget.FrameLayout
+import android.widget.ImageButton
 import android.widget.SeekBar
 import androidx.core.view.GestureDetectorCompat
 import androidx.fragment.app.Fragment
@@ -143,10 +144,15 @@ class Player : Fragment() {
 
         viewModel.isPlaying.observe(this.viewLifecycleOwner){
             if(it !== null) {
-                if (it)
+                if (it) {
                     player.play()
-                else
+
+                    playerContainer.findViewById<ImageButton>(R.id.player_controls_play).setImageResource(R.drawable.ic_baseline_pause)
+                }else {
                     player.pause()
+
+                    playerContainer.findViewById<ImageButton>(R.id.player_controls_play).setImageResource(R.drawable.ic_baseline_play)
+                }
 
                 if (it){
                     // hide controls
@@ -179,6 +185,11 @@ class Player : Fragment() {
         viewModel.isFullscreen.observe(this.viewLifecycleOwner){
             if(it !== null){
                 showFullscreen(it)
+
+                if(it)
+                    playerContainer.findViewById<ImageButton>(R.id.player_controls_fullscreen).setImageResource(R.drawable.ic_baseline_fullscreen_exit)
+                else
+                    playerContainer.findViewById<ImageButton>(R.id.player_controls_fullscreen).setImageResource(R.drawable.ic_baseline_fullscreen)
             }
         }
     }
