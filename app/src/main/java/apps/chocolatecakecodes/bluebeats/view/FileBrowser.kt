@@ -198,6 +198,10 @@ class FileBrowser : Fragment() {
                     Log.d("FileBrowser", "node changed: ${node.path}")
                 }
 
+                override fun handleNodeProcessed(node: MediaNode) {
+                    Log.d("FileBrowser", "node processed: ${node.path}")
+                }
+
                 override fun handleScanException(e: Exception) {
                     Log.e("FileBrowser", "exception in scan", e)
                 }

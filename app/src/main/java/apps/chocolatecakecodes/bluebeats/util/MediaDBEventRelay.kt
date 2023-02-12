@@ -71,6 +71,13 @@ internal class MediaDBEventRelay : MediaDB.ScanEventHandler(null) {
             }
         }
     }
+    override fun handleNodeProcessed(node: MediaNode) {
+        synchronized(this){
+            subscribers.forEach {
+                it.onNodeProcessed(node)
+            }
+        }
+    }
     override fun handleScanException(e: Exception) {
         synchronized(this){
             subscribers.forEach {

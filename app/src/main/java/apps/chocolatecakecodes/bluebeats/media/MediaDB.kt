@@ -305,6 +305,7 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
                 val newFile = mediaFileDao.newFile(parseFile(fileMedia, dir))
                 dir.addFile(newFile)
                 eventHandler.onNewNodeFound(newFile)
+                eventHandler.onNodeProcessed(newFile)
             }
 
             // remove old files
@@ -320,11 +321,13 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
             existingFiles.forEach {
                 val child = existingFilesWithName[it]!!
                 updateFile(child)
+                eventHandler.onNodeProcessed(child)
             }
         }
 
         if(wasChanged)
             mediaDirDao.save(dir)
+        eventHandler.onNodeProcessed(dir)
     }
 
     private fun parseFile(file: IMedia, parent: MediaDir): MediaFile{
@@ -548,6 +551,13 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
                 handleNodeUpdated(node, oldVersion)
             }
         }
+        internal fun onNodeProcessed(node: MediaNode){
+            if(dispatcher !== null){
+                dispatcher.post { handleNodeProcessed(node) }
+            }else{
+                handleNodeProcessed(node)
+            }
+        }
         internal fun onScanException(e: Exception){
             if(dispatcher !== null){
                 dispatcher.post { handleScanException(e) }
@@ -561,8 +571,8 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
         protected open fun handleNewNodeFound(node: MediaNode){}
         protected open fun handleNodeRemoved(node: MediaNode){}
         protected open fun handleNodeUpdated(node: MediaNode, oldVersion: MediaNode){}
+        protected open fun handleNodeProcessed(node: MediaNode){}
         protected open fun handleScanException(e: Exception){}
-
     }
     //endregion
 }
