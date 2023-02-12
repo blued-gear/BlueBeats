@@ -4,13 +4,17 @@ import android.os.Bundle
 import android.view.View
 import android.widget.EditText
 import android.widget.FrameLayout
-import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylist
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
+import com.mikepenz.fastadapter.adapters.GenericFastItemAdapter
+import com.mikepenz.fastadapter.expandable.getExpandableExtension
+import com.mikepenz.fastadapter.expandable.items.AbstractExpandableItem
 import kotlinx.coroutines.*
 
 private const val STATE_PLAYLIST_ID = "key:plId"
@@ -24,7 +28,9 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
 
     private var plName: TextView by OnceSettable()
     private var plBufferSize: EditText by OnceSettable()
-    private var plRules: FrameLayout by OnceSettable()
+    private var plRules: RecyclerView by OnceSettable()
+
+    private var adapter: GenericFastItemAdapter by OnceSettable()
 
     constructor(playlist: DynamicPlaylist) : this() {
         this.playlist = playlist
@@ -37,7 +43,13 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
             val plId = savedInstanceState.getLong(STATE_PLAYLIST_ID)
             CoroutineScope(Dispatchers.IO).launch {
                 playlist = playlistDao.load(plId)
+
+                withContext(Dispatchers.Main) {
+                    setupAdapter()
+                }
             }
+        }else{
+            setupAdapter()
         }
     }
 
@@ -58,6 +70,8 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
         plBufferSize = view.findViewById(R.id.dyneditor_buffersize)
         plRules = view.findViewById(R.id.dyneditor_rules)
 
+        setupRecyclerView()
+
         // catch all clicks
         view.setOnClickListener {}
     }
@@ -67,10 +81,19 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
         showData()
     }
 
+    private fun setupAdapter() {
+        adapter = GenericFastItemAdapter()
+        adapter.getExpandableExtension()
+        adapter.add(createEditor(playlist.rootRuleGroup))
+    }
+
+    private fun setupRecyclerView() {
+        plRules.layoutManager = LinearLayoutManager(this.context)
+        plRules.adapter = adapter
+    }
+
     private fun showData() {
         plName.text = playlist.name
         plBufferSize.setText(playlist.iterationSize.toString())
-
-        plRules.addView(DynplaylistGroupEditor(this.requireContext(), playlist.rootRuleGroup))
     }
 }
