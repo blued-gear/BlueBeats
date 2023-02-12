@@ -22,6 +22,7 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.IncludeR
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.Rule
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGroup
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.UsertagsRule
+import apps.chocolatecakecodes.bluebeats.util.Utils
 import kotlinx.coroutines.*
 
 internal typealias ChangedCallback = (Rule) -> Unit
@@ -302,15 +303,21 @@ private class DynplaylistUsertagsEditor(
             RoomDB.DB_INSTANCE.userTagDao().getAllUserTags().let { availableTags ->
                 withContext(Dispatchers.Main) {
                     var popup: PopupWindow? = null
-                    val popupContent = UsertagSelector(availableTags, context) {
-                        it.forEach(rule::addTag)
-                        changedCallback(rule)
+                    val popupContent = UsertagSelector(availableTags, rule.getTags(), context) { selection ->
+                        if(selection !== null){
+                            Utils.diffChanges(rule.getTags(), selection.toSet()).let { (added, deleted, _) ->
+                                deleted.forEach(rule::removeTag)
+                                added.forEach(rule::addTag)
+                            }
 
-                        listItems()
-                        expander.expanded = true
+                            changedCallback(rule)
+                            listItems()
+                            expander.expanded = true
+                        }
 
                         popup!!.dismiss()
                     }
+
                     popup = PopupWindow(popupContent,
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
                         true
@@ -541,8 +548,9 @@ private class UsertagView(val tag: String, ctx: Context): LinearLayout(ctx) {
 
 private class UsertagSelector(
     tags: List<String>,
+    selectedTags: Set<String>,
     ctx: Context,
-    onResult: (List<String>) -> Unit
+    onResult: (List<String>?) -> Unit
 ): FrameLayout(ctx) {
 
     private lateinit var selects: List<CheckBox>
@@ -563,7 +571,7 @@ private class UsertagSelector(
     private val cancelBtn = Button(context).apply {
         text = context.getString(R.string.misc_cancel)
         setOnClickListener {
-            onResult(emptyList())
+            onResult(null)
         }
     }
 
@@ -576,6 +584,7 @@ private class UsertagSelector(
             selects = tags.map {
                 CheckBox(context).apply {
                     text = it
+                    isChecked = selectedTags.contains(it)
                 }
             }
 
