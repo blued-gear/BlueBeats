@@ -36,7 +36,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.*
-import kotlin.properties.ObservableProperty
 
 private const val FILE_DETAILS_DLG_TAG = "dlg-file_details"
 
@@ -56,6 +55,7 @@ class FileBrowser : Fragment() {
     private var progressBar: ProgressBar? = null
     private lateinit var scanListener: MediaDB.ScanEventHandler
     private var scanRequested = false
+    private var inSelection = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -194,6 +194,8 @@ class FileBrowser : Fragment() {
                 }
 
                 updateMenuItems()
+
+                inSelection = listAdapter.getSelectExtension().selectedItems.isNotEmpty()
             }
         }
     }
@@ -289,32 +291,12 @@ class FileBrowser : Fragment() {
         select.multiSelect = true
         select.selectOnLongClick = true
 
-        listAdapter.onClickListener = { _, _, item, _ ->
-            when (item) {
-                is DirItem -> {
-                    viewModel.setCurrentDir(item.dir)
-                    viewModel.selectFile(null)
-
-                    expandMediaDir(item.dir) {
-                        withContext(Dispatchers.Main) {
-                            listAdapter.setNewList(it)
-                        }
-                    }
-
-                    true
-                }
-                is FileItem -> {
-                    viewModel.selectFile(item.file)
-
-                    mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
-                    playerVM.play(item.file)
-
-                    true
-                }
-                else -> {
-                    false
-                }
-            }
+        listAdapter.onClickListener = { _, _, item, pos ->
+            onItemClick(item, pos)
+        }
+        // prevent click-event when long-click for selection
+        listAdapter.onLongClickListener = { _, _, _, _ ->
+            true
         }
 
         recycleView.adapter = listAdapter
@@ -324,6 +306,39 @@ class FileBrowser : Fragment() {
                 withContext(Dispatchers.Main) {
                     listAdapter.setNewList(it)
                 }
+            }
+        }
+    }
+
+    private fun onItemClick(item: GenericItem, pos: Int): Boolean {
+        if(inSelection){
+            listAdapter.getSelectExtension().toggleSelection(pos)
+            return true
+        }
+
+        return when (item) {
+            is DirItem -> {
+                viewModel.setCurrentDir(item.dir)
+                viewModel.selectFile(null)
+
+                expandMediaDir(item.dir) {
+                    withContext(Dispatchers.Main) {
+                        listAdapter.setNewList(it)
+                    }
+                }
+
+                true
+            }
+            is FileItem -> {
+                viewModel.selectFile(item.file)
+
+                mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
+                playerVM.play(item.file)
+
+                true
+            }
+            else -> {
+                false
             }
         }
     }
@@ -448,6 +463,8 @@ private abstract class NodeItem<Holder : RecyclerView.ViewHolder> : AbstractItem
             selectedObserver = item.selectedObservable.addObserverCallback { _, selected ->
                 setSelected(selected)
             }
+
+            setSelected(item.isSelected)
         }
 
         // must be called from subclasses
