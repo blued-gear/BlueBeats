@@ -182,16 +182,8 @@ internal class Search : Fragment(R.layout.search_fragment) {
 
         viewModel.items.observe(this.viewLifecycleOwner) {
             it?.let {
-                it.map { group ->
-                    group.value.map {
-                        MediaFileSubItem(it)
-                    }.let {
-                        GroupItem(group.key, it)
-                    }
-                }.let {
-                    itemListAdapter.set(it)
-                }
-            }
+                applyItems(it)
+            } ?: itemListAdapter.clear()
         }
     }
 
@@ -216,6 +208,20 @@ internal class Search : Fragment(R.layout.search_fragment) {
             it.text.clear()
             it.text.append(text)
         }
+    }
+
+    private fun applyItems(items: Map<String, List<MediaFile>>) {
+        items.map { group ->
+            group.value.map {
+                MediaFileSubItem(it)
+            }.let {
+                GroupItem(group.key, it)
+            }
+        }.let {
+            itemListAdapter.set(it)
+        }
+
+        itemListAdapter.getExpandableExtension().expand()
     }
     //endregion
 }
