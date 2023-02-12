@@ -1,13 +1,13 @@
 package apps.chocolatecakecodes.bluebeats.view
 
-import androidx.lifecycle.ViewModelProvider
+import android.annotation.SuppressLint
 import android.os.Bundle
-import androidx.fragment.app.Fragment
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import android.widget.Button
 import android.widget.FrameLayout
+import androidx.core.view.GestureDetectorCompat
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
@@ -19,6 +19,9 @@ class Player : Fragment() {
 
     companion object {
         fun newInstance() = Player()
+
+        private const val SEEK_AREA_WIDTH = 0.4f// in %/100 (per side)
+        private const val SEEK_AMOUNT = 5000L// in ms TODO make changeable by user
     }
 
     private lateinit var viewModel: PlayerViewModel
@@ -46,6 +49,7 @@ class Player : Fragment() {
         return inflater.inflate(R.layout.player_fragment, container, false)
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -53,6 +57,15 @@ class Player : Fragment() {
         playerView = VLCVideoLayout(this.requireContext())
         player.attachViews(playerView, null, false, false)//TODO in future version subtitle option should be settable
         view.findViewById<FrameLayout>(R.id.player_playerholder).addView(playerView)
+
+        val gestureHandler = PlayerGestureHandler()
+        val gestureDetector = GestureDetectorCompat(this.requireContext(), gestureHandler)
+        gestureDetector.setOnDoubleTapListener(gestureHandler)
+        gestureDetector.setIsLongpressEnabled(false)
+        playerView.setOnTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
+            return@setOnTouchListener true
+        }
 
         wireObservers()
         wireActionHandlers(view)
@@ -111,5 +124,42 @@ class Player : Fragment() {
             player.attachViews(playerView, null, false, false)
 
         player.play(newMedia)
+    }
+
+    private inner class PlayerGestureHandler : GestureDetector.SimpleOnGestureListener(){
+
+        override fun onSingleTapConfirmed(e: MotionEvent?): Boolean {
+            playerView.performClick()
+
+            if(viewModel.isPlaying.value == true)
+                viewModel.pause()
+            else if(viewModel.currentMedia.value !== null)
+                viewModel.resume()
+
+            return true
+        }
+
+        override fun onDoubleTapEvent(e: MotionEvent?): Boolean {
+            if(e === null) return false
+            if(e.actionMasked != MotionEvent.ACTION_UP) return false
+            if(viewModel.currentMedia.value === null) return false
+
+            val width = playerView.width
+            val x = e.x
+
+            if(x <= width * SEEK_AREA_WIDTH){
+                // seek back
+                viewModel.updatePlayPosition((player.time - SEEK_AMOUNT).coerceAtLeast(0))
+
+                return true
+            }else if(x >= width * (1.0f - SEEK_AREA_WIDTH)){
+                // seek forward
+                viewModel.updatePlayPosition((player.time + SEEK_AMOUNT).coerceAtMost(player.length))
+
+                return true
+            }
+
+            return false
+        }
     }
 }
