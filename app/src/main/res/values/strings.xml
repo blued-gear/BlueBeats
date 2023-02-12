@@ -36,4 +36,6 @@
     <string name="dynpl_edit_rules_not_100">relative shares do not add up to 100%</string>
     <string name="dynpl_edit_mnu_reset">Undo Changes</string>
     <string name="tagname_genre">Genre</string>
+    <string name="dynpl_type_id3tag">ID3 Tag</string>
+    <string name="dynpl_edit_tag_type">Tag Type:</string>
 </resources>

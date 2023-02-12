@@ -59,6 +59,9 @@ private class DynplaylistGroupEditor(
         },
         context.getString(R.string.dynpl_type_usertags) to {
             RoomDB.DB_INSTANCE.dplUsertagsRuleDao().createNew(Rule.Share(1f, true))
+        },
+        context.getString(R.string.dynpl_type_id3tag) to {
+            RoomDB.DB_INSTANCE.dplID3TagsRuleDao().create(Rule.Share(1f, true))
         }
     )
 
@@ -309,7 +312,7 @@ private class DynplaylistUsertagsEditor(
 
         val lp = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
         rule.getTags().map { tag ->
-            UsertagView(tag, context).apply {
+            TextElement(tag, context).apply {
                 removeBtn.setOnClickListener {
                     onRemoveEntry(tag)
                 }
@@ -324,7 +327,7 @@ private class DynplaylistUsertagsEditor(
             RoomDB.DB_INSTANCE.userTagDao().getAllUserTags().let { availableTags ->
                 withContext(Dispatchers.Main) {
                     var popup: PopupWindow? = null
-                    val popupContent = UsertagSelector(availableTags, rule.getTags(), context) { selection ->
+                    val popupContent = TextSelector(availableTags, rule.getTags(), context) { selection ->
                         if(selection !== null){
                             Utils.diffChanges(rule.getTags(), selection.toSet()).let { (added, deleted, _) ->
                                 deleted.forEach(rule::removeTag)
@@ -362,6 +365,156 @@ private class DynplaylistUsertagsEditor(
         logicBtn.setLogicMode(rule.combineWithAnd)
     }
 }
+
+private class DynplaylistID3TagsEditor(
+    val rule: ID3TagsRule,
+    private val changedCallback: ChangedCallback,
+    ctx: Context
+) : AbstractDynplaylistEditorView(ctx) {
+
+    val addBtn = SimpleAddableRuleHeaderView.CommonVisuals.addButton(context)
+    val typeSelect = Spinner(ctx)
+    val typeSelectAdapter = ArrayAdapter<String>(ctx, R.layout.support_simple_spinner_dropdown_item)
+    val valuesContainer: LinearLayout
+    val availableValues = ArrayList<String>()
+
+    init {
+        header.title.text = "ID3 Tags"//TODO rules should have names
+
+        header.setupShareEdit(rule.share) {
+            rule.share = it
+            changedCallback(rule)
+        }
+
+        addBtn.apply {
+            setOnClickListener {
+                onAddEntry()
+            }
+        }.let {
+            header.addVisual(it, true)
+        }
+
+        typeSelect.adapter = typeSelectAdapter
+        typeSelect.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
+                onTypeSelected(typeSelectAdapter.getItem(position)!!)
+            }
+            override fun onNothingSelected(parent: AdapterView<*>) {
+                throw AssertionError()
+            }
+        }
+
+        LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+
+            TextView(ctx).apply {
+                setText(R.string.dynpl_edit_tag_type)
+            }.let {
+                this.addView(it)
+            }
+            this.addView(typeSelect)
+        }.also {
+            contentList.addView(it)
+        }
+
+        valuesContainer = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+        }.also {
+            contentList.addView(it)
+        }
+
+        listItems()
+    }
+
+    private fun listItems() {
+        valuesContainer.removeAllViews()
+
+        loadTypes()
+        loadTypeValues()
+
+        val lp = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        rule.getTagValues().map { tag ->
+            TextElement(tag, context).apply {
+                removeBtn.setOnClickListener {
+                    onRemoveEntry(tag)
+                }
+            }
+        }.forEach {
+            valuesContainer.addView(it, lp)
+        }
+    }
+
+    private fun onAddEntry() {
+        synchronized(availableValues) {
+            var popup: PopupWindow? = null
+            val popupContent = TextSelector(availableValues, rule.getTagValues(), context) { selection ->
+                if (selection !== null) {
+                    Utils.diffChanges(rule.getTagValues(), selection.toSet())
+                        .let { (added, deleted, _) ->
+                            deleted.forEach(rule::removeTagValue)
+                            added.forEach(rule::addTagValue)
+                        }
+
+                    changedCallback(rule)
+                    listItems()
+                    expander.expanded = true
+                }
+
+                popup!!.dismiss()
+            }
+
+            popup = PopupWindow(
+                popupContent,
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
+                true
+            )
+
+            popup.showAtLocation(this, Gravity.CENTER, 0, 0)
+        }
+    }
+
+    private fun onRemoveEntry(tag: String) {
+        rule.removeTagValue(tag)
+        changedCallback(rule)
+        listItems()
+    }
+
+    private fun onTypeSelected(newType: String) {
+        if(newType != rule.tagType) {
+            rule.tagType = newType
+            changedCallback(rule)
+            listItems()
+        }
+    }
+
+    private fun loadTypes() {
+        CoroutineScope(Dispatchers.IO).launch {
+            RoomDB.DB_INSTANCE.id3TagDao().getAllTagTypes().let { types ->
+                withContext(Dispatchers.Main) {
+                    typeSelectAdapter.clear()
+                    types.filterNot {
+                        it == "length"
+                    }.let {
+                        typeSelectAdapter.addAll(it)
+                    }
+
+                    typeSelect.setSelection(typeSelectAdapter.getPosition(rule.tagType))
+                }
+            }
+        }
+    }
+
+    private fun loadTypeValues() {
+        CoroutineScope(Dispatchers.IO).launch {
+            RoomDB.DB_INSTANCE.id3TagDao().getAllTypeValues(rule.tagType).let { values ->
+                synchronized(availableValues) {
+                    availableValues.clear()
+                    availableValues.addAll(values)
+                }
+            }
+        }
+    }
+}
 //endregion
 
 //region private utils / vals
@@ -376,6 +529,7 @@ private fun createEditor(
         is RuleGroup -> DynplaylistGroupEditor(item, cb, ctx)
         is IncludeRule -> DynplaylistIncludeEditor(item, cb, ctx)
         is UsertagsRule -> DynplaylistUsertagsEditor(item, cb, ctx)
+        is ID3TagsRule -> DynplaylistID3TagsEditor(item, cb, ctx)
         else -> throw IllegalArgumentException("unsupported rule")
     }
 }
@@ -700,7 +854,7 @@ private class MediaNodeSelectPopup(
     }
 }
 
-private class UsertagView(val tag: String, ctx: Context): LinearLayout(ctx) {
+private class TextElement(val tag: String, ctx: Context): LinearLayout(ctx) {
 
     val removeBtn = ImageButton(context).apply {
         gravity = Gravity.END
@@ -711,7 +865,7 @@ private class UsertagView(val tag: String, ctx: Context): LinearLayout(ctx) {
 
     val text = TextView(context).apply {
         gravity = Gravity.START or Gravity.CENTER_VERTICAL
-        text = this@UsertagView.tag
+        text = this@TextElement.tag
     }
 
     init {
@@ -722,7 +876,7 @@ private class UsertagView(val tag: String, ctx: Context): LinearLayout(ctx) {
     }
 }
 
-private class UsertagSelector(
+private class TextSelector(
     tags: List<String>,
     selectedTags: Set<String>,
     ctx: Context,
