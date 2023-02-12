@@ -1,7 +1,6 @@
 package apps.chocolatecakecodes.bluebeats.view.specialviews
 
 import android.content.Context
-import android.graphics.Color
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout

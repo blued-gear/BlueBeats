@@ -2,7 +2,6 @@ package apps.chocolatecakecodes.bluebeats.database
 
 import androidx.room.*
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
-import apps.chocolatecakecodes.bluebeats.taglib.TagFields
 
 @Entity(
     foreignKeys = [ForeignKey(entity = MediaDirEntity::class,

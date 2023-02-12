@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
+import android.view.View.OnClickListener
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.*
@@ -20,12 +21,11 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.*
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.IncludeRule
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.Rule
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGroup
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.UsertagsRule
 import apps.chocolatecakecodes.bluebeats.util.Utils
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.math.RoundingMode
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols

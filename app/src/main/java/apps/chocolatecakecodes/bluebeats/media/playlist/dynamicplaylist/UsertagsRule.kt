@@ -8,8 +8,6 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import apps.chocolatecakecodes.bluebeats.util.takeOrAll
 import java.util.*
-import kotlin.collections.ArrayList
-import kotlin.collections.HashSet
 
 internal class UsertagsRule private constructor(
     override var share: Rule.Share,

@@ -3,9 +3,6 @@ package apps.chocolatecakecodes.bluebeats.view
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
-import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistIterator
-import apps.chocolatecakecodes.bluebeats.taglib.Chapter
 
 internal class PlayerViewModel : ViewModel() {
 

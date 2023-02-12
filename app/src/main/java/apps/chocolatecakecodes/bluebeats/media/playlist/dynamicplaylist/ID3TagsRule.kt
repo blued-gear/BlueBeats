@@ -9,8 +9,6 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import apps.chocolatecakecodes.bluebeats.util.takeOrAll
 import java.util.*
-import kotlin.collections.ArrayList
-import kotlin.collections.HashSet
 
 private const val LOG_TAG = "ID3TagsRule"
 
