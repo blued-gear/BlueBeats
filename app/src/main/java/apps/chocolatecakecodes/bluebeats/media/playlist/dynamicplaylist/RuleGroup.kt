@@ -72,6 +72,26 @@ internal class RuleGroup private constructor(
         excludes.removeAt(idx)
     }
 
+    fun getExcludesAndRules() : List<Rulelike> {
+        return excludesRO + rulesRO
+    }
+
+    fun addRule(rule: Rulelike) {
+        when (rule) {
+            is ExcludeRule -> addExclude(rule)
+            is Rule -> addRule(rule)
+            else -> throw IllegalArgumentException("unsupported rule type")
+        }
+    }
+
+    fun removeRule(rule: Rulelike) {
+        when (rule) {
+            is ExcludeRule -> removeExclude(rule)
+            is Rule -> removeRule(rule)
+            else -> throw IllegalArgumentException("unsupported rule type")
+        }
+    }
+
     @Suppress("NAME_SHADOWING")
     @Dao
     internal abstract class RuleGroupDao {
