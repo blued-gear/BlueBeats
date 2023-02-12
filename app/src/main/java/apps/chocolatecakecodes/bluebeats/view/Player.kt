@@ -235,8 +235,6 @@ class Player : Fragment() {
                     seekBar.showTitle = true
                 }
             }
-
-            updateChaptersMenuItem()
         }
     }
 
