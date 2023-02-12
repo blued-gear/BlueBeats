@@ -116,7 +116,9 @@ class FileBrowser : Fragment() {
                 this.parentFragmentManager.beginTransaction()
                     .remove(this.parentFragmentManager.findFragmentByTag(FILE_DETAILS_DLG_TAG)!!)
                     .commit()
+
                 dialogOpen = false
+                updateMenuFileInfo()
             }else{// go one dir up
                 // check if we can go up by one dir
                 val parentDir = viewModel.currentDir.value!!.parent
@@ -295,6 +297,7 @@ class FileBrowser : Fragment() {
     private fun updateMenuFileInfo(){
         val chaptersItem = mainMenu.findItem(R.id.filebrowser_menu_details)
         chaptersItem.isEnabled = viewModel.selectedFile.value !== null
+                && !dialogOpen
     }
 
     private fun onFileDetailsClicked(){
@@ -305,6 +308,8 @@ class FileBrowser : Fragment() {
             this.parentFragmentManager.beginTransaction()
                 .add(R.id.main_content, dlg, FILE_DETAILS_DLG_TAG)
                 .commit()
+
+            updateMenuFileInfo()
         }
     }
 
