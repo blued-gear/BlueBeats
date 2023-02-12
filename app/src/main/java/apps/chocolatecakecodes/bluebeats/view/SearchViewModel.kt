@@ -11,7 +11,6 @@ import apps.chocolatecakecodes.bluebeats.util.Utils
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.debounce
 
 private const val SEARCH_DEBOUNCE_TIMEOUT = 200L
@@ -29,7 +28,7 @@ internal class SearchViewModel : ViewModel() {
     val items: LiveData<Map<String, List<MediaFile>>> = itemsRW
     private val subgroupRW = MutableLiveData<String?>()
     val subgroup: LiveData<String?> = subgroupRW
-    private val searchTextRW = MutableLiveData<String>()
+    private val searchTextRW = MutableLiveData("")
     val searchText: LiveData<String> = searchTextRW
 
     private lateinit var debounceSearch: (String) -> Unit
@@ -99,6 +98,10 @@ internal class SearchViewModel : ViewModel() {
             Grouping.ID3_TAG -> loadByID3Tag(subgroup!!)
             Grouping.USER_TAG -> loadByUsertag()
         }
+
+        searchText.value?.let {
+            search(it)
+        }
     }
 
     private fun loadByFilename() {
@@ -111,8 +114,6 @@ internal class SearchViewModel : ViewModel() {
         }.toSortedMap()
 
         loadLazyFileAttributes(allItems.values)
-
-        itemsRW.postValue(allItems)
     }
 
     private fun loadByTitle() {
@@ -127,8 +128,6 @@ internal class SearchViewModel : ViewModel() {
         }.toSortedMap()
 
         loadLazyFileAttributes(allItems.values)
-
-        itemsRW.postValue(allItems)
     }
 
     private fun loadByID3Tag(type: String) {
@@ -143,8 +142,6 @@ internal class SearchViewModel : ViewModel() {
         }.toSortedMap()
 
         loadLazyFileAttributes(allItems.values)
-
-        itemsRW.postValue(allItems)
     }
 
     private fun loadByUsertag() {
@@ -159,12 +156,59 @@ internal class SearchViewModel : ViewModel() {
         }.toSortedMap()
 
         loadLazyFileAttributes(allItems.values)
-
-        itemsRW.postValue(allItems)
     }
 
     private fun search(query: String) {
-        ;
+        grouping.value?.let {
+            if(query.isEmpty()) {
+                if (allItems != items.value)
+                    itemsRW.postValue(allItems)
+            } else {
+                val parsedQuery = parseSearchQuery(query)
+                when (it) {
+                    Grouping.FILENAME -> {
+                        allItems.flatMap { group ->
+                            group.value.map {
+                                Pair(it.name, Pair(group.key, it))
+                            }
+                        }.let {
+                            performSearch(parsedQuery, it)
+                        }.groupBy {
+                            it.first
+                        }.mapValues {
+                            it.value.map { it.second }
+                        }
+                    }
+                    Grouping.TITLE -> {
+                        allItems.flatMap { group ->
+                            group.value.map {
+                                Pair(it.mediaTags.title, Pair(group.key, it))
+                            }
+                        }.let {
+                            performSearch(parsedQuery, it)
+                        }.groupBy {
+                            it.first
+                        }.mapValues {
+                            it.value.map { it.second }
+                        }
+                    }
+                    Grouping.ID3_TAG, Grouping.USER_TAG -> {
+                        allItems.map {
+                            Pair(it.key, Pair(it.key, it.value))
+                        }.let {
+                            performSearch(parsedQuery, it)
+                        }.groupBy {
+                            it.first
+                        }.mapValues {
+                            it.value.flatMap { it.second }
+                        }
+                    }
+                }.let {
+                    if (it != items.value)
+                        itemsRW.postValue(it)
+                }
+            }
+        }
     }
 
     private fun setupSearchDebouncer() {
@@ -203,6 +247,40 @@ internal class SearchViewModel : ViewModel() {
     private fun loadLazyFileAttributes(items: Collection<List<MediaFile>>) {
         items.flatten().forEach {
             it.mediaTags.equals(null)
+        }
+    }
+
+    /**
+     * Parses the query-string to a list of matchers.
+     * Matchers is a list of lists of strings; the inner list represent AND combinations,
+     *  the outer OR combinations of the results of the ANDs.
+     * How the string is split: <and-1-1>,<and-1-2>,<and-1-3>;<and-2-1>,<and-2-2>
+     */
+    private fun parseSearchQuery(query: String): List<List<String>> {
+        return query.split(';').map {
+            it.split(',').map {
+                it.removePrefix(" ")
+            }.filterNot {
+                it.isEmpty() || it.isBlank()
+            }
+        }.filterNot {
+            it.isEmpty()
+        }
+    }
+
+    /**
+     * Applies the matchers against every string from items (item.first)
+     *  and returns the items (item.second) where all AND-substrings of at least one OR-list matched.
+     */
+    private fun <R> performSearch(matchers: List<List<String>>, items: List<Pair<String, R>>): List<R> {
+        return items.filter { item ->
+            matchers.any {
+                it.all {
+                    item.first.contains(it, true)
+                }
+            }
+        }.map {
+            it.second
         }
     }
 }

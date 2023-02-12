@@ -16,7 +16,6 @@ import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.util.*
-import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaDirItem
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
 import com.google.android.material.tabs.TabLayout
 import com.mikepenz.fastadapter.*
