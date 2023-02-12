@@ -4,9 +4,11 @@ import androidx.room.*
 import apps.chocolatecakecodes.bluebeats.database.MediaFileEntity
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import apps.chocolatecakecodes.bluebeats.util.TimerThread
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 /**
  * a normal playlist where the user puts media in manually
@@ -53,6 +55,10 @@ internal class StaticPlaylist private constructor(
 
         init{
             cache = CacheBuilder.newBuilder().weakValues().build()
+            TimerThread.INSTANCE.addInterval(TimeUnit.MINUTES.toMillis(5)) {
+                cache.cleanUp()
+                0
+            }
         }
 
         private val playlistsManager: PlaylistsManager by lazy {

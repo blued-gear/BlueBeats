@@ -4,12 +4,14 @@ import androidx.room.*
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.playlist.*
+import apps.chocolatecakecodes.bluebeats.util.TimerThread
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 private const val EXAMPLE_ITEM_COUNT = 50
 
@@ -45,6 +47,10 @@ internal class DynamicPlaylist private constructor(
 
         init{
             cache = CacheBuilder.newBuilder().weakValues().build()
+            TimerThread.INSTANCE.addInterval(TimeUnit.MINUTES.toMillis(5)) {
+                cache.cleanUp()
+                0
+            }
         }
 
         private val playlistsManager: PlaylistsManager by lazy {

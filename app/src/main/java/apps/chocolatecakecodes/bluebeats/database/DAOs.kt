@@ -6,8 +6,10 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.taglib.TagFields
+import apps.chocolatecakecodes.bluebeats.util.TimerThread
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
+import java.util.concurrent.TimeUnit
 
 @Dao
 internal abstract class MediaDirDAO{
@@ -16,6 +18,10 @@ internal abstract class MediaDirDAO{
 
     init{
         cache = CacheBuilder.newBuilder().weakValues().build()
+        TimerThread.INSTANCE.addInterval(TimeUnit.MINUTES.toMillis(5)) {
+            cache.cleanUp()
+            0
+        }
     }
 
     //region public methods
@@ -86,6 +92,10 @@ internal abstract class MediaFileDAO{
 
     init{
         cache = CacheBuilder.newBuilder().weakValues().build()
+        TimerThread.INSTANCE.addInterval(TimeUnit.MINUTES.toMillis(5)) {
+            cache.cleanUp()
+            0
+        }
     }
 
     //region public methods
