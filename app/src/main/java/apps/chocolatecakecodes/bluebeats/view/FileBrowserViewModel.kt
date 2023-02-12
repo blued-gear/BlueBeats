@@ -1,12 +1,12 @@
 package apps.chocolatecakecodes.bluebeats.view
 
-import android.os.Looper
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import apps.chocolatecakecodes.bluebeats.util.Utils
 
 internal class FileBrowserViewModel : ViewModel() {
 
@@ -24,20 +24,10 @@ internal class FileBrowserViewModel : ViewModel() {
     }
 
     fun setCurrentDir(dir: MediaDir){
-        if(isMainThread())
-            currentDirRW.setValue(dir)
-        else
-            currentDirRW.postValue(dir)
+        Utils.trySetValueImmediately(currentDirRW, dir)
     }
 
     fun selectFile(file: MediaFile?){
-        if(isMainThread())
-            selectedFileRW.setValue(file)
-        else
-            selectedFileRW.postValue(file)
-    }
-
-    private fun isMainThread(): Boolean{
-        return Looper.myLooper() == Looper.getMainLooper()
+        Utils.trySetValueImmediately(selectedFileRW, file)
     }
 }

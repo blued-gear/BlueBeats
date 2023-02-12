@@ -19,6 +19,7 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
+import apps.chocolatecakecodes.bluebeats.util.Utils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -116,7 +117,7 @@ class FileBrowser : Fragment() {
                     .remove(this.parentFragmentManager.findFragmentByTag(FILE_DETAILS_DLG_TAG)!!)
                     .commit()
 
-                mainVM.currentDialog.setValue(MainActivityViewModel.Dialogs.NONE)
+                Utils.trySetValueImmediately(mainVM.currentDialog, MainActivityViewModel.Dialogs.NONE)
                 updateMenuFileInfo()
             }else{// go one dir up
                 // check if we can go up by one dir
@@ -313,7 +314,7 @@ class FileBrowser : Fragment() {
 
     private fun onFileDetailsClicked(){
         viewModel.selectedFile.value?.let {
-            mainVM.currentDialog.setValue(MainActivityViewModel.Dialogs.FILE_DETAILS)
+            Utils.trySetValueImmediately(mainVM.currentDialog, MainActivityViewModel.Dialogs.FILE_DETAILS)
 
             val dlg = FileDetails(it)
             this.parentFragmentManager.beginTransaction()

@@ -1,6 +1,8 @@
 package apps.chocolatecakecodes.bluebeats.util
 
+import android.os.Looper
 import androidx.documentfile.provider.DocumentFile
+import androidx.lifecycle.MutableLiveData
 import com.google.gson.reflect.TypeToken
 import org.videolan.libvlc.interfaces.AbstractVLCEvent
 import org.videolan.libvlc.interfaces.IMedia
@@ -70,6 +72,21 @@ object Utils {
 
     inline fun <reified T> captureType(): Type{
         return object : TypeToken<T>(){}.type
+    }
+
+    fun isUiThread(): Boolean{
+        return Looper.myLooper() == Looper.getMainLooper()
+    }
+
+    /**
+     * tries to set the value to the LiveData immediately if in UI-Thread,
+     * else it will use postValue()
+     */
+    fun <T> trySetValueImmediately(data: MutableLiveData<T>, value: T){
+        if(isUiThread())
+            data.setValue(value)
+        else
+            data.postValue(value)
     }
 }
 
