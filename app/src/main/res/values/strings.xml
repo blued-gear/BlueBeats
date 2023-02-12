@@ -33,4 +33,5 @@
     <string name="dynpl_edit_name_saved">Name saved</string>
     <string name="dynpl_edit_name_not_saved">Name could not be saved (it is likely that the name already exists)</string>
     <string name="dynpl_edit_name_invalid_blank">The name must not be empty</string>
+    <string name="dynpl_edit_rules_not_100">relative shares do not add up to 100%</string>
 </resources>

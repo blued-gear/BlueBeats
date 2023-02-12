@@ -5,17 +5,18 @@ import android.util.Log
 import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylist
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.Rule
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGroup
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.view.specialviews.createEditorRoot
 import kotlinx.coroutines.*
 import java.lang.Exception
+import kotlin.math.abs
 
 private const val LOG_TAG = "DynplaylistEditor"
 private const val STATE_PLAYLIST_ID = "key:plId"
@@ -75,6 +76,13 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
     }
 
     suspend fun saveChanges(): Boolean {
+        if(!checkRuleShares(playlist.rootRuleGroup)){
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, R.string.dynpl_edit_rules_not_100, Toast.LENGTH_LONG).show()
+            }
+            return false
+        }
+
         var saveSuccessful = true
         if(plName.text.toString() != playlist.name)
             saveSuccessful = saveSuccessful and savePlName()
@@ -95,6 +103,36 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
 
     private fun onRuleEdited(rule: Rule) {
         modified = true
+    }
+
+    private fun checkRuleShares(group: RuleGroup): Boolean{
+        group.getRules().filterNot {
+            it.second
+        }.map {
+            it.first.share
+        }.filter {
+            it.isRelative
+        }.let {
+            if(it.isNotEmpty()){
+                val epsilon = 0.0001f
+                val shareSum = it.fold(0f) { acc, it ->
+                    acc + it.value
+                }
+                if(abs(1f - shareSum) > epsilon)
+                    return false
+            }
+        }
+
+        group.getRules().filterNot {
+            it.second
+        }.map {
+            it.first
+        }.filterIsInstance<RuleGroup>().forEach {
+            if(!checkRuleShares(it))
+                return false
+        }
+
+        return true
     }
 
     private suspend fun savePlName(): Boolean {
