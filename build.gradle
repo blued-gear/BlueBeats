@@ -8,7 +8,7 @@ buildscript {
         version_kotlin = '1.8.0'
 
         version_android_ktx = '1.9.0'
-        version_appcompat = '1.5.1'
+        version_appcompat = '1.6.0'
 
         version_junit = '4.13.2'
         version_android_junit = '1.1.5'
@@ -51,7 +51,7 @@ task clean(type: Delete) {
 
 tasks.named("dependencyUpdates").configure {
     rejectVersionIf {
-        ['ALPHA', 'BETA', 'RC', 'EAP'].any{ keyword ->
+        ['ALPHA', 'BETA', 'RC', 'EAP', '-JRE'].any{ keyword ->
             it.candidate.version.toUpperCase().contains(keyword) }
     }
 }
