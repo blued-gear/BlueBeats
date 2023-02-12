@@ -5,6 +5,8 @@ import android.view.*
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -15,6 +17,7 @@ import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
 import apps.chocolatecakecodes.bluebeats.media.playlist.StaticPlaylist
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylist
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.RequireNotNull
 import apps.chocolatecakecodes.bluebeats.util.Utils
@@ -30,6 +33,7 @@ import com.mikepenz.fastadapter.select.getSelectExtension
 import kotlinx.coroutines.*
 
 private const val MNU_ID_OVERVIEW_RM = 11
+private const val MNU_ID_OVERVIEW_NEW_DYN = 12
 private const val MNU_ID_PLAYLIST_RM = 21
 private const val MNU_ID_PLAYLIST_INFO = 22
 
@@ -207,7 +211,14 @@ internal class Playlists : Fragment() {
             viewModel.selectedPlaylist = when (playlistInfo.second) {
                 PlaylistType.STATIC -> RoomDB.DB_INSTANCE.staticPlaylistDao()
                     .load(playlistInfo.third)
-                PlaylistType.DYNAMIC -> TODO()
+                PlaylistType.DYNAMIC -> {
+                    //TODO only for debugging; change to show elements
+                    val pl = RoomDB.DB_INSTANCE.dynamicPlaylistDao().load(playlistInfo.third)
+                    withContext(Dispatchers.Main) {
+                        onEditDynamicPlaylist(pl)
+                    }
+                    return@launch
+                }
             }
 
             viewModel.showOverview.postValue(false)
@@ -270,11 +281,26 @@ internal class Playlists : Fragment() {
 
             Utils.trySetValueImmediately(mainVM.currentDialog, MainActivityViewModel.Dialogs.NONE)
             updateMenu()
+        } else if(mainVM.currentDialog.value == MainActivityViewModel.Dialogs.DYNPLAYLIST_EDITOR){// close dialog
+            this.parentFragmentManager.beginTransaction()
+                .remove(this.parentFragmentManager.findFragmentByTag(MainActivityViewModel.Dialogs.DYNPLAYLIST_EDITOR.tag)!!)
+                .commit()
+
+            Utils.trySetValueImmediately(mainVM.currentDialog, MainActivityViewModel.Dialogs.NONE)
+            updateMenu()
         } else if(inSelection) {// deselect all
             itemsAdapter.getSelectExtension().deselect()
         } else if(viewModel.showOverview.value == false) {// go back to overview
             viewModel.showOverview.value = true
         }
+    }
+
+    private fun onEditDynamicPlaylist(playlist: DynamicPlaylist) {
+        val dlg = DynplaylistEditorFragment(playlist)
+        this.parentFragmentManager.beginTransaction()
+            .add(R.id.main_content, dlg, MainActivityViewModel.Dialogs.DYNPLAYLIST_EDITOR.tag)
+            .commit()
+        Utils.trySetValueImmediately(mainVM.currentDialog, MainActivityViewModel.Dialogs.DYNPLAYLIST_EDITOR)
     }
     //endregion
 
@@ -369,6 +395,13 @@ internal class Playlists : Fragment() {
                 true
             }
         }
+
+        menu.add(Menu.NONE, MNU_ID_OVERVIEW_NEW_DYN, Menu.NONE, R.string.playlists_add_dyn).apply {
+            setOnMenuItemClickListener {
+                onNewDynamicPlaylist()
+                true
+            }
+        }
     }
     private fun buildMenuItemsForPlaylist(menu: Menu) {
         menu.add(Menu.NONE, MNU_ID_PLAYLIST_RM, Menu.NONE, R.string.misc_remove).apply {
@@ -419,12 +452,51 @@ internal class Playlists : Fragment() {
                 val listInfo = (it as ListsItem).playlist
                 when(listInfo.second){
                     PlaylistType.STATIC -> RoomDB.DB_INSTANCE.staticPlaylistDao().delete(listInfo.third)
-                    PlaylistType.DYNAMIC -> TODO()
+                    PlaylistType.DYNAMIC -> RoomDB.DB_INSTANCE.dynamicPlaylistDao().delete(listInfo.third)
                 }
             }
 
             withContext(Dispatchers.Main) {
                 loadPlaylists(true)
+            }
+        }
+    }
+
+    private fun onNewDynamicPlaylist() {
+        val ctx = this.requireContext()
+        CoroutineScope(Dispatchers.IO).launch {
+            val existingPlaylist = RoomDB.DB_INSTANCE.playlistManager().listAllPlaylist().mapValues {
+                it.value.second
+            }
+
+            withContext(Dispatchers.Main) {
+                val plSelect = SpinnerTextbox(ctx).apply {
+                    setItems(existingPlaylist.keys.toList())
+                }
+
+                AlertDialog.Builder(ctx)
+                    .setTitle(R.string.filebrowser_menu_add_playlist)
+                    .setView(plSelect)
+                    .setNegativeButton(R.string.misc_cancel) { dlg, _ ->
+                        dlg.cancel()
+                    }
+                    .setPositiveButton("OK") { dlg, _ ->
+                        CoroutineScope(Dispatchers.IO).launch {
+                            val plName = plSelect.text
+                            val dao = RoomDB.DB_INSTANCE.dynamicPlaylistDao()
+
+                            try {
+                                val pl = dao.createNew(plName)
+                                dlg.dismiss()
+                                onEditDynamicPlaylist(pl)
+                            }catch (e: Exception){
+                                Toast.makeText(ctx,
+                                    "A playlist with this name does already exist",
+                                    Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
+                    .show()
             }
         }
     }

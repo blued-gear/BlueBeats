@@ -13,7 +13,9 @@ internal class MainActivityViewModel : ViewModel(){
     }
 
     enum class Dialogs(val tag: String){
-        NONE(""), FILE_DETAILS("dlg-file_details")
+        NONE(""),
+        FILE_DETAILS("dlg-file_details"),
+        DYNPLAYLIST_EDITOR("dlg-dynpl_edit")
     }
 
     val currentTab = MutableLiveData<Tabs>(Tabs.MEDIA)
