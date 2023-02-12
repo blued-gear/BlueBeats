@@ -34,6 +34,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val appCtx: Conte
     }
 
     private val mediaFactory: IMediaFactory
+    private val scanRoots: MutableMap<String, String>
     private var mediaTree: MediaDir = MediaNode.UNSPECIFIED_DIR
     //TODO collections that maps files to types, tags, ...
 
@@ -41,9 +42,17 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val appCtx: Conte
 
     init{
         mediaFactory = FactoryManager.getFactory(IMediaFactory.factoryId) as IMediaFactory
+        scanRoots = HashMap()
     }
 
     //region public methods
+
+    fun addScanRoot(displayName: String, path: String){
+        scanRoots.put(displayName, path)
+    }
+    fun removeScanRoot(displayName: String){
+        scanRoots.remove(displayName)
+    }
 
     fun loadDB(){
         //TODO
@@ -54,32 +63,35 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val appCtx: Conte
         //TODO
     }
 
-    fun scanInAll(root: String) {
+    fun scanInAll() {
         //TODO scan internal and media roots, update tree, save DB
 
-        val b = MediaBrowser(libVLC, object: MediaBrowser.EventListener{
-            override fun onMediaAdded(index: Int, media: IMedia?) {
-                Log.d("MediaBrowser", "media found: ${media?.uri} ($index)")
-            }
-            override fun onMediaRemoved(index: Int, media: IMedia?) {
-                Log.d("MediaBrowser", "media removed: ${media?.uri} ($index)")
-            }
-            override fun onBrowseEnd() {
-                Log.d("MediaBrowser", "scan done")
+        val root = MediaDir("/", null)
+
+        for(scanRoot in scanRoots.keys){
+            val scanRootPath = scanRoots.get(scanRoot)
+            val scanRootVlcDir = mediaFactory.getFromLocalPath(libVLC, scanRootPath)
+
+            if(scanRootVlcDir == null){
+                eventHandler.onScanException(IOException("unable to create vlc-media (path: $scanRootPath"))
+                continue
             }
 
-        })
-        b.browse(root, MediaBrowser.Flag.Interact)
+            scanRootVlcDir.addOption(IGNORE_LIST_OPTION)
+            scanRootVlcDir.parse(IMedia.Parse.ParseLocal or IMedia.Parse.DoInteract)
 
-        val rootVlcDir = mediaFactory.getFromLocalPath(libVLC, root) ?: throw IOException("unable to create media")
-        rootVlcDir.addOption(IGNORE_LIST_OPTION)
-        rootVlcDir.parse(IMedia.Parse.ParseLocal or IMedia.Parse.DoInteract)
+            try {
+                val scanRootNode = scanDir(scanRootVlcDir, root, scanRoot)
+                val oldVersion: MediaDir? = mediaTree.findChild(scanRoot) as? MediaDir?
+                updateDirDeep(scanRootNode, oldVersion)
+            }catch (e: Exception){
+                eventHandler.onScanException(e)
+            }
 
-        val rootParent: MediaDir = Utils.dirTreeToMediaDir(Utils.parentDir(root))
-        val rootMediaDir = scanDir(rootVlcDir, rootParent)
-        updateDirDeep(rootMediaDir, mediaTree)
-        mediaTree = rootMediaDir
-        rootVlcDir.release()
+            scanRootVlcDir.release()
+        }
+
+        mediaTree = root
     }
 
     fun getMediaTreeRoot(): MediaDir{
