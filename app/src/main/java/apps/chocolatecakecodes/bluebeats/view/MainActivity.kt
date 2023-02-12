@@ -12,6 +12,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import apps.chocolatecakecodes.bluebeats.R
+import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.MediaDB
 import apps.chocolatecakecodes.bluebeats.media.VlcPlayerManager
 import apps.chocolatecakecodes.bluebeats.util.MediaDBEventRelay
@@ -34,6 +35,8 @@ class MainActivity : AppCompatActivity() {
         this.setContentView(R.layout.activity_main)
 
         getAppPermissions()
+
+        RoomDB.init(this)
 
         vlcMng = VlcPlayerManager(this)
         mediaMngEventRelay = MediaDBEventRelay()

@@ -13,18 +13,6 @@ object Utils {
         return DocumentFile.fromFile(File(media.uri.path!!))
     }
 
-    fun dirTreeToMediaDir(path: String): MediaDir{
-        if(path.isEmpty())
-            throw IllegalArgumentException("path must not be empty")
-
-        var dir: MediaDir? = null
-        for(pathPart in path.split('/')){
-            if(pathPart.isEmpty()) continue
-            dir = MediaDir(pathPart, dir)
-        }
-        return dir!!
-    }
-
     /**
      * path must be normalized (must not contain //, .. and so on)
      */
@@ -38,10 +26,10 @@ object Utils {
     }
 }
 
-inline fun <T : AbstractVLCEvent?> IVLCObject<T>.using(retain: Boolean = true, block: () -> Unit){
+inline fun <T : IVLCObject<E>, E : AbstractVLCEvent?> T.using(retain: Boolean = true, block: (T) -> Unit){
     if(retain) this.retain()
     try{
-        block()
+        block(this)
     }finally {
         this.release()
     }

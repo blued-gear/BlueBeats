@@ -48,10 +48,13 @@ class FileBrowser(private val mediaDB: MediaDBEventRelay) : Fragment() {
     init{
         val adapterRef = AtomicReference<ViewAdapter>(null)//XXX self-reference in init is not allowed
         listAdapter = ViewAdapter {
-            if(it.type == MediaNode.Type.DIR){
-                val dir = it as MediaDir
-                currentDir = dir.path
-                adapterRef.get().setEntries(expandMediaDir(it))
+            if(it is MediaDir){
+                currentDir = it.path
+                expandMediaDir(it){
+                    withContext(Dispatchers.Main){
+                        adapterRef.get().setEntries(it)
+                    }
+                }
             }else{
                 Log.d("MediaBrowser", "clicked file ${it.path}")
             }
@@ -146,16 +149,18 @@ class FileBrowser(private val mediaDB: MediaDBEventRelay) : Fragment() {
     private fun scanMedia(){
         currentDir = "/"
 
-        GlobalScope.launch {
-            withContext(Dispatchers.IO){
-                mediaDB.getSubject().scanInAll()
+        CoroutineScope(Dispatchers.IO).launch {
+            mediaDB.getSubject().loadDB()
 
-                /*
-                val mediaTree = mediaDB.getSubject().getMediaTreeRoot()
+            // show root
+            val mediaTreeRoot = mediaDB.getSubject().getMediaTreeRoot()
+            expandMediaDir(mediaTreeRoot){
                 withContext(Dispatchers.Main){
-                    listAdapter.setEntries(expandMediaDir(mediaTree))
-                }*/
+                    listAdapter.setEntries(it)
+                }
             }
+
+            mediaDB.getSubject().scanInAll()
         }
     }
 
@@ -171,7 +176,7 @@ class FileBrowser(private val mediaDB: MediaDBEventRelay) : Fragment() {
 
         fun setData(entry: MediaNode){
             this.entry = entry
-            this.itemView.findViewById<TextView>(R.id.v_mn_text).text = "${entry.type}: ${entry.name}"
+            this.itemView.findViewById<TextView>(R.id.v_mn_text).text = "${entry.javaClass.simpleName}: ${entry.name}"
         }
 
     }
@@ -182,8 +187,8 @@ class FileBrowser(private val mediaDB: MediaDBEventRelay) : Fragment() {
         init{
             entries = TreeSet(kotlin.Comparator { a, b ->
                 when {
-                    (a.type == MediaNode.Type.DIR && b.type !== MediaNode.Type.DIR) -> -1
-                    (b.type == MediaNode.Type.DIR && a.type !== MediaNode.Type.DIR) -> 1
+                    (a is MediaDir && b !is MediaDir) -> -1
+                    (b is MediaDir && a !is MediaDir) -> 1
                     else -> b.name.compareTo(a.name)
                 }
             })
@@ -218,6 +223,8 @@ class FileBrowser(private val mediaDB: MediaDBEventRelay) : Fragment() {
     }
 }
 
-private fun expandMediaDir(dir: MediaDir): List<MediaNode>{
-    return listOf(dir.getDirs(), dir.getFiles()).flatten()
+private fun expandMediaDir(dir: MediaDir, next: suspend (List<MediaNode>) -> Unit){
+    CoroutineScope(Dispatchers.IO).launch {
+        next(listOf(dir.getDirs(), dir.getFiles()).flatten())
+    }
 }
