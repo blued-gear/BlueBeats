@@ -11,8 +11,8 @@ internal class PlayerViewModel : ViewModel() {
 
     private val currentMediaRW: MutableLiveData<MediaFile> = MutableLiveData(null)
     val currentMedia: LiveData<MediaFile> = currentMediaRW// public read-only property
-    private val currentPlaylistRW: MutableLiveData<PlaylistIterator> = MutableLiveData(null)
-    val currentPlaylist: LiveData<PlaylistIterator> = currentPlaylistRW// public read-only property
+    private val currentPlaylistRW: MutableLiveData<PlaylistIterator?> = MutableLiveData(null)
+    val currentPlaylist: LiveData<PlaylistIterator?> = currentPlaylistRW// public read-only property
     private val isPlayingRW: MutableLiveData<Boolean> = MutableLiveData(false)
     val isPlaying: LiveData<Boolean> = isPlayingRW// public read-only property
     private val playPosRW: MutableLiveData<Long> = MutableLiveData(0)
@@ -26,14 +26,13 @@ internal class PlayerViewModel : ViewModel() {
     val chapters: LiveData<List<Chapter>> = chaptersRW// public read-only property
 
     fun play(media: MediaFile){
-        currentMediaRW.postValue(media)
-        updatePlayPosition(0)
-        resume()
+        currentPlaylistRW.postValue(null)
+        setCurrentMediaAndPlay(media)
     }
 
     fun playPlaylist(pl: PlaylistIterator) {
         currentPlaylistRW.postValue(pl)
-        play(pl.nextMedia())
+        setCurrentMediaAndPlay(pl.nextMedia())
     }
 
     fun pause(){
@@ -58,5 +57,11 @@ internal class PlayerViewModel : ViewModel() {
 
     fun setChapters(value: List<Chapter>){
         chaptersRW.postValue(value)
+    }
+
+    private fun setCurrentMediaAndPlay(media: MediaFile) {
+        currentMediaRW.postValue(media)
+        updatePlayPosition(0)
+        resume()
     }
 }
