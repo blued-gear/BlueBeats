@@ -110,9 +110,9 @@ internal abstract class MediaFileDAO{
             if (cached !== null) return cached
 
             val entity = getEntityForId(id)
-            val dir = MediaFile(entity)
-            cache.put(id, dir)
-            return dir
+            val file = MediaFile(entity)
+            cache.put(id, file)
+            return file
         }
     }
 
