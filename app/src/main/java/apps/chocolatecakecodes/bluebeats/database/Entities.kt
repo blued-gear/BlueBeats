@@ -48,5 +48,6 @@ internal data class UserTagEntity(
 internal data class UserTagRelation(
     @PrimaryKey(autoGenerate = true) val id: Long,
     @ColumnInfo(name = "tag") val tag: Long,
-    @ColumnInfo(name = "file", index = true) val file: Long
+    @ColumnInfo(name = "file", index = true) val file: Long,
+    @ColumnInfo(name = "pos") val pos: Int
 )

@@ -218,8 +218,12 @@ internal abstract class UserTagsDAO{
         }
 
         // save relations
-        getUserTagEntityForNames(tags).forEach {
-            saveUserTagRelation(UserTagRelation(MediaNode.UNALLOCATED_NODE_ID, it.id, file.entity.id))
+        tags.map {
+            getUserTagEntityForNames(listOf(it)).first()
+        }.mapIndexed { pos, entity ->
+            UserTagRelation(MediaNode.UNALLOCATED_NODE_ID, entity.id, file.entity.id, pos)
+        }.forEach {
+            saveUserTagRelation(it)
         }
     }
 
@@ -231,7 +235,7 @@ internal abstract class UserTagsDAO{
     //endregion
 
     //region db actions
-    @Query("SELECT tag.id, tag.name FROM MediaFileEntity AS file INNER JOIN UserTagRelation AS rel ON file.id = rel.file INNER JOIN UserTagEntity AS tag ON tag.id = rel.tag WHERE file.id = :fileId;")
+    @Query("SELECT tag.id, tag.name FROM MediaFileEntity AS file INNER JOIN UserTagRelation AS rel ON file.id = rel.file INNER JOIN UserTagEntity AS tag ON tag.id = rel.tag WHERE file.id = :fileId ORDER BY pos;")
     protected abstract fun getUserTags(fileId: Long): List<UserTagEntity>
 
     @Query("SELECT * FROM UserTagEntity")

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "eaefc895c8157cb633c90162e8c966e9",
+    "identityHash": "821e6860b8661207b6a7519bd46e487b",
     "entities": [
       {
         "tableName": "MediaDirEntity",
@@ -227,7 +227,7 @@
       },
       {
         "tableName": "UserTagRelation",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `tag` INTEGER NOT NULL, `file` INTEGER NOT NULL, FOREIGN KEY(`tag`) REFERENCES `UserTagEntity`(`id`) ON UPDATE CASCADE ON DELETE CASCADE , FOREIGN KEY(`file`) REFERENCES `MediaFileEntity`(`id`) ON UPDATE CASCADE ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `tag` INTEGER NOT NULL, `file` INTEGER NOT NULL, `pos` INTEGER NOT NULL, FOREIGN KEY(`tag`) REFERENCES `UserTagEntity`(`id`) ON UPDATE CASCADE ON DELETE CASCADE , FOREIGN KEY(`file`) REFERENCES `MediaFileEntity`(`id`) ON UPDATE CASCADE ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -244,6 +244,12 @@
           {
             "fieldPath": "file",
             "columnName": "file",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pos",
+            "columnName": "pos",
             "affinity": "INTEGER",
             "notNull": true
           }
@@ -304,7 +310,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'eaefc895c8157cb633c90162e8c966e9')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '821e6860b8661207b6a7519bd46e487b')"
     ]
   }
 }
