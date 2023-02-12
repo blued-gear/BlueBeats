@@ -56,6 +56,7 @@ internal class DynplaylistGroupEditor(
         }
     )
 
+    private val expander: ExpandableCard
     private val header: SimpleAddableRuleHeaderView
     private val contentList: LinearLayout
 
@@ -70,7 +71,7 @@ internal class DynplaylistGroupEditor(
             orientation = LinearLayout.VERTICAL
         }
 
-        ExpandableCard(context, header, contentList, true, SUBITEM_INSET).let {
+        expander = ExpandableCard(context, header, contentList, true, SUBITEM_INSET).also {
             this.addView(it, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         }
 
@@ -107,8 +108,9 @@ internal class DynplaylistGroupEditor(
                     withContext(Dispatchers.Main) {
                         dlg.dismiss()
 
-                        changedCallback(this@DynplaylistGroupEditor.group)
+                        changedCallback(group)
                         contentList.addView(createEditor(rule, changedCallback, this@DynplaylistGroupEditor.context))
+                        expander.expanded = true
                     }
                 }
             }
@@ -223,6 +225,7 @@ internal class DynplaylistIncludeEditor(
 
     private val header: SimpleAddableRuleHeaderView
     private val contentList: LinearLayout
+    private val expander: ExpandableCard
     private var lastDir: MediaDir = VlcManagers.getMediaDB().getSubject().getMediaTreeRoot()
 
     init {
@@ -236,7 +239,7 @@ internal class DynplaylistIncludeEditor(
             orientation = LinearLayout.VERTICAL
         }
 
-        ExpandableCard(context, header, contentList, true, SUBITEM_INSET).let {
+        expander = ExpandableCard(context, header, contentList, true, SUBITEM_INSET).also {
             this.addView(it)
         }
 
@@ -253,14 +256,11 @@ internal class DynplaylistIncludeEditor(
             }.map { item ->
                 MediaNodeView(item.first, this.context).apply {
                     removeBtn.setOnClickListener {
-                        rule.removeDir(item.first)
-                        contentList.removeView(this)
-                        changedCallback(rule)
+                        onRemoveDir(item.first)
                     }
                     deepCB.isChecked = item.second
                     deepCB.setOnCheckedChangeListener { _, checked ->
-                        rule.setDirDeep(item.first, checked)
-                        changedCallback(rule)
+                        onChangeDirDeep(item.first, checked)
                     }
                 }
             }.forEach {
@@ -272,9 +272,7 @@ internal class DynplaylistIncludeEditor(
             }.map { item ->
                 MediaNodeView(item, this.context).apply {
                     removeBtn.setOnClickListener {
-                        rule.removeFile(item)
-                        contentList.removeView(this)
-                        changedCallback(rule)
+                        onRemoveFile(item)
                     }
                 }
             }.forEach {
@@ -301,6 +299,7 @@ internal class DynplaylistIncludeEditor(
                 it.filterIsInstance<MediaFile>().forEach { rule.addFile(it) }
 
                 listItems()
+                expander.expanded = true
 
                 changedCallback(rule)
             }
@@ -311,6 +310,23 @@ internal class DynplaylistIncludeEditor(
         )
 
         popup.showAtLocation(this, Gravity.CENTER, 0, 0)
+    }
+
+    private fun onRemoveDir(entry: MediaDir) {
+        rule.removeDir(entry)
+        contentList.removeView(this)
+        changedCallback(rule)
+    }
+
+    private fun onRemoveFile(entry: MediaFile) {
+        rule.removeFile(entry)
+        contentList.removeView(this)
+        changedCallback(rule)
+    }
+
+    private fun onChangeDirDeep(entry: MediaDir, newVal: Boolean) {
+        rule.setDirDeep(entry, newVal)
+        changedCallback(rule)
     }
 }
 //endregion

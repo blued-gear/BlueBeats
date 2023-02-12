@@ -27,6 +27,12 @@ internal class ExpandableCard(
     private val innerContainer = LinearLayout(context)
     private val contentContainer = ExpandableLayout(context)
 
+    var expanded: Boolean
+        get() = contentContainer.isExpanded
+        set(value){
+            contentContainer.isExpanded = value
+        }
+
     init {
         innerContainer.apply {
             orientation = LinearLayout.VERTICAL
