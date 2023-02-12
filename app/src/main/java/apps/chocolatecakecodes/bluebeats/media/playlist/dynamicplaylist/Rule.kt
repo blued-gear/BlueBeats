@@ -22,4 +22,8 @@ internal interface Rule : Rulelike{
      * @param exclude collection of paths to exclude from item-generation
      */
     fun generateItems(amount: Int, exclude: ExcludeRule = ExcludeRule.EMPTY_EXCLUDE): List<MediaFile>
+
+    override fun equals(other: Any?): Boolean
+
+    override fun hashCode(): Int
 }

@@ -61,6 +61,17 @@ internal class IncludeRule private constructor(
         files.remove(file)
     }
 
+    override fun equals(other: Any?): Boolean {
+        if(other !is IncludeRule)
+            return false
+
+        return this.getFiles() == other.getFiles() && this.getDirs() == other.getDirs()
+    }
+
+    override fun hashCode(): Int {
+        return Objects.hash(this.javaClass.canonicalName, getFiles(), getDirs())
+    }
+
     private fun expandDirs(): Set<MediaFile> {
         return getDirs().flatMap {
             if(it.second){

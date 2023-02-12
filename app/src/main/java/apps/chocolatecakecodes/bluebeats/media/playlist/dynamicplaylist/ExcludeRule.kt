@@ -95,6 +95,17 @@ internal class ExcludeRule private constructor(
         )
     }
 
+    override fun equals(other: Any?): Boolean {
+        if(other !is ExcludeRule)
+            return false
+
+        return this.getFiles() == other.getFiles() && this.getDirs() == other.getDirs()
+    }
+
+    override fun hashCode(): Int {
+        return Objects.hash(this.javaClass.canonicalName, getFiles(), getDirs())
+    }
+
     @Dao
     internal abstract class ExcludeRuleDao {
 

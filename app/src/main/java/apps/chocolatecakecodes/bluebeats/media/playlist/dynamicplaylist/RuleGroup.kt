@@ -93,6 +93,17 @@ internal class RuleGroup private constructor(
         }
     }
 
+    override fun equals(other: Any?): Boolean {
+        if(other !is RuleGroup)
+            return false
+
+        return this.getExcludesAndRules() == other.getExcludesAndRules()
+    }
+
+    override fun hashCode(): Int {
+        return Objects.hash(this.javaClass.canonicalName, getExcludes(), getRules())
+    }
+
     @Suppress("NAME_SHADOWING")
     @Dao
     internal abstract class RuleGroupDao {
