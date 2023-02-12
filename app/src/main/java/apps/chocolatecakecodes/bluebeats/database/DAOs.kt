@@ -525,7 +525,7 @@ internal abstract class UserTagsDAO{
 
     fun saveUserTagsOfFile(file: MediaFile, tags: List<String>){
         val tagsSet = tags.toHashSet()
-        val existingTags = getUserTagEntityForNames(tags).toHashSet()
+        val existingTags = getUserTags(file.entityId).toHashSet()
         val existingTagNames = existingTags.map{
             it.name
         }.toHashSet()
@@ -541,6 +541,7 @@ internal abstract class UserTagsDAO{
         }.forEach {
             removeRelation(it.id, file.entityId)
         }
+        removeOrphanUserTags()
 
         // save relations
         tags.map {
