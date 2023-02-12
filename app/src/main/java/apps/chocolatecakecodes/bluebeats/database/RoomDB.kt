@@ -19,7 +19,6 @@ import java.util.concurrent.atomic.AtomicReference
     StaticPlaylistEntity::class, StaticPlaylistEntry::class,
     DynamicPlaylistEntity::class,
     RuleGroupEntity::class, RuleGroupEntry::class,
-    ExcludeRuleEntity::class, ExcludeRuleFileEntry::class, ExcludeRuleDirEntry::class,
     IncludeRuleEntity::class, IncludeRuleFileEntry::class, IncludeRuleDirEntry::class,
     UsertagsRuleEntity::class, UsertagsRuleEntry::class
 ])
@@ -58,7 +57,6 @@ internal abstract class RoomDB : RoomDatabase() {
     internal abstract fun dynamicPlaylistDao(): DynamicPlaylist.DynamicPlaylistDAO
 
     internal abstract fun dplRuleGroupDao(): RuleGroup.RuleGroupDao
-    internal abstract fun dplExcludeRuleDao(): ExcludeRule.ExcludeRuleDao
     internal abstract fun dplIncludeRuleDao(): IncludeRule.IncludeRuleDao
     internal abstract fun dplUsertagsRuleDao(): UsertagsRule.UsertagsRuleDao
 }
