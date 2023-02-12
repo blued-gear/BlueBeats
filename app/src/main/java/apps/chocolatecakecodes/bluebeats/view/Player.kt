@@ -1,13 +1,11 @@
 package apps.chocolatecakecodes.bluebeats.view
 
 import android.annotation.SuppressLint
-import android.content.Context
 import android.content.res.ColorStateList
 import android.os.Bundle
 import android.util.Log
 import android.view.*
 import android.widget.*
-import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.core.view.GestureDetectorCompat
 import androidx.fragment.app.Fragment
@@ -53,6 +51,7 @@ class Player : Fragment() {
     private var playerContainer: ViewGroup by OnceSettable()
     private var seekBar: SegmentedSeekBar by OnceSettable()
     private var timeTextView: TextView by OnceSettable()
+    private var altImgView: ImageView by OnceSettable()
     private var mainMenu: Menu? = null
     private var currentMedia: IMedia? = null
     private var controlsVisible: Boolean = true
@@ -89,6 +88,7 @@ class Player : Fragment() {
 
         playerContainer = view.findViewById(R.id.player_player_container)
         timeTextView = view.findViewById(R.id.player_controls_time)
+        altImgView = view.findViewById(R.id.player_alt_img)
 
         seekBar = view.findViewById(R.id.player_controls_seek)
         seekBar.max = SEEK_STEP.toInt()
@@ -403,6 +403,7 @@ class Player : Fragment() {
         this.currentMedia = newMedia
 
         attachPlayer()
+        updateAltImg(mediaFile)
 
         player.play(newMedia)
 
@@ -457,6 +458,25 @@ class Player : Fragment() {
                     attachPlayer()
                 }else{
                     Log.e("Player", "could not re-attach playerView: not released by parent")
+                }
+            }
+        }
+    }
+
+    private fun updateAltImg(mediaFile: MediaFile) {
+        if(mediaFile.type == MediaFile.Type.VIDEO) {
+            altImgView.visibility = View.GONE
+        } else {
+            CoroutineScope(Dispatchers.IO).launch {
+                VlcManagers.getMediaDB().getSubject().getThumbnail(mediaFile, -1, -1).let {
+                    withContext(Dispatchers.Main) {
+                        altImgView.visibility = View.VISIBLE
+                        if(it !== null) {
+                            altImgView.setImageBitmap(it)
+                        } else {
+                            altImgView.setImageResource(R.drawable.ic_baseline_audiotrack_24)
+                        }
+                    }
                 }
             }
         }
