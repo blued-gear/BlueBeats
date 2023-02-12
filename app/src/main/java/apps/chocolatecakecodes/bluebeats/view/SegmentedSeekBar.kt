@@ -12,7 +12,9 @@ import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.Utils
 
 /**
- * TODO: document your custom view class.
+ * This view shows a seek-bar with segment-markers
+ * (segments have a start, an end (ranging from 0 and this.max) and a title).
+ * Optionally a TextView with the title of the current segment is shown above the seeker.
  */
 class SegmentedSeekBar : FrameLayout {
 
