@@ -246,6 +246,8 @@ internal class Search : Fragment(R.layout.search_fragment) {
             this.parentFragmentManager.beginTransaction()
                 .remove(this.parentFragmentManager.findFragmentByTag(MainActivityViewModel.Dialogs.FILE_DETAILS.tag)!!)
                 .commit()
+
+            Utils.trySetValueImmediately(mainVM.currentDialog, MainActivityViewModel.Dialogs.NONE)
             updateMenu()
         } else {// clear selection
             itemListAdapter.getSelectExtension().deselect()
