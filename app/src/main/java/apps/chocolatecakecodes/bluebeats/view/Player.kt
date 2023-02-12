@@ -58,18 +58,6 @@ class Player : Fragment() {
         wireActionHandlers(view)
     }
 
-    override fun onViewStateRestored(savedInstanceState: Bundle?) {
-        super.onViewStateRestored(savedInstanceState)
-
-        // resume play if media is loaded
-        if(viewModel.currentMedia.value !== null){
-            playMedia(viewModel.currentMedia.value!!)
-            val playPos = viewModel.playPos.value
-            if(playPos !== null)
-            player.position = playPos
-        }
-    }
-
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         viewModel.updatePlayPosition(player.position)
@@ -86,14 +74,24 @@ class Player : Fragment() {
 
     private fun wireObservers(){
         viewModel.currentMedia.observe(this.viewLifecycleOwner){
-            playMedia(it)
+            if(it !== null) {
+                playMedia(it)
+            }
         }
 
         viewModel.isPlaying.observe(this.viewLifecycleOwner){
-            if(it)
-                player.play()
-            else
-                player.pause()
+            if(it !== null) {
+                if (it)
+                    player.play()
+                else
+                    player.pause()
+            }
+        }
+
+        viewModel.playPos.observe(this.viewLifecycleOwner){
+            if(it !== null){
+                player.position = it
+            }
         }
     }
 
