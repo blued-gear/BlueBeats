@@ -19,7 +19,7 @@ repositories {
 
 android {
     compileSdkVersion 31
-    buildToolsVersion '31.0.0'
+    buildToolsVersion '32.0.0'
 
     defaultConfig {
         applicationId "apps.chocolatecakecodes.bluebeats"
@@ -68,7 +68,7 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.4.0'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.4.0'
 
-    implementation "com.anggrayudi:storage:0.13.0"
+    implementation 'com.anggrayudi:storage:0.14.0'
     implementation "androidx.room:room-runtime:$room_version"
     kapt "androidx.room:room-compiler:$room_version"
     implementation "com.google.guava:guava:31.0.1-android"
