@@ -49,7 +49,6 @@ class Player : Fragment() {
         return inflater.inflate(R.layout.player_fragment, container, false)
     }
 
-    @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -57,15 +56,6 @@ class Player : Fragment() {
         playerView = VLCVideoLayout(this.requireContext())
         player.attachViews(playerView, null, false, false)//TODO in future version subtitle option should be settable
         view.findViewById<FrameLayout>(R.id.player_playerholder).addView(playerView)
-
-        val gestureHandler = PlayerGestureHandler()
-        val gestureDetector = GestureDetectorCompat(this.requireContext(), gestureHandler)
-        gestureDetector.setOnDoubleTapListener(gestureHandler)
-        gestureDetector.setIsLongpressEnabled(false)
-        playerView.setOnTouchListener { _, event ->
-            gestureDetector.onTouchEvent(event)
-            return@setOnTouchListener true
-        }
 
         wireObservers()
         wireActionHandlers(view)
@@ -76,12 +66,16 @@ class Player : Fragment() {
         viewModel.updatePlayPosition(player.time)
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     private fun wireActionHandlers(view: View){
-        view.findViewById<Button>(R.id.player_btn_resume).setOnClickListener {
-            viewModel.resume()
-        }
-        view.findViewById<Button>(R.id.player_btn_pause).setOnClickListener {
-            viewModel.pause()
+        // player control by tapping
+        val gestureHandler = PlayerGestureHandler()
+        val gestureDetector = GestureDetectorCompat(this.requireContext(), gestureHandler)
+        gestureDetector.setOnDoubleTapListener(gestureHandler)
+        gestureDetector.setIsLongpressEnabled(false)
+        playerView.setOnTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
+            return@setOnTouchListener true
         }
     }
 

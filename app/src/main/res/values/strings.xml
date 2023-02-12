@@ -1,7 +1,5 @@
 <resources>
     <string name="app_name" translatable="false">BlueBeats</string>
-    <string name="player_resume">Resume</string>
-    <string name="player_pause">Pause</string>
     <string name="main_tab_media">Media</string>
     <string name="main_tab_player">Player</string>
 </resources>

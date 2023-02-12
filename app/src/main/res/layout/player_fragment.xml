@@ -32,28 +32,7 @@
                 android:layout_height="wrap_content"
                 android:id="@+id/player_brr_controls"
                 app:barrierDirection="top"
-                tools:layout_editor_absoluteY="675dp"
-                app:constraint_referenced_ids="player_btn_pause,player_btn_resume" />
-
-        <Button
-                android:text="@string/player_resume"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:id="@+id/player_btn_resume"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                android:layout_marginStart="16dp"
-                android:layout_marginBottom="8dp" />
-
-        <Button
-                android:text="@string/player_pause"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:id="@+id/player_btn_pause"
-                app:layout_constraintStart_toEndOf="@+id/player_btn_resume"
-                app:layout_constraintBottom_toBottomOf="parent"
-                android:layout_marginStart="16dp"
-                android:layout_marginBottom="8dp" />
+                tools:layout_editor_absoluteY="675dp" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </FrameLayout>
