@@ -76,6 +76,11 @@ internal class Playlists : Fragment() {
         super.onResume()
 
         mainVM.menuProvider.value = null// don't have a menu yet so remove remaining values
+
+        if(viewModel.showOverview.value == true)
+            loadPlaylists(true)
+        else
+            loadPlaylistItems()
     }
 
     override fun onDestroyView() {
@@ -185,28 +190,42 @@ internal class Playlists : Fragment() {
     private fun wireObservers() {
         viewModel.showOverview.observe(this.viewLifecycleOwner) {
             if(it) {
-                viewModel.playlistItems = null
-                viewModel.selectedPlaylist = null
-                loadPlaylists()
-
-                titleText.get().text = null
-                upBtn.get().visibility = Button.INVISIBLE
-
-                itemsDragCallback.isDragEnabled = false
+                showPlaylists()
             } else {
-                viewModel.allLists = null
-                loadPlaylistItems()
-
-                titleText.get().text = viewModel.selectedPlaylist!!.name
-                upBtn.get().visibility = Button.VISIBLE
-
-                itemsDragCallback.isDragEnabled = viewModel.selectedPlaylist is StaticPlaylist
+                showPlaylistItems()
             }
         }
     }
 
-    private fun loadPlaylists() {
-        if(viewModel.allLists === null) {
+    private fun showPlaylists() {
+        if(viewModel.allLists !== null)// already showing playlists
+            return
+
+        viewModel.playlistItems = null
+        viewModel.selectedPlaylist = null
+        loadPlaylists(false)
+
+        titleText.get().text = null
+        upBtn.get().visibility = Button.INVISIBLE
+
+        itemsDragCallback.isDragEnabled = false
+    }
+
+    private fun showPlaylistItems() {
+        if(viewModel.playlistItems !== null)// already showing playlist-items
+            return
+
+        viewModel.allLists = null
+        loadPlaylistItems()
+
+        titleText.get().text = viewModel.selectedPlaylist!!.name
+        upBtn.get().visibility = Button.VISIBLE
+
+        itemsDragCallback.isDragEnabled = viewModel.selectedPlaylist is StaticPlaylist
+    }
+
+    private fun loadPlaylists(refresh: Boolean) {
+        if(viewModel.allLists === null || refresh) {
             CoroutineScope(Dispatchers.IO).launch {
                 viewModel.allLists = RoomDB.DB_INSTANCE.playlistManager().listAllPlaylist().map {
                     PlaylistInfo(it.key, it.value.first, it.value.second)
@@ -219,7 +238,7 @@ internal class Playlists : Fragment() {
                 }
             }
         } else {
-            itemsAdapter.set(viewModel.allLists!!.map {
+            itemsAdapter.setNewList(viewModel.allLists!!.map {
                 ListsItem(it)
             })
         }
@@ -230,7 +249,7 @@ internal class Playlists : Fragment() {
             viewModel.playlistItems = viewModel.selectedPlaylist!!.items()
         }
 
-        itemsAdapter.set(viewModel.playlistItems!!.map {
+        itemsAdapter.setNewList(viewModel.playlistItems!!.map {
             MediaItem(it)
         })
     }
