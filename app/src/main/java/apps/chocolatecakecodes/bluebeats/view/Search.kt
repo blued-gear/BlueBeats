@@ -227,7 +227,8 @@ internal class Search : Fragment(R.layout.search_fragment) {
         if (inSelection){
             itemListAdapter.getSelectExtension().toggleSelection(pos)
         } else {
-            //TODO open media
+            mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
+            playerVM.play(item.file)
         }
     }
 
