@@ -102,6 +102,12 @@ internal class Search : Fragment(R.layout.search_fragment) {
         itemListView.set(null)
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+
+        viewModel.contextProvider = null
+    }
+
     private fun setupSubgroupsSpinner() {
         subgroupsAdapter = ArrayAdapter(this.requireContext(), android.R.layout.simple_spinner_item, mutableListOf())
         subgroupsSpinner.get().adapter = subgroupsAdapter

@@ -19,7 +19,7 @@ internal class MainActivityViewModel : ViewModel(){
     }
 
     val currentTab = MutableLiveData<Tabs>(Tabs.MEDIA)
-    val fullScreenContent = MutableLiveData<View>()
+    val fullScreenContent = MutableLiveData<View>()//XXX this can leak memory
     val menuProvider = MutableLiveData<((Menu, MenuInflater) -> Unit)?>()
     val currentDialog = MutableLiveData<Dialogs>(Dialogs.NONE)
 }

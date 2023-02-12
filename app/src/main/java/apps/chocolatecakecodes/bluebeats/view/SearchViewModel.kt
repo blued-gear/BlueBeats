@@ -3,6 +3,7 @@
 package apps.chocolatecakecodes.bluebeats.view
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -17,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private const val SEARCH_DEBOUNCE_TIMEOUT = 200L
+private const val LOG_TAG = "SearchViewModel"
 
 internal class SearchViewModel : ViewModel() {
 
@@ -33,7 +35,7 @@ internal class SearchViewModel : ViewModel() {
     private val searchTextRW = MutableLiveData("")
     val searchText: LiveData<String> = searchTextRW
 
-    lateinit var contextProvider: () -> Context
+    var contextProvider: (() -> Context)? = null
 
     private val searchDebouncer: Debouncer<String>
     private lateinit var allItems: Map<String, List<MediaFile>>
@@ -153,15 +155,19 @@ internal class SearchViewModel : ViewModel() {
     }
 
     private fun loadByType() {
-        allItems = RoomDB.DB_INSTANCE.mediaFileDao().getAllFiles().groupBy {
-            fileTypeStr(it.type, contextProvider())
-        }.mapValues {
-            it.value.sortedWith { a, b ->
-                Utils.compareStringNaturally(a.title, b.title)
-            }
-        }.toSortedMap { a, b -> Utils.compareStringNaturally(a, b)}
+        contextProvider?.let { ctx ->
+            allItems = RoomDB.DB_INSTANCE.mediaFileDao().getAllFiles().groupBy {
+                fileTypeStr(it.type, ctx())
+            }.mapValues {
+                it.value.sortedWith { a, b ->
+                    Utils.compareStringNaturally(a.title, b.title)
+                }
+            }.toSortedMap { a, b -> Utils.compareStringNaturally(a, b)}
 
-        loadLazyFileAttributes(allItems.values)
+            loadLazyFileAttributes(allItems.values)
+        } ?: run {
+            Log.w(LOG_TAG, "refresh was requested while no view is active")
+        }
     }
 
     private fun loadByID3Tag(type: String) {
