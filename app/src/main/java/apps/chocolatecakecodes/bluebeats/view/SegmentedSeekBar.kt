@@ -21,7 +21,7 @@ class SegmentedSeekBar : FrameLayout {
     private var seekBar: AppCompatSeekBar by OnceSettable()
     private var sectionTitle: TextView by OnceSettable()
     private var markerContainer: AbsoluteLayout by OnceSettable()
-    private var markers: Array<View> = Utils.emptyArray()
+    private var markers: Array<View> = emptyArray()
 
     var max: Int
         get(){
@@ -62,7 +62,7 @@ class SegmentedSeekBar : FrameLayout {
 
     var currentSegment: Segment? = null
         private set
-    var segments: Array<Segment> = Utils.emptyArray()
+    var segments: Array<Segment> = emptyArray()
         set(value) {
             field = value
             currentSegment = null

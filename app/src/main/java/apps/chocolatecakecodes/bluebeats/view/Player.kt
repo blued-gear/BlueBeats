@@ -221,7 +221,7 @@ class Player : Fragment() {
             val chapters = it
 
             if(chapters === null || chapters.isEmpty()){
-                seekBar.segments = Utils.emptyArray()
+                seekBar.segments = emptyArray()
                 seekBar.showTitle = false
             }else{
                 val totalTime = player.length.toDouble()

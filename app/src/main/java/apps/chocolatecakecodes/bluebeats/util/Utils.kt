@@ -26,13 +26,6 @@ object Utils {
     }
 
     /**
-     * creates an empty array (size == 0) of the given type
-     */
-    inline fun <reified T> emptyArray(): Array<T>{
-        return Array<T>(0){throw AssertionError("nothing to initialize")}
-    }
-
-    /**
      * formats time to a string with format (hh:)mm:ss; calls [Utils.formatTime]
      *  with param <code>withHours = (lenCapped / (60 * 60 * 1000)) > 0</code>
      * @param ms time in milliseconds
