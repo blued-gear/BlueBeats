@@ -53,10 +53,10 @@ internal class RuleGroup private constructor(
                     .map { it.toSet() }
                     .reduceOrNull { acc, cur ->
                         acc.intersect(cur)
-                    }?.let {
+                    }?.let { absoluteIntersect ->
                         relativeItems
                             .map { it.toSet() }
-                            .reduceOrNull { acc, cur ->
+                            .fold(absoluteIntersect) { acc, cur ->
                                 acc.intersect(cur)
                             }
                     } ?: emptySet()
