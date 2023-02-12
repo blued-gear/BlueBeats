@@ -322,6 +322,8 @@ class FileBrowser : Fragment() {
                 val selectedItem = selectedItems[0]
                 if(selectedItem is FileItem)
                     viewModel.selectFile(selectedItem.file)
+                else
+                    viewModel.selectFile(null)
             } else {
                 viewModel.selectFile(null)
             }
