@@ -208,6 +208,6 @@ private class StaticPlaylistIterator(
     }
 
     override fun isAtEnd(): Boolean {
-        return !repeat && currentPosition == totalItems
+        return !repeat && currentPosition == (totalItems - 1)
     }
 }
