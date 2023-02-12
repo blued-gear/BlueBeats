@@ -215,14 +215,8 @@ internal class Playlists : Fragment() {
             viewModel.selectedPlaylist = when (playlistInfo.second) {
                 PlaylistType.STATIC -> RoomDB.DB_INSTANCE.staticPlaylistDao()
                     .load(playlistInfo.third)
-                PlaylistType.DYNAMIC -> {
-                    //TODO only for debugging; change to show elements
-                    val pl = RoomDB.DB_INSTANCE.dynamicPlaylistDao().load(playlistInfo.third)
-                    withContext(Dispatchers.Main) {
-                        onEditDynamicPlaylist(pl)
-                    }
-                    return@launch
-                }
+                PlaylistType.DYNAMIC -> RoomDB.DB_INSTANCE.dynamicPlaylistDao()
+                    .load(playlistInfo.third)
             }
 
             viewModel.showOverview.postValue(false)
@@ -370,13 +364,18 @@ internal class Playlists : Fragment() {
     }
 
     private fun loadPlaylistItems() {
-        if(viewModel.playlistItems === null) {
-            viewModel.playlistItems = viewModel.selectedPlaylist!!.items()
-        }
+        CoroutineScope(Dispatchers.IO).launch {
+            if(viewModel.playlistItems === null) {
+                viewModel.playlistItems = viewModel.selectedPlaylist!!.items()
+            }
 
-        itemsAdapter.setNewList(viewModel.playlistItems!!.map {
-            MediaFileItem(it, true)
-        })
+            withContext(Dispatchers.Main) {
+                val isStaticPl = viewModel.selectedPlaylist is StaticPlaylist
+                itemsAdapter.setNewList(viewModel.playlistItems!!.map {
+                    MediaFileItem(it, isStaticPl)
+                })
+            }
+        }
 
         inSelection = false
     }
