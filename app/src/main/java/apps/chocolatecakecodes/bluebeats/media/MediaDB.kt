@@ -165,6 +165,20 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val appCtx: Conte
 
     abstract class ScanEventHandler(private val dispatcher: Handler?){
 
+        internal fun onScanStarted(){
+            if(dispatcher !== null){
+                dispatcher.post { handleScanStarted() }
+            }else{
+                handleScanStarted()
+            }
+        }
+        internal fun onScanStopped(){
+            if(dispatcher !== null){
+                dispatcher.post { handleScanFinished() }
+            }else{
+                handleScanFinished()
+            }
+        }
         internal fun onNewNodeFound(node: MediaNode){
             if(dispatcher !== null){
                 dispatcher.post { handleNewNodeFound(node) }
@@ -186,10 +200,20 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val appCtx: Conte
                 handleNodeUpdated(node, oldVersion)
             }
         }
+        internal fun onScanException(e: Exception){
+            if(dispatcher !== null){
+                dispatcher.post { handleScanException(e) }
+            }else{
+                handleScanException(e)
+            }
+        }
 
+        protected open fun handleScanStarted(){}
+        protected open fun handleScanFinished(){}
         protected open fun handleNewNodeFound(node: MediaNode){}
         protected open fun handleNodeRemoved(node: MediaNode){}
         protected open fun handleNodeUpdated(node: MediaNode, oldVersion: MediaNode){}
+        protected open fun handleScanException(e: Exception){}
 
     }
     //endregion
