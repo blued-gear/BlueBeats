@@ -276,6 +276,8 @@ class Player : Fragment() {
                 seekBar.showTitle = true
             }
         }
+
+        updateChaptersMenuItem()
     }
     //endregion
 
@@ -305,8 +307,7 @@ class Player : Fragment() {
         mainMenu?.let {
             val chaptersItem = it.findItem(R.id.player_menu_chapters)
             val chapters = viewModel.chapters.value
-            if(chapters === null || chapters.isEmpty())
-                chaptersItem.isEnabled = false
+            chaptersItem.isEnabled = chapters !== null && chapters.isNotEmpty()
         }
     }
 
