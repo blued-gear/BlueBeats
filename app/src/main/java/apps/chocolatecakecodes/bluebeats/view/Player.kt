@@ -555,7 +555,9 @@ class Player : Fragment() {
             val pl = viewModel.currentPlaylist.value
             if(pl !== null) {
                 if(!pl.isAtEnd()) {
-                    viewModel.play(pl.nextMedia(), true)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        viewModel.play(pl.nextMedia(), true)
+                    }
                 } else {
                     onTotalEndReached()
                 }

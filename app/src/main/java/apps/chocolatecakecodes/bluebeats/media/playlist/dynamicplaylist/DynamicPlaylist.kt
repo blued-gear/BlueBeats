@@ -31,10 +31,7 @@ internal class DynamicPlaylist private constructor(
     }
 
     override fun getIterator(repeat: Boolean, shuffle: Boolean): PlaylistIterator {
-        return DynamicPlaylistIterator(rootRuleGroup, iterationSize).apply {
-            this.repeat = repeat
-            this.shuffle = shuffle
-        }
+        return DynamicPlaylistIterator(rootRuleGroup, iterationSize)
     }
 
     // DAO as internal class or else some setters would have to be internal
@@ -212,10 +209,12 @@ internal class DynamicPlaylistIterator(
         mediaBuffer.clear()
         mediaBuffer.addAll(rootRuleGroup.generateItems(bufferSize, toExclude).shuffled())
 
-        if(currentMedia !== null)
+        if(currentMedia !== null) {
             mediaBuffer.add(0, currentMedia)
-
-        currentPosition = 0
+            currentPosition = 1
+        } else {
+            currentPosition = 0
+        }
     }
 }
 
