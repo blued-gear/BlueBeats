@@ -19,6 +19,17 @@ repositories {
 }
 
 android {
+    signingConfigs {
+        release {
+            Properties properties = new Properties()
+            properties.load(project.rootProject.file('local.properties').newDataInputStream())
+
+            storeFile file(properties.getProperty("keystore.file"))
+            storePassword properties.getProperty("keystore.password")
+            keyAlias 'main'
+            keyPassword properties.getProperty("keystore.password")
+        }
+    }
     compileSdkVersion version_sdk
     buildToolsVersion version_buildtools
 
