@@ -524,7 +524,7 @@ internal class Playlists : Fragment() {
             isEnabled = !dialogOpen && mediaSelected
         }
 
-        menu.findItem(MNU_ID_PLAYLIST_EDIT_DYN).apply {
+        menu.findItem(MNU_ID_PLAYLIST_EDIT_DYN)?.apply {
             isEnabled = !dialogOpen
         }
     }
