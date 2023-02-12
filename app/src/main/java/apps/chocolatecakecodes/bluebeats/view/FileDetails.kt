@@ -9,7 +9,6 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import apps.chocolatecakecodes.bluebeats.R
-import apps.chocolatecakecodes.bluebeats.media.MediaDB
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.taglib.TagFields
@@ -61,6 +60,8 @@ class FileDetails() : Fragment(R.layout.filedetails_fragment) {
     private fun showData(){
         // tags could be loaded from DB
         CoroutineScope(Dispatchers.IO).launch {
+            showName()
+
             file.mediaTags.let {
                 withContext(Dispatchers.Main){
                     showTags(it)
@@ -71,6 +72,18 @@ class FileDetails() : Fragment(R.layout.filedetails_fragment) {
                     showUsertags(it)
                 }
             }
+        }
+    }
+
+    private suspend fun showName() {
+        val ctx = this.requireContext()
+        val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+
+        val title = ctx.getString(R.string.tagname_filepath) + ":"
+        val name = file.path
+
+        withContext(Dispatchers.Main) {
+            tagListView.addView(TagEntry(title, name, ctx), lp)
         }
     }
 

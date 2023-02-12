@@ -13,4 +13,5 @@
     <string name="filebrowser_menu_add_playlist">Add to Playlist</string>
     <string name="misc_cancel">Cancel</string>
     <string name="misc_remove">Remove</string>
+    <string name="tagname_filepath">Path</string>
 </resources>
