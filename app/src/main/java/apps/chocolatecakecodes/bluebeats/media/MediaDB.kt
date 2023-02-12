@@ -115,7 +115,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val appCtx: Conte
         vlcMedia.using(false){
             return parseFile(vlcMedia, MediaNode.UNSPECIFIED_DIR)
         }
-        throw AssertionError()
+        throw AssertionError("unreachable")
     }
     fun fileToVlcMedia(path: String): IMedia?{
         return mediaFactory.getFromLocalPath(libVLC, path)
