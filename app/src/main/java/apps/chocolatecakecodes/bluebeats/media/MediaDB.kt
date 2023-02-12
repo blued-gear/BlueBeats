@@ -176,7 +176,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
 
     /**
      * @param dir parsed dir which should be scanned
-     * @return TODO
+     * @return parsed subdirs and files in the given dir
      */
     private fun scanDir(dir: IMedia): DirContents{
         if(!Utils.vlcMediaToDocumentFile(dir).isDirectory)
