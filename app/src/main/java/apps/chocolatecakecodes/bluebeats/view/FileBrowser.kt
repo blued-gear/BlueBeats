@@ -65,7 +65,7 @@ class FileBrowser : Fragment() {
         playerVM = vmProvider.get(PlayerViewModel::class.java)
         mainVM = vmProvider.get(MainActivityViewModel::class.java)
 
-        listAdapter = GenericFastItemAdapter()
+        setupAdapter()
         listAdapter.withSavedInstanceState(savedInstanceState)//TODO this has to be called after the items were restored
     }
 
@@ -88,7 +88,7 @@ class FileBrowser : Fragment() {
         // setup views
         val listView: RecyclerView = view.findViewById(R.id.fb_entrylist)
         listView.layoutManager = LinearLayoutManager(this.requireContext())
-        setupAdapter(listView)
+        listView.adapter = listAdapter
 
         this.listView = listView
         progressBar = view.findViewById(R.id.fb_progress)
@@ -178,7 +178,8 @@ class FileBrowser : Fragment() {
             override fun handleNewNodeFound(node: MediaNode) {
                 if(node.parent == viewModel.currentDir.value) {
                     mediaNodeToItem(node)?.let {
-                        listAdapter.add(it)
+                        if(!listAdapter.adapterItems.contains(it))
+                            listAdapter.add(it)
                     }
                 }
             }
@@ -248,8 +249,8 @@ class FileBrowser : Fragment() {
         }
     }
 
-    private fun setupAdapter(recycleView: RecyclerView){
-        listAdapter = FastItemAdapter()
+    private fun setupAdapter(){
+        listAdapter = GenericFastItemAdapter()
         listAdapter.setHasStableIds(true)
 
         val select = listAdapter.getSelectExtension()
@@ -265,8 +266,6 @@ class FileBrowser : Fragment() {
         listAdapter.onLongClickListener = { _, _, _, _ ->
             true
         }
-
-        recycleView.adapter = listAdapter
 
         viewModel.currentDir.value?.let {
             expandMediaDir(it) {
