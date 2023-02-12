@@ -11,6 +11,10 @@ internal typealias DirPathInclude = Pair<MediaDir, Boolean>
 
 internal class ExcludeRule (dirs: Set<DirPathInclude> = emptySet(), files: Set<MediaFile> = emptySet()) {
 
+    companion object {
+        val EMPTY_EXCLUDE get() = ExcludeRule()
+    }
+
     private val dirs = HashMap<MediaDir, Boolean>(dirs.associate { it.first to it.second })
     private val files = HashSet(files)
     private val filesRO: Set<MediaFile> by lazy {
