@@ -62,11 +62,11 @@ class MediaFile internal constructor(internal val entity: MediaFileEntity): Medi
     var userTags: List<String>
         get(){
             synchronized(this){
-                if(entity.id == MediaNode.UNALLOCATED_NODE_ID){// can not load tags from db if this file is not saved
-                    return emptyList()
-                }
-
                 if(loadedUserTags === null){
+                    if(entity.id == MediaNode.UNALLOCATED_NODE_ID){// can not load tags from db if this file is not saved
+                        return emptyList()
+                    }
+
                     loadedUserTags = RoomDB.DB_INSTANCE.userTagDao().getUserTagsForFile(this)
                 }
 
