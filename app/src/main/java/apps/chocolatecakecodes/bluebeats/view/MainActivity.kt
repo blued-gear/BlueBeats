@@ -1,14 +1,17 @@
 package apps.chocolatecakecodes.bluebeats.view
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.util.Log
 import android.view.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
@@ -243,8 +246,31 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun listMediaRoots(){
-        VlcManagers.getMediaDB().getSubject().addScanRoot("/storage/3EB0-1BF2/")
-        //TODO list all available roots
+        // https://stackoverflow.com/a/70879069/8288367
+        fun getExternalStorageDirectoryPaths(context: Context): List<String> {
+            val externalPaths = ArrayList<String>()
+            val internalStoragePath = Environment.getExternalStorageDirectory().absolutePath
+
+            ContextCompat.getExternalFilesDirs(context, null).forEach {
+                if(it != null) {
+                    val nameSubPos = it.absolutePath.lastIndexOf("/Android/data")
+                    if(nameSubPos > 0) {
+                        val filesDirName = it.absolutePath.substring(0, nameSubPos)
+                        if(filesDirName != internalStoragePath) {
+                            externalPaths.add(filesDirName);
+                        }
+                    }
+                }
+            }
+
+            return externalPaths
+        }
+
+        val mediaDB = VlcManagers.getMediaDB().getSubject()
+        mediaDB.addScanRoot(Environment.getExternalStorageDirectory().absolutePath)
+        getExternalStorageDirectoryPaths(this).forEach {
+            mediaDB.addScanRoot(it)
+        }
     }
 
     private inner class TabContentAdapter(fragmentManager: FragmentManager, lifecycle: Lifecycle): FragmentStateAdapter(fragmentManager, lifecycle) {
