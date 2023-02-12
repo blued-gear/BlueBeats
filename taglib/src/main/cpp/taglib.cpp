@@ -23,7 +23,7 @@ namespace {
     struct JavaIDs_t{
 
         [[maybe_unused]]
-        explicit JavaIDs_t(JNIEnv* jni) : jni(jni){
+        explicit JavaIDs_t(JNIEnv* jni) : jni(jni) {
             c_ParseException = jni->FindClass("apps/chocolatecakecodes/bluebeats/taglib/ParseException");
 
             c_TagParser = jni->FindClass("apps/chocolatecakecodes/bluebeats/taglib/TagParser");
@@ -113,9 +113,7 @@ Java_apps_chocolatecakecodes_bluebeats_taglib_TagParser_parseMp3(
         const char *pathChars = env->GetStringUTFChars(filepath, nullptr);
         std::string path(pathChars);
         env->ReleaseStringUTFChars(filepath, pathChars);
-        File file(path.c_str(),
-                  BlueBeats::Tag::MyFrameFactory::instance(),
-                  true, Properties::ReadStyle::Average);
+        File file(path.c_str(),true, Properties::ReadStyle::Average);
 
         // ensure the file was opened successful
         if (!file.isOpen()) {
@@ -138,7 +136,7 @@ Java_apps_chocolatecakecodes_bluebeats_taglib_TagParser_parseMp3(
                                                                              readUsertagsErr);
         if (readUsertagsErr) return;// an error occurred and so an exception was thrown
         env->SetObjectField(thisRef, jni.f_TagParser_UserTags, usertags);
-    }catch(std::exception& e){
+    }catch(std::exception& e) {
         std::string msg("c++ exception occurred: ");
         msg += e.what();
         BlueBeats_Parser::throwParseException(jni, msg.c_str());
@@ -155,7 +153,7 @@ void BlueBeats_Parser::throwParseException(const JavaIDs& jid, const char* msg) 
 BlueBeats_Parser::TagFields BlueBeats_Parser::readTags(const JavaIDs& jid, const File &file) {
     // create new TagFields class
     TagFields fields = jid.jni->NewObject(jid.c_TagFields, jid.m_TagFields_Constructor);
-    if(fields == nullptr){
+    if(fields == nullptr) {
         throwParseException(jid, "unable to alloc object");
         return nullptr;
     }
@@ -174,27 +172,27 @@ void BlueBeats_Parser::readID3Tags(const JavaIDs& jid, const Tag *tag, const Pro
     assert(dest != nullptr);
 
     String artist = tag->artist();
-    if(!artist.isNull()){
+    if(!artist.isNull()) {
         const char* artistStr = artist.toCString(true);
         jstring artistJStr = jid.jni->NewStringUTF(artistStr);
         jid.jni->SetObjectField(dest, jid.f_TagFields_Artist, artistJStr);
     }
 
     String title = tag->title();
-    if(!title.isNull()){
+    if(!title.isNull()) {
         const char* titleStr = title.toCString(true);
         jstring titleJStr = jid.jni->NewStringUTF(titleStr);
         jid.jni->SetObjectField(dest, jid.f_TagFields_Title, titleJStr);
     }
 
     String genre = tag->genre();
-    if(!genre.isNull()){
+    if(!genre.isNull()) {
         const char* genreStr = genre.toCString(true);
         jstring genreJStr = jid.jni->NewStringUTF(genreStr);
         jid.jni->SetObjectField(dest, jid.f_TagFields_Genre, genreJStr);
     }
 
-    if(audioProps != nullptr){
+    if(audioProps != nullptr) {
         jlong length = audioProps->lengthInMilliseconds();
         jid.jni->SetLongField(dest, jid.f_TagFields_Length, length);
     }
@@ -212,36 +210,40 @@ BlueBeats_Parser::Chapters BlueBeats_Parser::readChapters(const JavaIDs &jid, Fi
     // create java list obj
     jint chapterCount = chapterFrames.size();
     Chapters list = jid.jni->NewObject(jid.c_ArrayList, jid.m_ArrayList_Constructor_Size, chapterCount);
-    if(list == nullptr){
+    if(list == nullptr) {
         err = true;
         throwParseException(jid, "unable to alloc object");
         return nullptr;
     }
 
     // parse chapters
-    for(TagLib::ID3v2::Frame* frame : chapterFrames){
+    for(TagLib::ID3v2::Frame* frame : chapterFrames) {
         auto* chapterFrame = dynamic_cast<TagLib::ID3v2::ChapterFrame*>(frame);
         assert(chapterFrame != nullptr);
 
         jlong start = chapterFrame->startTime();
         jlong end = chapterFrame->endTime();
 
+        // offsets instead of times are not supported
+        if((start == 0 && chapterFrame->startOffset() != 0xFFFFFFFF)
+            || (end == 0 && chapterFrame->endOffset() != 0xFFFFFFFF))
+            continue;
+
         // search title (the first valid text frame)
-        jstring title = nullptr;
-        const TagLib::ID3v2::FrameList& subFrames = chapterFrame->embeddedFrameList();
-        for(const TagLib::ID3v2::Frame* subFrame : subFrames){//TODO query for TIT2, alt TIT3 directly
-            if(subFrame->frameID() == "TIT2" || subFrame->frameID() == "TIT3"){
-                auto textFrame = dynamic_cast<const TagLib::ID3v2::TextIdentificationFrame*>(subFrame);
-                if(textFrame != nullptr){
-                    String textStr = textFrame->toString();
-                    title = jid.jni->NewStringUTF(textStr.toCString(true));
-                    break;
-                }
-            }
-        }
-        if(title == nullptr)// no title was found -> fallback value
+        jstring title;
+        const List<TagLib::ID3v2::Frame*>* candidate = &chapterFrame->embeddedFrameList("TIT2");
+        if(candidate->isEmpty())
+            candidate = &chapterFrame->embeddedFrameList("TIT3");
+        if(!candidate->isEmpty()) {
+            auto textFrame = dynamic_cast<const TagLib::ID3v2::TextIdentificationFrame*>((*candidate)[0]);
+            String textStr = textFrame->toString();
+            title = jid.jni->NewStringUTF(textStr.toCString(true));
+        } else {
+            // no title was found -> fallback value
             title = jid.jni->NewStringUTF("");
-        if(title == nullptr){// error in NewStringUTF()
+        }
+
+        if(title == nullptr) {// error in NewStringUTF()
             err = true;
             throwParseException(jid, "unable to alloc string");
             return nullptr;
@@ -249,7 +251,7 @@ BlueBeats_Parser::Chapters BlueBeats_Parser::readChapters(const JavaIDs &jid, Fi
 
         // create and add chapter obj
         jobject chap = jid.jni->NewObject(jid.c_Chapter, jid.m_Chapter_Constructor, start, end, title);
-        if(chap == nullptr){
+        if(chap == nullptr) {
             err = true;
             throwParseException(jid, "unable to alloc object");
             return nullptr;
