@@ -40,7 +40,7 @@ internal abstract class NestedExpandableItem<VH : FastAdapter.ViewHolder<*>>(
         holder.itemView.apply {
             if(withBorder)
                 setBackgroundResource(R.drawable.shape_border)
-            updatePadding(left = paddingLeft + level * inset)
+            updatePadding(left = level * inset)
         }
 
         super.bindView(holder, payloads)
@@ -51,7 +51,7 @@ internal abstract class NestedExpandableItem<VH : FastAdapter.ViewHolder<*>>(
         holder.itemView.apply {
             if(withBorder)
                 setBackgroundResource(0)
-            updatePadding(left = paddingLeft - level * inset)
+            updatePadding(left = 0)
         }
 
         super.unbindView(holder)
