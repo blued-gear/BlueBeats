@@ -1,10 +1,7 @@
 package apps.chocolatecakecodes.bluebeats.view
 
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.MotionEvent
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.TextView
@@ -44,6 +41,7 @@ internal class Playlists : Fragment() {
     private var itemsView = RequireNotNull<RecyclerView>()
     private var titleText = RequireNotNull<TextView>()
     private var upBtn = RequireNotNull<ImageButton>()
+    private var menu: Menu? = null
     private var inSelection = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -77,7 +75,10 @@ internal class Playlists : Fragment() {
     override fun onResume() {
         super.onResume()
 
-        mainVM.menuProvider.value = null// don't have a menu yet so remove remaining values
+        mainVM.menuProvider.value = { menu, _ ->
+            this.menu = menu
+            buildMenuItems()
+        }
 
         if(viewModel.showOverview.value == true)
             loadPlaylists(true)
@@ -92,6 +93,12 @@ internal class Playlists : Fragment() {
         itemsTouchHelper.attachToRecyclerView(null)
 
         super.onDestroyView()
+    }
+
+    override fun onPause() {
+        super.onPause()
+
+        menu = null
     }
 
     private fun setupFastAdapter() {
@@ -211,20 +218,22 @@ internal class Playlists : Fragment() {
                 viewModel.selectedMedia = null
             }
         } else {
+            // if only one selection is left (and it is a media) use it as selected file
             val selectedItems = itemsAdapter.getSelectExtension().selectedItems.toList()
             if(selectedItems.size == 1) {
-                // if only one selection is left (and it is a file) use it as selected file
                 val selectedItem = selectedItems[0]
                 if(selectedItem is MediaItem)
                     viewModel.selectedMedia = selectedItem.media
+                else
+                    viewModel.selectedMedia = null
             } else {
                 viewModel.selectedMedia = null
             }
         }
 
-        updateMenuItems()
-
         inSelection = itemsAdapter.getSelectExtension().selectedItems.isNotEmpty()
+
+        updateMenu()
     }
 
     private fun onItemMoved(from: Int, to: Int) {
@@ -258,6 +267,8 @@ internal class Playlists : Fragment() {
             } else {
                 showPlaylistItems()
             }
+
+            buildMenuItems()
         }
     }
 
@@ -271,7 +282,6 @@ internal class Playlists : Fragment() {
 
         titleText.get().text = null
         upBtn.get().visibility = Button.INVISIBLE
-        itemsAdapter.getSelectExtension().isSelectable = false
     }
 
     private fun showPlaylistItems() {
@@ -283,7 +293,6 @@ internal class Playlists : Fragment() {
 
         titleText.get().text = viewModel.selectedPlaylist!!.name
         upBtn.get().visibility = Button.VISIBLE
-        itemsAdapter.getSelectExtension().isSelectable = true
     }
 
     private fun loadPlaylists(refresh: Boolean) {
@@ -316,9 +325,104 @@ internal class Playlists : Fragment() {
         })
     }
 
-    private fun updateMenuItems() {
+    //region menu
+    private fun buildMenuItems() {
+        val menu = this.menu ?: return
+
+        menu.clear()
+        if(viewModel.showOverview.value == true) {
+            buildMenuItemsForOverview(menu)
+        } else {
+            buildMenuItemsForPlaylist(menu)
+        }
+
+        updateMenu()
+    }
+    private fun buildMenuItemsForOverview(menu: Menu) {
+        menu.add(Menu.NONE, 11, Menu.NONE, R.string.misc_remove).apply {
+            setOnMenuItemClickListener {
+                onDeleteSelectedPlaylists()
+                true
+            }
+        }
+    }
+    private fun buildMenuItemsForPlaylist(menu: Menu) {
+        menu.add(Menu.NONE, 21, Menu.NONE, R.string.misc_remove).apply {
+            setOnMenuItemClickListener {
+                onDeleteSelectedMedia()
+                true
+            }
+        }
+
+        menu.add(Menu.NONE, 22, Menu.NONE, R.string.filebrowser_menu_fileinfo).apply {
+            setOnMenuItemClickListener {
+                onShowMediaInfo()
+                true
+            }
+        }
+    }
+
+    private fun updateMenu() {
+        val menu = this.menu ?: return
+        if(viewModel.showOverview.value == true) {
+            updateOverviewMenu(menu)
+        } else {
+            updatePlaylistMenu(menu)
+        }
+    }
+    private fun updateOverviewMenu(menu: Menu) {
+        menu.findItem(11).apply {
+            isEnabled = itemsAdapter.getSelectExtension().selectedItems.isNotEmpty()
+        }
+    }
+    private fun updatePlaylistMenu(menu: Menu) {
+        menu.findItem(21).apply {
+            isEnabled = itemsAdapter.getSelectExtension().selectedItems.isNotEmpty()
+        }
+
+        menu.findItem(22).apply {
+            isEnabled = viewModel.selectedMedia !== null
+                    && viewModel.selectedPlaylist is StaticPlaylist
+        }
+    }
+
+    private fun onDeleteSelectedPlaylists() {
+        CoroutineScope(Dispatchers.IO).launch {
+            itemsAdapter.getSelectExtension().selectedItems.forEach {
+                val listInfo = (it as ListsItem).playlist
+                when(listInfo.second){
+                    PlaylistType.STATIC -> RoomDB.DB_INSTANCE.staticPlaylistDao().delete(listInfo.third)
+                    PlaylistType.DYNAMIC -> TODO()
+                }
+            }
+
+            withContext(Dispatchers.Main) {
+                loadPlaylists(true)
+            }
+        }
+    }
+
+    private fun onDeleteSelectedMedia() {
+        CoroutineScope(Dispatchers.IO).launch {
+            val playlist = viewModel.selectedPlaylist as StaticPlaylist
+            itemsAdapter.getSelectExtension().selectedItems.map {
+                itemsAdapter.getPosition(it)
+            }.forEach {
+                playlist.removeMedia(it)
+            }
+
+            RoomDB.DB_INSTANCE.staticPlaylistDao().save(playlist)
+
+            withContext(Dispatchers.Main) {
+                loadPlaylistItems()
+            }
+        }
+    }
+
+    private fun onShowMediaInfo() {
         //TODO
     }
+    //endregion
 }
 
 //region RecycleView-Items
@@ -334,9 +438,13 @@ private class ListsItem(val playlist: PlaylistInfo) : SelectableItem<ListsItem.V
         private val name = this.itemView.findViewById<TextView>(R.id.pls_lists_name)
 
         override fun bindView(item: ListsItem, payloads: List<Any>) {
+            super.bindView(item, payloads)
+
             name.text = item.playlist.first
         }
         override fun unbindView(item: ListsItem) {
+            super.unbindView(item)
+
             name.text = null
         }
     }

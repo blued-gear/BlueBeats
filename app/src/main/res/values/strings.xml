@@ -3,7 +3,7 @@
     <string name="main_tab_media">Media</string>
     <string name="main_tab_player">Player</string>
     <string name="player_fullscreen">Fullscreen</string>
-    <string name="filebrowser_perm_needed">This App need storage permissions to scan for media-files</string>
+    <string name="filebrowser_perm_needed">This App needs storage permissions to scan for media-files</string>
     <string name="player_chapters">Chapters</string>
     <string name="filebrowser_menu_fileinfo">File Info</string>
     <string name="tagname_title">Title</string>
@@ -12,4 +12,5 @@
     <string name="main_tab_playlists">Playlists</string>
     <string name="filebrowser_menu_add_playlist">Add to Playlist</string>
     <string name="misc_cancel">Cancel</string>
+    <string name="misc_remove">Remove</string>
 </resources>
