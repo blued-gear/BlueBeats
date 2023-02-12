@@ -19,7 +19,7 @@ import java.util.Objects;
  * holds the list of tags (in terms of BlueBeat, not ID3) the user attached to a file
  */
 @JsonAdapter(UserTags.Serializer.class)
-public final class UserTags{
+public final class UserTags implements Cloneable{
 
     private String[] tags;// set by JNI
     private List<String> readonlyTags = null;
@@ -39,6 +39,32 @@ public final class UserTags{
         }
 
         return readonlyTags;
+    }
+
+    @SuppressWarnings ("MethodDoesntCallSuperMethod")
+    @NotNull
+    @Override
+    public UserTags clone(){
+        return new UserTags(tags);
+    }
+
+    @Override
+    public int hashCode(){
+        return Objects.hash(tags, "TagLib::UserTags");
+    }
+
+    @Override
+    public boolean equals(Object obj){
+        if(!(obj instanceof UserTags))
+            return false;
+
+        UserTags other = (UserTags) obj;
+        return Arrays.equals(other.tags, this.tags);
+    }
+
+    @Override
+    public String toString(){
+        return "UserTags: " + TagParser.Serializer.GSON.toJson(this);
     }
 
     public static final class Serializer extends TypeAdapter<UserTags>{

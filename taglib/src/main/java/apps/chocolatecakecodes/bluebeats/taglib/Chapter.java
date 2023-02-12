@@ -8,11 +8,14 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.IOException;
+import java.util.Locale;
 import java.util.Objects;
 
 @JsonAdapter(Chapter.Serializer.class)
-public final class Chapter{
+public final class Chapter implements Cloneable{
 
     private final long start, end;
     private final String name;
@@ -33,6 +36,33 @@ public final class Chapter{
 
     public String getName(){
         return name;
+    }
+
+    @SuppressWarnings ("MethodDoesntCallSuperMethod")
+    @NotNull
+    @Override
+    public Chapter clone(){
+        return new Chapter(start, end, name);
+    }
+
+    @Override
+    public int hashCode(){
+        return Objects.hash(start, end, name, "TagLib::CHAP");
+    }
+
+    @Override
+    public boolean equals(Object obj){
+        if(!(obj instanceof Chapter)) return false;
+
+        Chapter other = (Chapter) obj;
+        return other.start == this.start
+                && other.end == this.end
+                && Objects.equals(other.name, this.name);
+    }
+
+    @Override
+    public String toString(){
+        return String.format(Locale.ENGLISH, "Chapter: %s [%d - %d]", name, start, end);
     }
 
     public static final class Serializer extends TypeAdapter<Chapter>{

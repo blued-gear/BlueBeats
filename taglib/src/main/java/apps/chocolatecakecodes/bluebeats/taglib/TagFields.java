@@ -8,6 +8,8 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.IOException;
 import java.util.Objects;
 
@@ -16,7 +18,7 @@ import java.util.Objects;
  */
 @SuppressWarnings ("unused")
 @JsonAdapter(TagFields.Serializer.class)
-public final class TagFields{
+public final class TagFields implements Cloneable{
 
     // all fields will be set by JNI
     private String title;
@@ -36,6 +38,38 @@ public final class TagFields{
 
     public long getLength(){
         return length;
+    }
+
+    @SuppressWarnings ("MethodDoesntCallSuperMethod")
+    @NotNull
+    @Override
+    public TagFields clone(){
+        var clone = new TagFields();
+        clone.title = this.title;
+        clone.artist = this.artist;
+        clone.length = this.length;
+        return clone;
+    }
+
+    @Override
+    public int hashCode(){
+        return Objects.hash(title, artist, length, "TagLib::TAGS");
+    }
+
+    @Override
+    public boolean equals(Object obj){
+        if(!(obj instanceof TagFields))
+            return false;
+
+        TagFields other = (TagFields) obj;
+        return Objects.equals(other.title, this.title)
+                && Objects.equals(other.artist, this.artist)
+                && other.length == this.length;
+    }
+
+    @Override
+    public String toString(){
+        return "TagFields: " + TagParser.Serializer.GSON.toJson(this);
     }
 
     public static final class Serializer extends TypeAdapter<TagFields>{
