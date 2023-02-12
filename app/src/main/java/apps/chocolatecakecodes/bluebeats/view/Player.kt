@@ -159,6 +159,15 @@ class Player : Fragment() {
             player.attachViews(playerView, null, false, false)
 
         player.play(newMedia)
+
+        // this will prevent from autoplay after rotate
+        CoroutineScope(Dispatchers.Default).launch {
+            delay(5)
+            withContext(Dispatchers.Main){
+                if(viewModel.isPlaying.value != true)
+                    player.pause()
+            }
+        }
     }
 
     private fun showFullscreen(fullscreen: Boolean){
