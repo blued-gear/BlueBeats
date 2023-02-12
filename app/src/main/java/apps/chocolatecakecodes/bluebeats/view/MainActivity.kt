@@ -46,7 +46,8 @@ class MainActivity : AppCompatActivity() {
 
         RoomDB.init(this)
 
-        VlcManagers.init(this)
+        if(!VlcManagers.isInitialized())
+            VlcManagers.init(this)
 
         wireObservers()
         listMediaRoots()

@@ -28,7 +28,8 @@ internal abstract class RoomDB : RoomDatabase() {
         fun init(context: Context){
             synchronized(dbInstance) {
                 if (dbInstance.get() !== null)
-                    throw IllegalStateException("already initialized")
+                    return
+                
                 val dbInst = Room.databaseBuilder(context, RoomDB::class.java, "MediaDB.db")
                     .addCallback(DBUpgradeCallback())
                     .build()

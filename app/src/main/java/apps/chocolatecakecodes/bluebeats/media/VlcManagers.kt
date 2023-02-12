@@ -25,7 +25,7 @@ object VlcManagers {
 
     fun init(ctx: Context){
         synchronized(this) {
-            if (vlc !== null)
+            if (isInitialized())
                 throw IllegalStateException("already initialized")
 
             val libVlcFactory = FactoryManager.getFactory(ILibVLCFactory.factoryId) as ILibVLCFactory
@@ -36,5 +36,9 @@ object VlcManagers {
             mediaDB.setSubject(mediaMng)
             this.mediaDB = mediaDB
         }
+    }
+
+    fun isInitialized(): Boolean{
+        return vlc !== null
     }
 }
