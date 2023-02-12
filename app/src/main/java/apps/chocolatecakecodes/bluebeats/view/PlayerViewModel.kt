@@ -16,6 +16,7 @@ class PlayerViewModel : ViewModel() {
 
     fun play(media: MediaFile){
         currentMediaRW.postValue(media)
+        playPosRW.postValue(0.0f)
         resume()
     }
 
