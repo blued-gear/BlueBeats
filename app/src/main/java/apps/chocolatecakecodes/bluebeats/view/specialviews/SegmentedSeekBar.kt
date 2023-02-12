@@ -11,6 +11,7 @@ import android.widget.FrameLayout
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.appcompat.widget.AppCompatSeekBar
+import androidx.core.view.doOnNextLayout
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 
@@ -69,7 +70,16 @@ class SegmentedSeekBar : FrameLayout {
         set(value) {
             field = value
             currentSegment = null
-            createMarkers()
+
+            if(seekBar.width > 0) {
+                createMarkers()
+                markers.forEach { markerContainer.addView(it) }
+            } else {
+                seekBar.doOnNextLayout {
+                    createMarkers()
+                    markers.forEach { markerContainer.addView(it) }
+                }
+            }
         }
 
     constructor(context: Context) : this(context, null)
@@ -113,18 +123,13 @@ class SegmentedSeekBar : FrameLayout {
         for(m in markers)
             markerContainer.removeView(m)
 
-        markers = Array(segments.size){
-            val segment = segments[it]
-
+        markers = segments.map {
             // add at right position
-            val pos = (segment.start.toFloat() / max) * (seekBar.width - 4 * seekBar.thumbOffset.toFloat())
+            val pos = (it.start.toFloat() / max) * (seekBar.width - 4 * seekBar.thumbOffset.toFloat())
             val markerX = (seekBar.x + pos).toInt()
-            val marker = createMarker(markerX)
 
-            markerContainer.addView(marker)
-
-            return@Array marker
-        }
+            createMarker(markerX)
+        }.toTypedArray()
     }
 
     private fun createMarker(x: Int): View{
