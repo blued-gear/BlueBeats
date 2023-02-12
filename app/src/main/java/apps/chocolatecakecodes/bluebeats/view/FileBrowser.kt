@@ -4,12 +4,13 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -20,7 +21,10 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.util.MediaDBEventRelay
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.*
 import java.util.concurrent.atomic.AtomicReference
 
@@ -32,7 +36,7 @@ class FileBrowser(private val mediaDB: MediaDBEventRelay) : Fragment() {
     private var listView: RecyclerView? = null
     private var progressBar: ProgressBar? = null
     private lateinit var scanListener: MediaDB.ScanEventHandler
-    private var currentDir: String = "/"
+    private lateinit var currentDir: MediaDir
 
     companion object {
         /**
@@ -54,7 +58,7 @@ class FileBrowser(private val mediaDB: MediaDBEventRelay) : Fragment() {
         val adapterRef = AtomicReference<ViewAdapter>(null)//XXX self-reference in init is not allowed
         listAdapter = ViewAdapter {
             if(it is MediaDir){
-                currentDir = it.path
+                currentDir = it
                 expandMediaDir(it){
                     withContext(Dispatchers.Main){
                         adapterRef.get().setEntries(it)
@@ -90,11 +94,29 @@ class FileBrowser(private val mediaDB: MediaDBEventRelay) : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // setup views
         listView = view.findViewById(R.id.fb_entrylist)
         progressBar = view.findViewById(R.id.fb_progress)
 
         listView!!.layoutManager = LinearLayoutManager(this.requireContext())
         listView!!.adapter = listAdapter
+
+        // add handler for back button (to get one dir up)
+        //TODO this disables the default handler (which is good), but there should be a handler (which is always active) which closes the app on double-back-press
+        this.requireActivity().onBackPressedDispatcher.addCallback(this.viewLifecycleOwner, object : OnBackPressedCallback(true){
+            override fun handleOnBackPressed() {
+                // check if we can go up by one dir
+                val parentDir = currentDir.parent
+                if (parentDir !== null) {
+                    currentDir = parentDir
+                    expandMediaDir(parentDir) {
+                        withContext(Dispatchers.Main) {
+                            listAdapter.setEntries(it)
+                        }
+                    }
+                }
+            }
+        })
 
         // add media-scan listener
         scanListener = object : MediaDB.ScanEventHandler(Handler(Looper.getMainLooper())){
@@ -105,11 +127,11 @@ class FileBrowser(private val mediaDB: MediaDBEventRelay) : Fragment() {
                 progressBar!!.isIndeterminate = false
             }
             override fun handleNewNodeFound(node: MediaNode) {
-                if(node.parent?.path == currentDir)
+                if(node.parent == currentDir)
                     listAdapter.addEntry(node)
             }
             override fun handleNodeRemoved(node: MediaNode) {
-                if(node.parent?.path == currentDir)
+                if(node.parent == currentDir)
                     listAdapter.removeEntry(node)
             }
             override fun handleNodeUpdated(node: MediaNode, oldVersion: MediaNode) {
@@ -157,13 +179,12 @@ class FileBrowser(private val mediaDB: MediaDBEventRelay) : Fragment() {
     }
 
     private fun scanMedia(){
-        currentDir = "/"
-
         CoroutineScope(Dispatchers.IO).launch {
             mediaDB.getSubject().loadDB()
 
             // show root
             val mediaTreeRoot = mediaDB.getSubject().getMediaTreeRoot()
+            currentDir = mediaTreeRoot
             expandMediaDir(mediaTreeRoot){
                 withContext(Dispatchers.Main){
                     listAdapter.setEntries(it)
@@ -176,7 +197,7 @@ class FileBrowser(private val mediaDB: MediaDBEventRelay) : Fragment() {
 
     private class MediaNodeViewHolder(itemView: View, private val clickHandler: (MediaNode) -> Unit) : RecyclerView.ViewHolder(itemView) {
 
-        lateinit var entry: MediaNode;
+        lateinit var entry: MediaNode
 
         init{
             itemView.setOnClickListener {
