@@ -14,6 +14,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.media2.common.MediaItem
 import androidx.media2.common.SessionPlayer
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
@@ -506,6 +507,7 @@ class Player : Fragment() {
         private val tintNotSelected = ColorStateList.valueOf(this@Player.requireContext().getColor(R.color.button_not_selected))
 
         private val listAdapter = setupListAdapter()
+        private var listView: RecyclerView by OnceSettable()
         private var popup: PopupWindow by OnceSettable()
         private var btnRepeat: ImageButton by OnceSettable()
         private var btnShuffle: ImageButton by OnceSettable()
@@ -545,6 +547,10 @@ class Player : Fragment() {
             view.layoutManager = LinearLayoutManager(this@Player.requireContext(),
                 LinearLayoutManager.VERTICAL, false)
             view.adapter = listAdapter
+
+            listView = view
+
+            scrollToCurrentItem()
         }
 
         private fun setupButtons(repeat: ImageButton, shuffle: ImageButton) {
@@ -649,6 +655,14 @@ class Player : Fragment() {
                     }
                 }
             }
+        }
+
+        private fun scrollToCurrentItem() {
+            val pl = player.getCurrentPlaylist()!!
+            val scroller = LinearSmoothScroller(listView.context)
+            val itemPos = pl.currentPosition.coerceAtLeast(0)
+            scroller.targetPosition = itemPos
+            listView.layoutManager!!.startSmoothScroll(scroller)
         }
     }
 
