@@ -300,6 +300,8 @@ internal class Search : Fragment(R.layout.search_fragment) {
             it?.let {
                 applyItems(it)
             } ?: itemListAdapter.clear()
+
+            updateMenu()
         }
     }
 
