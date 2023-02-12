@@ -45,9 +45,6 @@ private class DynplaylistGroupEditor(
         context.getString(R.string.dynpl_type_group) to {
             RoomDB.DB_INSTANCE.dplRuleGroupDao().createNew(Rule.Share(1f, true))
         },
-        context.getString(R.string.dynpl_type_exclude) to {
-            RoomDB.DB_INSTANCE.dplExcludeRuleDao().createNew()
-        },
         context.getString(R.string.dynpl_type_include) to {
             RoomDB.DB_INSTANCE.dplIncludeRuleDao().createNew(Rule.Share(1f, true))
         },
@@ -100,7 +97,7 @@ private class DynplaylistGroupEditor(
                         dlg.dismiss()
 
                         changedCallback(group)
-                        contentList.addView(createItem(Pair(rule, group.getRuleNegated(rule))))
+                        contentList.addView(createItem(Pair(rule, group.getRuleNegated(rule)!!)))
                         expander.expanded = true
                     }
                 }

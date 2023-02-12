@@ -19,17 +19,12 @@ import kotlin.NoSuchElementException
 internal class RuleGroup private constructor(
     private val entityId: Long,
     override var share: Rule.Share,
-    rules: List<Pair<Rule, Boolean>> = emptyList(),
-    excludes: List<ExcludeRule> = emptyList()
+    rules: List<Pair<Rule, Boolean>> = emptyList()
 ) : Rule {
 
     private val rules: MutableList<Pair<Rule, Boolean>> = ArrayList(rules)
     private val rulesRO: List<Pair<Rule, Boolean>> by lazy {
         Collections.unmodifiableList(this.rules)
-    }
-    private val excludes = ArrayList(excludes)
-    private val excludesRO: List<ExcludeRule> by lazy {
-        Collections.unmodifiableList(this.excludes)
     }
 
     override fun generateItems(amount: Int, exclude: Set<MediaFile>): List<MediaFile> {
@@ -89,38 +84,6 @@ internal class RuleGroup private constructor(
         rules.removeAt(idx)
     }
 
-    fun getExcludes(): List<ExcludeRule> {
-        return excludesRO
-    }
-
-    fun addExclude(rule: ExcludeRule) {
-        excludes.add(rule)
-    }
-
-    fun removeExclude(rule: ExcludeRule) {
-        excludes.remove(rule)
-    }
-
-    fun removeExcludeAt(idx: Int) {
-        excludes.removeAt(idx)
-    }
-
-    fun addRule(rule: Rulelike) {
-        when (rule) {
-            is ExcludeRule -> addExclude(rule)
-            is Rule -> addRule(rule)
-            else -> throw IllegalArgumentException("unsupported rule type")
-        }
-    }
-
-    fun removeRule(rule: Rulelike) {
-        when (rule) {
-            is ExcludeRule -> removeExclude(rule)
-            is Rule -> removeRule(rule)
-            else -> throw IllegalArgumentException("unsupported rule type")
-        }
-    }
-
     override fun equals(other: Any?): Boolean {
         if(other !is RuleGroup)
             return false
@@ -129,7 +92,7 @@ internal class RuleGroup private constructor(
     }
 
     override fun hashCode(): Int {
-        return Objects.hash(this.javaClass.canonicalName, getExcludes(), getRules())
+        return Objects.hash(this.javaClass.canonicalName, getRules())
     }
 
     @Suppress("NAME_SHADOWING")
@@ -138,7 +101,6 @@ internal class RuleGroup private constructor(
 
         private enum class KnownRuleTypes {
             RULE_GROUP,
-            EXCLUDE_RULE,
             INCLUDE_RULE,
             USERTAGS_RULE
         }
@@ -151,59 +113,62 @@ internal class RuleGroup private constructor(
 
         fun load(id: Long): RuleGroup {
             val entity = getEntity(id)
-            val (excludeEntries, ruleEntries) = getEntriesForGroup(id)
+            val ruleEntries = getEntriesForGroup(id)
                 .sortedBy { it.pos }
                 .map { Pair(loadRule(it.rule, KnownRuleTypes.values()[it.type]), it.negated) }
-                .partition { it.first is ExcludeRule }
 
             return RuleGroup(
                 entity.id, entity.share,
-                ruleEntries.map { Pair(it.first as Rule, it.second) },
-                excludeEntries.map { it.first as ExcludeRule }
+                ruleEntries.map { Pair(it.first, it.second) },
             )
         }
 
         @Transaction
         open fun save(group: RuleGroup) {
-            TODO("fix for this is deferred as mor changes are to come")
+            val existingRules = getEntriesForGroup(group.entityId).map {
+                Pair(it.rule, KnownRuleTypes.values()[it.type])
+            }.toSet()
+            val currentRules = group.getRules().associateBy {
+                Pair(getRuleEntityId(it.first), getRuleType(it.first))
+            }
 
-            Utils.diffChanges(existingRules, currentRules.keys).let { (added, deleted, unchanged) ->
+            Utils.diffChanges(existingRules, currentRules.keys).let { (added, deleted, existing) ->
                 deleted.forEach {
-                    deleteRule(group.entityId, loadRule(it.first, it.second))
+                    deleteRule(group.entityId, it.first, it.second)
                 }
 
-                added.map { currentRules[it] }.forEach {
-                    val ruleInfo = saveRule(it!!)
+                added.forEach {
+                    val (id, type)  = it
+                    val ruleWithNegated = currentRules[it]!!
+                    val (rule, negated) = ruleWithNegated
+                    val pos = group.getRules().indexOf(ruleWithNegated)
 
-                    val pos = if(ruleInfo.second == KnownRuleTypes.EXCLUDE_RULE)
-                        group.excludes.indexOf(it)
-                    else
-                        group.rules.indexOf(it) + group.excludes.size
-
+                    saveRule(rule)
                     insertEntry(RuleGroupEntry(
                         0,
                         group.entityId,
-                        getRuleEntityId(it),
-                        ruleInfo.second.ordinal,
-                        pos
+                        id,
+                        type.ordinal,
+                        pos,
+                        negated
                     ))
                 }
 
-                unchanged.map { currentRules[it] }.forEach {
-                    saveRule(it!!)
+                existing.forEach {
+                    val (id, type)  = it
+                    val ruleWithNegated = currentRules[it]!!
+                    val (rule, negated) = ruleWithNegated
+                    val pos = group.getRules().indexOf(ruleWithNegated)
 
-                    val pos = if(it is ExcludeRule)
-                        group.excludes.indexOf(it)
-                    else
-                        group.rules.indexOf(it) + group.excludes.size
-                    updateEntryPos(group.entityId, getRuleEntityId(it), getRuleType(it).ordinal, pos)
+                    saveRule(rule)
+                    updateEntryPos(group.entityId, id, type.ordinal, pos, negated)
                 }
             }
         }
 
         @Transaction
         open fun delete(group: RuleGroup) {
-            group.excludes.plus(group.rules.map { it.first }).forEach {
+            group.getRules().map { it.first }.forEach {
                 deleteRule(group.entityId, it)
             }
 
@@ -235,16 +200,15 @@ internal class RuleGroup private constructor(
         @Query("SELECT * FROM RuleGroupEntry WHERE rulegroup = :group;")
         protected abstract fun getEntriesForGroup(group: Long): List<RuleGroupEntry>
 
-        @Query("UPDATE RuleGroupEntry SET pos = :pos WHERE rulegroup = :group AND rule = :rule AND type = :type;")
-        protected abstract fun updateEntryPos(group: Long, rule: Long, type: Int, pos: Int)
+        @Query("UPDATE RuleGroupEntry SET pos = :pos, negated = :negated WHERE rulegroup = :group AND rule = :rule AND type = :type;")
+        protected abstract fun updateEntryPos(group: Long, rule: Long, type: Int, pos: Int, negated: Boolean)
 
         //endregion
 
         //region private helpers
-        private fun loadRule(id: Long, type: KnownRuleTypes): Rulelike {
+        private fun loadRule(id: Long, type: KnownRuleTypes): Rule {
             return when(type) {
                 KnownRuleTypes.RULE_GROUP -> this.load(id)
-                KnownRuleTypes.EXCLUDE_RULE -> RoomDB.DB_INSTANCE.dplExcludeRuleDao().load(id)
                 KnownRuleTypes.INCLUDE_RULE -> RoomDB.DB_INSTANCE.dplIncludeRuleDao().load(id)
                 KnownRuleTypes.USERTAGS_RULE -> RoomDB.DB_INSTANCE.dplUsertagsRuleDao().load(id)
             }
@@ -253,50 +217,31 @@ internal class RuleGroup private constructor(
         /**
          * @return Pair<entityId, type>
          */
-        private fun saveRule(rule: Rulelike): Pair<Long, KnownRuleTypes> {
-            return when(val type = getRuleType(rule)) {
+        private fun saveRule(rule: Rule) {
+            when(getRuleType(rule)) {
                 KnownRuleTypes.RULE_GROUP -> {
                     val rule = rule as RuleGroup
                     this.save(rule)
-
-                    Pair(rule.entityId, type)
-                }
-                KnownRuleTypes.EXCLUDE_RULE -> {
-                    val rule = rule as ExcludeRule
-                    val dao = RoomDB.DB_INSTANCE.dplExcludeRuleDao()
-                    dao.save(rule)
-
-                    Pair(dao.getEntityId(rule), type)
                 }
                 KnownRuleTypes.INCLUDE_RULE -> {
                     val rule = rule as IncludeRule
                     val dao = RoomDB.DB_INSTANCE.dplIncludeRuleDao()
                     dao.save(rule)
-
-                    Pair(dao.getEntityId(rule), type)
                 }
                 KnownRuleTypes.USERTAGS_RULE -> {
                     val rule = rule as UsertagsRule
                     val dao = RoomDB.DB_INSTANCE.dplUsertagsRuleDao()
                     dao.save(rule)
-
-                    Pair(dao.getEntityId(rule), type)
                 }
             }
         }
 
-        private fun deleteRule(group: Long, rule: Rulelike) {
+        private fun deleteRule(group: Long, rule: Rule) {
             when(val type = getRuleType(rule)) {
                 KnownRuleTypes.RULE_GROUP -> {
                     val rule = rule as RuleGroup
                     deleteEntry(group, rule.entityId, type.ordinal)
                     this.delete(rule)
-                }
-                KnownRuleTypes.EXCLUDE_RULE -> {
-                    val rule = rule as ExcludeRule
-                    val dao = RoomDB.DB_INSTANCE.dplExcludeRuleDao()
-                    deleteEntry(group, dao.getEntityId(rule), KnownRuleTypes.EXCLUDE_RULE.ordinal)
-                    dao.delete(rule)
                 }
                 KnownRuleTypes.INCLUDE_RULE -> {
                     val rule = rule as IncludeRule
@@ -319,11 +264,6 @@ internal class RuleGroup private constructor(
                     deleteEntry(group, ruleId, ruleType.ordinal)
                     this.delete(this.load(ruleId))
                 }
-                KnownRuleTypes.EXCLUDE_RULE -> {
-                    val dao = RoomDB.DB_INSTANCE.dplExcludeRuleDao()
-                    deleteEntry(group, ruleId, ruleType.ordinal)
-                    dao.delete(ruleId)
-                }
                 KnownRuleTypes.INCLUDE_RULE -> {
                     val dao = RoomDB.DB_INSTANCE.dplIncludeRuleDao()
                     deleteEntry(group, ruleId, ruleType.ordinal)
@@ -337,23 +277,20 @@ internal class RuleGroup private constructor(
             }
         }
 
-        private fun getRuleType(rule: Rulelike) = when(rule) {
+        private fun getRuleType(rule: Rule) = when(rule) {
             is RuleGroup -> KnownRuleTypes.RULE_GROUP
-            is ExcludeRule -> KnownRuleTypes.EXCLUDE_RULE
             is IncludeRule -> KnownRuleTypes.INCLUDE_RULE
             is UsertagsRule -> KnownRuleTypes.USERTAGS_RULE
             else -> throw IllegalArgumentException("unsupported type")
         }
 
-        private fun getRuleEntityId(rule: Rulelike): Long {
+        private fun getRuleEntityId(rule: Rule): Long {
             return when(getRuleType(rule)) {
                 KnownRuleTypes.RULE_GROUP -> (rule as RuleGroup).entityId
-                KnownRuleTypes.EXCLUDE_RULE -> RoomDB.DB_INSTANCE.dplExcludeRuleDao().getEntityId(rule as ExcludeRule)
                 KnownRuleTypes.INCLUDE_RULE -> RoomDB.DB_INSTANCE.dplIncludeRuleDao().getEntityId(rule as IncludeRule)
                 KnownRuleTypes.USERTAGS_RULE -> RoomDB.DB_INSTANCE.dplUsertagsRuleDao().getEntityId(rule as UsertagsRule)
             }
         }
-
         //endregion
     }
 }
