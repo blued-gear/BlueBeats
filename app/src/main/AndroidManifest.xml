@@ -3,7 +3,6 @@
           package="apps.chocolatecakecodes.bluebeats">
 
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
 
     <application
             android:allowBackup="true"
@@ -14,7 +13,7 @@
             android:theme="@style/Theme.BlueBeats"
             android:requestLegacyExternalStorage="true"
     >
-        <activity android:name=".MainActivity">
+        <activity android:name="apps.chocolatecakecodes.bluebeats.view.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 
