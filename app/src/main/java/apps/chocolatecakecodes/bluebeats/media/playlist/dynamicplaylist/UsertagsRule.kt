@@ -214,9 +214,14 @@ internal data class UsertagsRuleEntity(
 
 @Entity(
     foreignKeys = [
-        ForeignKey(entity = UsertagsRuleEntity::class,
+        ForeignKey(
+            entity = UsertagsRuleEntity::class,
             parentColumns = ["id"], childColumns = ["rule"],
-            onUpdate = ForeignKey.RESTRICT, onDelete = ForeignKey.RESTRICT)
+            onUpdate = ForeignKey.RESTRICT, onDelete = ForeignKey.RESTRICT
+        )
+    ],
+    indices = [
+        Index(value = ["rule"])
     ]
 )
 internal data class UsertagsRuleEntry(

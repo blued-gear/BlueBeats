@@ -146,7 +146,7 @@ internal class ID3TagsRule private constructor(
             Utils.diffChanges(
                 findEntriesForRule(rule.entityId).map { it.value }.toSet(),
                 rule.getTagValues()
-            ).let { (added, removed, unchanged) ->
+            ).let { (added, removed, _) ->
                 added.forEach {
                     insertEntry(ID3TagsRuleEntry(0, rule.entityId, it))
                 }

@@ -7,6 +7,8 @@ import apps.chocolatecakecodes.bluebeats.util.Utils
 
 internal typealias GenericRule = Rule<*>
 
+//TODO maybe rules should have names
+
 /**
  * @param T type of the implementing class
  */

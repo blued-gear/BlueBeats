@@ -243,6 +243,9 @@ internal class DynamicPlaylistIterator(
             parentColumns = ["id"], childColumns = ["ruleRoot"],
             onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.RESTRICT
         )
+    ],
+    indices = [
+        Index(value = ["ruleRoot"], unique = true)
     ]
 )
 internal data class DynamicPlaylistEntity(

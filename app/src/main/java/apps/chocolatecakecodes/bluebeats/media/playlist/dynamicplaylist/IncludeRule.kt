@@ -336,7 +336,8 @@ internal data class IncludeRuleEntity(
         ),
     ],
     indices = [
-        Index(value = ["rule", "file"], unique = true)
+        Index(value = ["rule", "file"], unique = true),
+        Index(value = ["file"])
     ]
 )
 internal data class IncludeRuleFileEntry(
@@ -359,7 +360,8 @@ internal data class IncludeRuleFileEntry(
         ),
     ],
     indices = [
-        Index(value = ["rule", "dir"], unique = true)
+        Index(value = ["rule", "dir"], unique = true),
+        Index(value = ["dir"])
     ]
 )
 internal data class IncludeRuleDirEntry(

@@ -83,7 +83,7 @@ private class DynplaylistGroupEditor(
         }
 
         header.apply {
-            title.text = "Group"//TODO rules should have names
+            title.text = "Group"
             setupShareEdit(group.share) {
                 group.share = it
                 changedCallback(group)
@@ -171,7 +171,7 @@ private class DynplaylistIncludeEditor(
     private var lastDir: MediaDir = VlcManagers.getMediaDB().getSubject().getMediaTreeRoot()
 
     init {
-        header.title.text = "Include"//TODO rules should have names
+        header.title.text = "Include"
 
         header.setupShareEdit(rule.share) {
             rule.share = it
@@ -280,7 +280,7 @@ private class DynplaylistUsertagsEditor(
     val addBtn = SimpleAddableRuleHeaderView.CommonVisuals.addButton(context)
 
     init {
-        header.title.text = "Tags"//TODO rules should have names
+        header.title.text = "Tags"
 
         header.setupShareEdit(rule.share) {
             rule.share = it
@@ -379,7 +379,7 @@ private class DynplaylistID3TagsEditor(
     val availableValues = ArrayList<String>()
 
     init {
-        header.title.text = "ID3 Tags"//TODO rules should have names
+        header.title.text = "ID3 Tags"
 
         header.setupShareEdit(rule.share) {
             rule.share = it

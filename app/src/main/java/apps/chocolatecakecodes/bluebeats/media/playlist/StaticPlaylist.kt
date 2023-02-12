@@ -157,11 +157,15 @@ internal data class StaticPlaylistEntity(
             parentColumns = ["id"], childColumns = ["media"],
             onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE//TODO maybe remap to _DELETED_ITEM_ entry
         )
+    ],
+    indices = [
+        Index(value = ["playlist"]),
+        Index(value = ["media"])
     ]
 )
 internal data class StaticPlaylistEntry(
     @PrimaryKey(autoGenerate = true) val id: Long,
-    @ColumnInfo(name = "playlist", index = true) val playlist: Long,
+    @ColumnInfo(name = "playlist") val playlist: Long,
     @ColumnInfo(name = "media") val media: Long,
     @ColumnInfo(name = "pos") val pos: Int
 )
