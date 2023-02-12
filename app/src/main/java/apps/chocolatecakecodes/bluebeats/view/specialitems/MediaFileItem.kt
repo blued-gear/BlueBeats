@@ -1,5 +1,6 @@
 package apps.chocolatecakecodes.bluebeats.view.specialitems
 
+import android.content.res.ColorStateList
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
@@ -35,7 +36,11 @@ internal open class MediaFileItem(
 
         private val title: TextView = view.findViewById(R.id.v_mf_text)
         private val dragHandle: View = view.findViewById(R.id.v_mf_handle)
-        private val thumb: ImageView = view.findViewById(R.id.v_mf_thumb)
+        private val thumb: ImageView = view.findViewById<ImageView?>(R.id.v_mf_thumb).apply {
+            setBackgroundColor(context.getColor(R.color.gray_410))
+        }
+
+        private val svgColor = ColorStateList.valueOf(view.context.getColor(R.color.gray_600))
 
         override fun bindView(item: MediaFileItem, payloads: List<Any>) {
             super.bindView(item, payloads)
@@ -49,6 +54,9 @@ internal open class MediaFileItem(
 
             if(item.showThumb) {
                 thumb.visibility = View.VISIBLE
+
+                thumb.imageTintList = svgColor
+                thumb.setImageResource(R.drawable.ic_baseline_access_time_24)
 
                 if(thumb.width == 0 || thumb.height == 0){
                     thumb.doOnNextLayout {
@@ -69,13 +77,21 @@ internal open class MediaFileItem(
         }
 
         private fun loadThumbnail(file: MediaFile) {
-            //TODO loading placeholder, no-thumb placeholder
             if(thumb.height > 0) {
                 CoroutineScope(Dispatchers.IO).launch {
                     VlcManagers.getMediaDB().getSubject()
                         .getThumbnail(file, -1, thumb.height).let {
                             withContext(Dispatchers.Main) {
-                                thumb.setImageBitmap(it)
+                                if(it !== null) {
+                                    thumb.imageTintList = null
+                                    thumb.setImageBitmap(it)
+                                } else {
+                                    when(file.type) {
+                                        MediaFile.Type.AUDIO -> thumb.setImageResource(R.drawable.ic_baseline_audiotrack_24)
+                                        MediaFile.Type.VIDEO -> thumb.setImageResource(R.drawable.ic_baseline_local_movies_24)
+                                        MediaFile.Type.OTHER -> thumb.setImageResource(R.drawable.ic_baseline_insert_drive_file_24)
+                                    }
+                                }
                             }
                         }
                 }
