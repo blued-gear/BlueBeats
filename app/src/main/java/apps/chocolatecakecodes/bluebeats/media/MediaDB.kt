@@ -99,7 +99,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val appCtx: Conte
 
     private fun updateDirDeep(dir: MediaDir, oldVersion: MediaDir?){
         //TODO cmp with oldVersion and fire onNodeUpdated event
-        for(subDir in dir.getChildren()){
+        for(subDir in dir.getDirs()){
             val vlcDir = fileToVlcMedia(subDir.path) ?: throw IOException("unable to create media")
             vlcDir.addOption(IGNORE_LIST_OPTION)
             vlcDir.parse(IMedia.Parse.ParseLocal or IMedia.Parse.DoInteract)
@@ -108,8 +108,8 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val appCtx: Conte
             //TODO or should I just replace the current item
             for(f in scannedDir.getFiles())
                 subDir.addFile(f)
-            for(d in scannedDir.getChildren())
-                subDir.addChildDir(d)
+            for(d in scannedDir.getDirs())
+                subDir.addDir(d)
 
             updateDirDeep(subDir, null /*TODO*/)
         }
@@ -134,7 +134,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val appCtx: Conte
             when (child.type) {
                 IMedia.Type.Directory -> {
                     assert(Utils.vlcMediaToDocumentFile(child).isDirectory)
-                    mediaDir.addChildDir(MediaDir(child.uri.lastPathSegment!!, mediaDir))
+                    mediaDir.addDir(MediaDir(child.uri.lastPathSegment!!, mediaDir))
                 }
                 IMedia.Type.File -> {
                     assert(Utils.vlcMediaToDocumentFile(child).isFile)

@@ -36,7 +36,7 @@ abstract class MediaNode{ //TODO make serializable (all subclasses should have c
  */
 class MediaDir(override val name: String, parent: MediaDir?): MediaNode() {
 
-    private val children: MutableSet<MediaDir>
+    private val dirs: MutableSet<MediaDir>
     private val files: MutableSet<MediaFile>
 
     override val type: Type = Type.DIR
@@ -47,23 +47,23 @@ class MediaDir(override val name: String, parent: MediaDir?): MediaNode() {
     override val parent: MediaDir?// only root and UNSPECIFIED_DIR has parent with value null
 
     init{
-        children = TreeSet(compareBy { it.name })
+        dirs = TreeSet(compareBy { it.name })
         files = TreeSet(compareBy { it.name })
 
         this.parent = parent
         path = (parent?.path ?: "") + "/" + name
     }
 
-    internal fun addChildDir(dir: MediaDir){
+    internal fun addDir(dir: MediaDir){
         if(!this.shallowEquals(dir.parent))
             throw IllegalArgumentException("dir is not sub-item of this dir")
-        children.add(dir)
+        dirs.add(dir)
     }
-    internal fun removeChildDir(dir: MediaDir){
-        children.remove(dir)
+    internal fun removeDir(dir: MediaDir){
+        dirs.remove(dir)
     }
-    fun getChildren(): List<MediaDir>{
-        return children.toList()
+    fun getDirs(): List<MediaDir>{
+        return dirs.toList()
     }
 
     internal fun addFile(file: MediaFile){
@@ -84,8 +84,8 @@ class MediaDir(override val name: String, parent: MediaDir?): MediaNode() {
         if(!shallowEquals(other))
             return false
 
-        val thisChildren = this.getChildren()
-        val otherChildren = other.getChildren()
+        val thisChildren = this.getDirs()
+        val otherChildren = other.getDirs()
         if(thisChildren.size != otherChildren.size)
             return false
         for(i in thisChildren.indices)

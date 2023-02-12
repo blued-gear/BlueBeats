@@ -157,5 +157,5 @@ class FileBrowser(private val mediaDB: MediaDB) : Fragment() {
 }
 
 private fun expandMediaDir(dir: MediaDir): List<MediaNode>{
-    return listOf(dir.getChildren(), dir.getFiles()).flatten()
+    return listOf(dir.getDirs(), dir.getFiles()).flatten()
 }
