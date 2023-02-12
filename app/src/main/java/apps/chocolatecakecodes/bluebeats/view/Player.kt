@@ -550,7 +550,7 @@ class Player : Fragment() {
             val pl = viewModel.currentPlaylist.value
             if(pl !== null) {
                 if(!pl.isAtEnd()) {
-                    viewModel.play(pl.nextMedia())
+                    viewModel.play(pl.nextMedia(), true)
                 } else {
                     onTotalEndReached()
                 }
