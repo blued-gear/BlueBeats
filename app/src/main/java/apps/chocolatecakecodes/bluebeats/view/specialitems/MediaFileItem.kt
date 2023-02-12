@@ -6,7 +6,7 @@ import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import com.mikepenz.fastadapter.drag.IDraggable
 
-internal class MediaFileItem(
+internal open class MediaFileItem(
     val file: MediaFile,
     draggable: Boolean = false
 ) : SelectableItem<MediaFileItem.ViewHolder>(), IDraggable {

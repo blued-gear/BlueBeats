@@ -213,6 +213,12 @@ internal abstract class MediaFileDAO{
         return getForId(getFileIdForNameAndParent(name, parent))
     }
 
+    fun getAllFiles(): List<MediaFile> {
+        return getAllIds().map {
+            getForId(it)
+        }
+    }
+
     @Transaction
     open fun save(file: MediaFile){
         val chaptersJson = file.chapters?.let {
@@ -257,6 +263,9 @@ internal abstract class MediaFileDAO{
     @Query("SELECT id FROM MediaFileEntity WHERE name = :name AND parent = :parent;")
     protected abstract fun getFileIdForNameAndParent(name: String, parent: Long): Long
 
+    @Query("SELECT id FROM MediaFileEntity;")
+    protected abstract fun getAllIds(): List<Long>
+
     @Insert
     protected abstract fun insertEntity(entity: MediaFileEntity): Long
 
@@ -288,6 +297,12 @@ internal abstract class ID3TagDAO {
     fun getFilesWithTag(type: String, value: String): List<MediaFile> {
         return findFilesWithTag(type, value).map {
             mediaFileDao.getForId(it)
+        }
+    }
+
+    fun getFilesWithAnyTag(type: String): List<Pair<MediaFile, String>> {
+        return findFilesWithAnyTag(type).map {
+            mediaFileDao.getForId(it.file_id) to it.value_str
         }
     }
 
@@ -368,6 +383,13 @@ internal abstract class ID3TagDAO {
             "INNER JOIN ID3TagTypeEntity AS type ON val.type = type.id " +
             "WHERE type.str = :type AND val.str = :value;")
     protected abstract fun findFilesWithTag(type: String, value: String): List<Long>
+
+    @Query("SELECT type.str as type_str, val.str as value_str, ref.file as file_id " +
+            "FROM ID3TagReferenceEntity AS ref " +
+            "INNER JOIN ID3TagValueEntity val ON ref.tag = val.id " +
+            "INNER JOIN ID3TagTypeEntity AS type ON val.type = type.id " +
+            "WHERE type.str = :type;")
+    protected abstract fun findFilesWithAnyTag(type: String): List<FileTag2>
 
     @Query("SELECT id FROM ID3TagTypeEntity WHERE str = :typeValue;")
     protected abstract fun findTypeIdForString(typeValue: String): Long?
@@ -454,6 +476,7 @@ internal abstract class ID3TagDAO {
     //endregion
 
     protected data class FileTag(val type_str: String, val type_id: Long, val value_str: String, val value_id: Long)
+    protected data class FileTag2(val type_str: String, val value_str: String, val file_id: Long)
 }
 
 @Dao

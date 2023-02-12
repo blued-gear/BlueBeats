@@ -1,3 +1,5 @@
+@file:Suppress("NestedLambdaShadowedImplicitParameter")
+
 package apps.chocolatecakecodes.bluebeats.view
 
 import androidx.lifecycle.LiveData
@@ -6,13 +8,10 @@ import androidx.lifecycle.ViewModel
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.util.Utils
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.launch
 
 private const val SEARCH_DEBOUNCE_TIMEOUT = 200L
 
@@ -21,7 +20,7 @@ internal class SearchViewModel : ViewModel() {
 
     enum class Grouping { FILENAME, TITLE, ID3_TAG, USER_TAG }
 
-    private val groupingRW = MutableLiveData(Grouping.FILENAME)
+    private val groupingRW = MutableLiveData<Grouping>()
     val grouping: LiveData<Grouping> = groupingRW
     private val subgroupsRW = MutableLiveData<List<String>>()
     val subgroups: LiveData<List<String>> = subgroupsRW
@@ -63,7 +62,9 @@ internal class SearchViewModel : ViewModel() {
         Utils.trySetValueImmediately(subgroupRW, subgroup)
 
         grouping.value?.let {
-            loadItems(it, subgroup)
+            CoroutineScope(Dispatchers.IO).launch {
+                loadItems(it, subgroup)
+            }
         }
     }
 
@@ -79,7 +80,9 @@ internal class SearchViewModel : ViewModel() {
     private fun loadSubgroups(grouping: Grouping) {
         when(grouping) {
             Grouping.ID3_TAG -> {
-                RoomDB.DB_INSTANCE.id3TagDao().getAllTagTypes().let {
+                RoomDB.DB_INSTANCE.id3TagDao().getAllTagTypes().filterNot {
+                    it == "length"
+                }.let {
                     subgroupsRW.postValue(it)
                     setSubgroup(if(it.isNotEmpty()) it.first() else null)
                 }
@@ -89,11 +92,67 @@ internal class SearchViewModel : ViewModel() {
     }
 
     private fun loadItems(grouping: Grouping, subgroup: String?) {
+        when(grouping) {
+            Grouping.FILENAME -> loadByFilename()
+            Grouping.TITLE -> loadByTitle()
+            Grouping.ID3_TAG -> loadByID3Tag(subgroup!!)
+            Grouping.USER_TAG -> loadByUsertag()
+        }
+    }
+    //TODO make all special chars and numbers as two groups
 
+    private fun loadByFilename() {
+        allItems = RoomDB.DB_INSTANCE.mediaFileDao().getAllFiles().groupBy {
+            it.name.first().toString()
+        }.mapValues {
+            it.value.sortedBy {
+                it.name
+            }
+        }.toSortedMap()
+        itemsRW.postValue(allItems)
+    }
+
+    private fun loadByTitle() {
+        allItems = RoomDB.DB_INSTANCE.id3TagDao().getFilesWithAnyTag("title").groupBy {
+            it.second.first().toString()
+        }.mapValues {
+            it.value.sortedBy {
+                it.second
+            }.map {
+                it.first
+            }
+        }.toSortedMap()
+        itemsRW.postValue(allItems)
+    }
+
+    private fun loadByID3Tag(type: String) {
+        allItems = RoomDB.DB_INSTANCE.id3TagDao().getFilesWithAnyTag(type).groupBy {
+            it.second
+        }.mapValues {
+            it.value.sortedBy {
+                it.second
+            }.map {
+                it.first
+            }
+        }.toSortedMap()
+        itemsRW.postValue(allItems)
+    }
+
+    private fun loadByUsertag() {
+        allItems = RoomDB.DB_INSTANCE.userTagDao().let { dao ->
+            dao.getAllUserTags().associateWith {
+                dao.getFilesForTags(listOf(it)).map {
+                    it.key
+                }.sortedBy {
+                    it.name
+                }
+            }
+        }.toSortedMap()
+        itemsRW.postValue(allItems)
     }
 
     private fun search(query: String) {
-
+        ;
     }
 
     private fun setupSearchDebouncer() {
@@ -107,7 +166,9 @@ internal class SearchViewModel : ViewModel() {
                     trySend(it)
                 }
             }.debounce(SEARCH_DEBOUNCE_TIMEOUT).collect {
-                search(it)
+                withContext(Dispatchers.IO) {
+                    search(it)
+                }
             }
         }
     }

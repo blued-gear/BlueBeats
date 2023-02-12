@@ -1,19 +1,29 @@
+@file:Suppress("NestedLambdaShadowedImplicitParameter")
+
 package apps.chocolatecakecodes.bluebeats.view
 
+import android.content.Context
 import android.os.Bundle
 import android.view.View
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
-import android.widget.EditText
-import android.widget.Spinner
+import android.view.ViewGroup
+import android.widget.*
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
+import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.RequireNotNull
+import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
 import com.google.android.material.tabs.TabLayout
+import com.mikepenz.fastadapter.FastAdapter
+import com.mikepenz.fastadapter.IParentItem
+import com.mikepenz.fastadapter.ISubItem
+import com.mikepenz.fastadapter.adapters.FastItemAdapter
+import com.mikepenz.fastadapter.expandable.getExpandableExtension
+import com.mikepenz.fastadapter.expandable.items.AbstractExpandableItem
 
 internal class Search : Fragment(R.layout.search_fragment) {
 
@@ -26,11 +36,12 @@ internal class Search : Fragment(R.layout.search_fragment) {
     private var playerVM: PlayerViewModel by OnceSettable()
 
     private var subgroupsAdapter: ArrayAdapter<String> by OnceSettable()
+    private var itemListAdapter: FastItemAdapter<GroupItem> by OnceSettable()
 
     private val tabs = RequireNotNull<TabLayout>()
     private val searchText = RequireNotNull<EditText>()
     private val subgroupsSpinner = RequireNotNull<Spinner>()
-    private val itemView = RequireNotNull<RecyclerView>()
+    private val itemListView = RequireNotNull<RecyclerView>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,7 +58,7 @@ internal class Search : Fragment(R.layout.search_fragment) {
         tabs.set(view.findViewById(R.id.search_tabs))
         searchText.set(view.findViewById(R.id.search_search_text))
         subgroupsSpinner.set(view.findViewById(R.id.search_subgroups))
-        itemView.set(view.findViewById(R.id.search_items))
+        itemListView.set(view.findViewById(R.id.search_items))
 
         wireActionHandlers()
         wireObservers()
@@ -58,6 +69,9 @@ internal class Search : Fragment(R.layout.search_fragment) {
 
     override fun onStart() {
         super.onStart()
+
+        if(viewModel.grouping.value == null)
+            viewModel.setGrouping(SearchViewModel.Grouping.FILENAME)
     }
 
     override fun onResume() {
@@ -78,7 +92,7 @@ internal class Search : Fragment(R.layout.search_fragment) {
         tabs.set(null)
         searchText.set(null)
         subgroupsSpinner.set(null)
-        itemView.set(null)
+        itemListView.set(null)
     }
 
     private fun setupSubgroupsSpinner() {
@@ -87,7 +101,15 @@ internal class Search : Fragment(R.layout.search_fragment) {
     }
 
     private fun setupItemList() {
+        itemListAdapter = FastItemAdapter()
+        itemListAdapter.getExpandableExtension().apply {
+            isOnlyOneExpandedItem = false
+        }
 
+        itemListView.get().apply {
+            layoutManager = LinearLayoutManager(this@Search.requireContext(), LinearLayoutManager.VERTICAL, false)
+            adapter = itemListAdapter
+        }
     }
 
     //region action handlers
@@ -157,6 +179,20 @@ internal class Search : Fragment(R.layout.search_fragment) {
                 subgroupsSpinner.get().setSelection(subgroupsAdapter.getPosition(it))
             }
         }
+
+        viewModel.items.observe(this.viewLifecycleOwner) {
+            it?.let {
+                it.map { group ->
+                    group.value.map {
+                        MediaFileSubItem(it)
+                    }.let {
+                        GroupItem(group.key, it)
+                    }
+                }.let {
+                    itemListAdapter.set(it)
+                }
+            }
+        }
     }
 
     private fun applyTabSelection(grouping: SearchViewModel.Grouping) {
@@ -183,3 +219,49 @@ internal class Search : Fragment(R.layout.search_fragment) {
     }
     //endregion
 }
+
+//region item-models
+private class GroupItem(
+    val title: String,
+    items: List<MediaFileSubItem>
+) : AbstractExpandableItem<GroupItem.ViewHolder>() {
+
+    override val type: Int = GroupItem::class.hashCode()
+    override val layoutRes: Int = -1
+
+    init {
+        items.forEach {
+            it.parent = this
+        }
+        this.subItems.addAll(items)
+    }
+
+    override fun createView(ctx: Context, parent: ViewGroup?): View {
+        return TextView(ctx).apply {
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+    }
+
+    override fun getViewHolder(v: View) = ViewHolder(v)
+
+    class ViewHolder(view: View) : FastAdapter.ViewHolder<GroupItem>(view) {
+
+        private val content: TextView = view as TextView
+
+        override fun bindView(item: GroupItem, payloads: List<Any>) {
+            content.text = item.title
+        }
+
+        override fun unbindView(item: GroupItem) {
+            content.text = ""
+        }
+    }
+}
+
+private class MediaFileSubItem(
+    file: MediaFile,
+    draggable: Boolean = false
+) : MediaFileItem(file, draggable), ISubItem<MediaFileItem.ViewHolder> {
+    override var parent: IParentItem<*>? = null
+}
+//endregion
