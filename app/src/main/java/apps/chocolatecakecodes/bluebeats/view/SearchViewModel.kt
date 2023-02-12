@@ -202,61 +202,69 @@ internal class SearchViewModel : ViewModel() {
             } else {
                 val parsedQuery = parseSearchQuery(query)
                 when (it) {
-                    Grouping.FILENAME -> {
-                        allItems.flatMap { group ->
-                            group.value.map {
-                                Pair(it.name, Pair(group.key, it))
-                            }
-                        }.let {
-                            performSearch(parsedQuery, it)
-                        }.groupBy {
-                            it.first
-                        }.mapValues {
-                            it.value.map { it.second }
-                        }
-                    }
-                    Grouping.TITLE -> {
-                        allItems.flatMap { group ->
-                            group.value.map {
-                                Pair(it.mediaTags.title, Pair(group.key, it))
-                            }
-                        }.let {
-                            performSearch(parsedQuery, it)
-                        }.groupBy {
-                            it.first
-                        }.mapValues {
-                            it.value.map { it.second }
-                        }
-                    }
-                    Grouping.TYPE -> {
-                        allItems.flatMap { group ->
-                            group.value.map {
-                                Pair(it.title, Pair(group.key, it))
-                            }
-                        }.let {
-                            performSearch(parsedQuery, it)
-                        }.groupBy {
-                            it.first
-                        }.mapValues {
-                            it.value.map { it.second }
-                        }
-                    }
-                    Grouping.ID3_TAG, Grouping.USER_TAG -> {
-                        allItems.map {
-                            Pair(it.key, Pair(it.key, it.value))
-                        }.let {
-                            performSearch(parsedQuery, it)
-                        }.groupBy {
-                            it.first
-                        }.mapValues {
-                            it.value.flatMap { it.second }
-                        }
-                    }
+                    Grouping.FILENAME -> searchInFilename(parsedQuery)
+                    Grouping.TITLE -> searchInTitle(parsedQuery)
+                    Grouping.TYPE -> searchInType(parsedQuery)
+                    Grouping.ID3_TAG, Grouping.USER_TAG -> searchInTag(parsedQuery)
                 }.let {
                     if (it != items.value)
                         itemsRW.postValue(it)
                 }
             }
+        }
+    }
+
+    private fun searchInFilename(query: List<List<String>>): Map<String, List<MediaFile>> {
+        return allItems.flatMap { group ->
+            group.value.map {
+                Pair(it.name, Pair(group.key, it))
+            }
+        }.let {
+            performSearch(query, it)
+        }.groupBy {
+            it.first
+        }.mapValues {
+            it.value.map { it.second }
+        }
+    }
+
+    private fun searchInTitle(query: List<List<String>>): Map<String, List<MediaFile>> {
+        return allItems.flatMap { group ->
+            group.value.map {
+                Pair(it.mediaTags.title, Pair(group.key, it))
+            }
+        }.let {
+            performSearch(query, it)
+        }.groupBy {
+            it.first
+        }.mapValues {
+            it.value.map { it.second }
+        }
+    }
+
+    private fun searchInType(query: List<List<String>>): Map<String, List<MediaFile>> {
+        return allItems.flatMap { group ->
+            group.value.map {
+                Pair(it.title, Pair(group.key, it))
+            }
+        }.let {
+            performSearch(query, it)
+        }.groupBy {
+            it.first
+        }.mapValues {
+            it.value.map { it.second }
+        }
+    }
+
+    private fun searchInTag(query: List<List<String>>): Map<String, List<MediaFile>> {
+        return allItems.map {
+            Pair(it.key, Pair(it.key, it.value))
+        }.let {
+            performSearch(query, it)
+        }.groupBy {
+            it.first
+        }.mapValues {
+            it.value.flatMap { it.second }
         }
     }
 
