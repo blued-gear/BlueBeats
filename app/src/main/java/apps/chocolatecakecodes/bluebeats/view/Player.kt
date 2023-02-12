@@ -21,10 +21,8 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.player.VlcPlayer
 import apps.chocolatecakecodes.bluebeats.service.PlayerService
 import apps.chocolatecakecodes.bluebeats.taglib.Chapter
-import apps.chocolatecakecodes.bluebeats.util.OnceSettable
-import apps.chocolatecakecodes.bluebeats.util.SmartBackPressedCallback
-import apps.chocolatecakecodes.bluebeats.util.Utils
-import apps.chocolatecakecodes.bluebeats.util.castTo
+import apps.chocolatecakecodes.bluebeats.util.*
+import apps.chocolatecakecodes.bluebeats.util.Debouncer
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
 import apps.chocolatecakecodes.bluebeats.view.specialviews.SegmentedSeekBar
 import com.mikepenz.fastadapter.adapters.FastItemAdapter
@@ -36,6 +34,7 @@ private const val CONTROLS_FADE_IN_TIME = 200L
 private const val CONTROLS_FADE_OUT_TIME = 100L
 private const val CONTROLS_FADE_OUT_DELAY = 2000L
 private const val SEEK_STEP = 1000.0f
+private const val SEEK_DEBOUNCE_TIMEOUT = 200L
 
 class Player : Fragment() {
 
@@ -55,6 +54,7 @@ class Player : Fragment() {
     private var seekBar: SegmentedSeekBar by OnceSettable()
     private var timeTextView: TextView by OnceSettable()
     private var altImgView: ImageView by OnceSettable()
+    private var seekDebouncer: Debouncer<Long> by OnceSettable()
     private var mainMenu: Menu? = null
     private var controlsVisible: Boolean = true
     private var controlsHideCoroutine: Job? = null
@@ -69,6 +69,10 @@ class Player : Fragment() {
         mainVM = vmProvider.get(MainActivityViewModel::class.java)
 
         player = PlayerService.getInstancePlayer()
+
+        seekDebouncer = Debouncer.create(SEEK_DEBOUNCE_TIMEOUT) {
+            player.seekTo(it)
+        }
     }
 
     override fun onCreateView(
@@ -113,6 +117,12 @@ class Player : Fragment() {
         player.unregisterPlayerCallback(playerCallback)
 
         mainMenu = null
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+        seekDebouncer.stop()
     }
 
     private fun attachPlayer() {
@@ -433,8 +443,11 @@ class Player : Fragment() {
         var isSeeking = false
 
         override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-            if(isSeeking)
-                player.seekTo((player.duration * (this@Player.seekBar.value / SEEK_STEP)).toLong())
+            if(isSeeking) {
+                val newTime = (player.duration * (this@Player.seekBar.value / SEEK_STEP)).toLong()
+                timeTextView.text = formatPlayTime(newTime, player.duration, viewModel.timeTextAsRemaining.value!!)
+                seekDebouncer.debounce(newTime)
+            }
         }
 
         override fun onStartTrackingTouch(seekBar: SeekBar?) {
