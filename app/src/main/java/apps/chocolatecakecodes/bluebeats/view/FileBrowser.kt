@@ -84,8 +84,6 @@ class FileBrowser : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
 
-        //TODO stop scan
-
         viewModel.mediaDB.removeSubscriber(scanListener)
 
         progressBar = null
