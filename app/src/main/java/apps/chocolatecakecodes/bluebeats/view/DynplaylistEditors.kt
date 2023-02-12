@@ -7,6 +7,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import androidx.annotation.CallSuper
 import androidx.core.view.updatePadding
 import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
@@ -19,6 +20,7 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGrou
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.Rulelike
 import apps.chocolatecakecodes.bluebeats.taglib.TagFields
 import com.mikepenz.fastadapter.FastAdapter
+import com.mikepenz.fastadapter.GenericItem
 import com.mikepenz.fastadapter.IParentItem
 import com.mikepenz.fastadapter.ISubItem
 import com.mikepenz.fastadapter.expandable.items.AbstractExpandableItem
@@ -34,7 +36,7 @@ internal fun createEditor(item: Rulelike): AbstractExpandableItem<*> {
 }
 
 //region editors
-internal class DynplaylistGroupEditor(val group: RuleGroup) : AbstractExpandableItem<DynplaylistGroupEditor.ViewHolder>() {
+internal class DynplaylistGroupEditor(val group: RuleGroup) : NestedExpandableItem<DynplaylistGroupEditor.ViewHolder>(withBorder = true) {
 
     override val type: Int = RuleGroup::class.hashCode()
     override val layoutRes: Int = -1
@@ -54,8 +56,8 @@ internal class DynplaylistGroupEditor(val group: RuleGroup) : AbstractExpandable
         }
 
     private fun listRules() {
-        this.subItems.addAll(group.getExcludes().map(::createEditor))
-        this.subItems.addAll(group.getRules().map(::createEditor))
+        addSubItems(group.getExcludes().map(::createEditor))
+        addSubItems(group.getRules().map(::createEditor))
     }
 
     override fun createView(ctx: Context, parent: ViewGroup?): View {
@@ -90,7 +92,7 @@ internal class DynplaylistGroupEditor(val group: RuleGroup) : AbstractExpandable
     }
 }
 
-internal class DynplaylistExcludeEditor(val rule: ExcludeRule) : AbstractExpandableItem<DynplaylistExcludeEditor.ViewHolder>() {
+internal class DynplaylistExcludeEditor(val rule: ExcludeRule) : NestedExpandableItem<DynplaylistExcludeEditor.ViewHolder>(withBorder = true) {
 
     override val type: Int = ExcludeRule::class.hashCode()
     override val layoutRes: Int = -1
@@ -104,8 +106,8 @@ internal class DynplaylistExcludeEditor(val rule: ExcludeRule) : AbstractExpanda
     }
 
     private fun listEntries() {
-        this.subItems.addAll(rule.getDirs().map { MediaNodeElement(it.first) })
-        this.subItems.addAll(rule.getFiles().map { MediaNodeElement(it) })
+        addSubItems(rule.getDirs().map { MediaNodeElement(it.first) })
+        addSubItems(rule.getFiles().map { MediaNodeElement(it) })
     }
 
     override fun createView(ctx: Context, parent: ViewGroup?): View {
@@ -140,7 +142,7 @@ internal class DynplaylistExcludeEditor(val rule: ExcludeRule) : AbstractExpanda
     }
 }
 
-internal class DynplaylistIncludeEditor(val rule: IncludeRule) : AbstractExpandableItem<DynplaylistIncludeEditor.ViewHolder>() {
+internal class DynplaylistIncludeEditor(val rule: IncludeRule) : NestedExpandableItem<DynplaylistIncludeEditor.ViewHolder>(withBorder = true) {
 
     override val type: Int = IncludeRule::class.hashCode()
     override val layoutRes: Int = -1
@@ -154,8 +156,8 @@ internal class DynplaylistIncludeEditor(val rule: IncludeRule) : AbstractExpanda
     }
 
     private fun listEntries() {
-        this.subItems.addAll(rule.getDirs().map { MediaNodeElement(it.first) })
-        this.subItems.addAll(rule.getFiles().map { MediaNodeElement(it) })
+        addSubItems(rule.getDirs().map { MediaNodeElement(it.first) })
+        addSubItems(rule.getFiles().map { MediaNodeElement(it) })
     }
 
     override fun createView(ctx: Context, parent: ViewGroup?): View {
@@ -192,6 +194,57 @@ internal class DynplaylistIncludeEditor(val rule: IncludeRule) : AbstractExpanda
 //endregion
 
 //region util classes
+internal abstract class NestedExpandableItem<VH : FastAdapter.ViewHolder<*>>(
+    level: Int = 0,
+    private val withBorder: Boolean = false,
+    private val inset: Int = DEFAULT_INSET
+) : AbstractExpandableItem<VH>() {
+
+    companion object {
+        const val DEFAULT_INSET: Int = 40
+    }
+
+    var level: Int = level
+        private set
+
+    protected fun addSubItem(item: ISubItem<*>) {
+        if(item is NestedExpandableItem)
+            item.level = level + 1
+        subItems.add(item)
+    }
+
+    protected fun addSubItems(items: List<ISubItem<*>>) {
+        items.onEach {
+            if(it is NestedExpandableItem)
+                it.level = level + 1
+        }.let {
+            subItems.addAll(it)
+        }
+    }
+
+    @CallSuper
+    override fun bindView(holder: VH, payloads: List<Any>) {
+        holder.itemView.apply {
+            if(withBorder)
+                setBackgroundResource(R.drawable.shape_border)
+            updatePadding(left = paddingLeft + level * inset)
+        }
+
+        super.bindView(holder, payloads)
+    }
+
+    @CallSuper
+    override fun unbindView(holder: VH) {
+        holder.itemView.apply {
+            if(withBorder)
+                setBackgroundResource(0)
+            updatePadding(left = paddingLeft - level * inset)
+        }
+
+        super.unbindView(holder)
+    }
+}
+
 private class SimpleAddableRuleContentView(context: Context) : LinearLayout(context) {
 
     val title = TextView(context).apply {
