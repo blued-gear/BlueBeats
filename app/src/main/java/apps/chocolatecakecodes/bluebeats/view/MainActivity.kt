@@ -44,6 +44,7 @@ class MainActivity : AppCompatActivity() {
         mediaMng = MediaDB(vlcMng.libVlc, this, mediaMngEventRelay)
         mediaMngEventRelay.setSubject(mediaMng)
 
+        listMediaRoots()
         setupTabs()
     }
 
@@ -68,6 +69,11 @@ class MainActivity : AppCompatActivity() {
         TabLayoutMediator(tabLayout, tabContent){ tab, pos ->
             tab.text = tabAdapter.tabs[pos].first
         }.attach()
+    }
+
+    private fun listMediaRoots(){
+        mediaMng.addScanRoot("/storage/3EB0-1BF2/")
+        //TODO list all available roots
     }
 
     private inner class TabContentAdapter(fragmentManager: FragmentManager, lifecycle: Lifecycle): FragmentStateAdapter(fragmentManager, lifecycle) {
