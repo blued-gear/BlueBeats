@@ -286,8 +286,7 @@ class Player : Fragment() {
 
         this.currentMedia = newMedia
 
-        if(!player.vlcVout.areViewsAttached())//XXX if audio is played vlc will detach the playerView
-            player.attachViews(playerView, null, false, false)
+        attachPlayer()
 
         player.play(newMedia)
 
