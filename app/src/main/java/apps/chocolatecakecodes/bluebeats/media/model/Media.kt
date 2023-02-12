@@ -78,6 +78,10 @@ class MediaDir(override val name: String, parent: MediaDir?): MediaNode() {
         return files.toList()
     }
 
+    fun findChild(name: String): MediaNode?{
+        return dirs.firstOrNull { it.name == name } ?: files.firstOrNull { it.name == name }
+    }
+
     override fun equals(other: Any?): Boolean {
         if(other !is MediaDir)
             return false
