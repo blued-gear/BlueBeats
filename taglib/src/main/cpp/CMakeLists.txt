@@ -29,7 +29,7 @@ else()
     set(build_type "release")
 endif()
 
-# inclide lib_taglib
+# include lib_taglib
 set(libtaglib_proj "../../../lib_taglib")
 get_filename_component(libtaglib_proj ${libtaglib_proj} ABSOLUTE)
 set(libtaglib_src "${libtaglib_proj}/src/main/cpp/")
