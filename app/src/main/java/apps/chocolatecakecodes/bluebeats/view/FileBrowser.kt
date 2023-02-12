@@ -4,14 +4,13 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.selection.*
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
@@ -36,7 +35,8 @@ class FileBrowser : Fragment() {
     private var viewModel: FileBrowserViewModel by OnceSettable()
     private var playerVM: PlayerViewModel by OnceSettable()
     private var mainVM: MainActivityViewModel by OnceSettable()
-    private var listAdapter: ViewAdapter by OnceSettable()
+    private lateinit var listAdapter: ViewAdapter
+    private lateinit var mainMenu: Menu
     private var listView: RecyclerView? = null
     private var progressBar: ProgressBar? = null
     private lateinit var scanListener: MediaDB.ScanEventHandler
@@ -49,8 +49,6 @@ class FileBrowser : Fragment() {
         viewModel = vmProvider.get(FileBrowserViewModel::class.java)
         playerVM = vmProvider.get(PlayerViewModel::class.java)
         mainVM = vmProvider.get(MainActivityViewModel::class.java)
-
-        setupAdapter()
     }
 
     override fun onCreateView(
@@ -68,11 +66,18 @@ class FileBrowser : Fragment() {
         listView = view.findViewById(R.id.fb_entrylist)
         progressBar = view.findViewById(R.id.fb_progress)
 
+        setupAdapter(listView!!)
+
         listView!!.layoutManager = LinearLayoutManager(this.requireContext())
-        listView!!.adapter = listAdapter
 
         wireObservers()
         wireScanListeners()
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        setupMainMenu()
     }
 
     override fun onDestroyView() {
@@ -84,6 +89,16 @@ class FileBrowser : Fragment() {
 
         listView = null
         progressBar = null
+    }
+
+    private fun setupMainMenu(){
+        mainVM.menuProvider.value = { menu, menuInflater ->
+            mainMenu = menu
+
+            menuInflater.inflate(R.menu.file_browser_menu, menu)
+
+            updateMenuFileInfo()
+        }
     }
 
     private fun wireObservers(){
@@ -116,6 +131,19 @@ class FileBrowser : Fragment() {
             else
                 Toast.makeText(this.requireContext(), R.string.filebrowser_perm_needed, Toast.LENGTH_SHORT).show()
         }
+
+        listAdapter.selectionTracker.addObserver(
+            object : SelectionTracker.SelectionObserver<String>(){
+                override fun onItemStateChanged(key: String, selected: Boolean) {
+                    listView?.findViewHolderForAdapterPosition(listAdapter.keyProvider.getPosition(key))?.let{
+                        val holder = it as MediaNodeViewHolder
+                        holder.setIsSelected(selected)
+                    }
+
+                    updateMenuFileInfo()
+                }
+            }
+        )
     }
 
     private fun wireScanListeners(){
@@ -193,8 +221,18 @@ class FileBrowser : Fragment() {
         }
     }
 
-    private fun setupAdapter(){
-        listAdapter = ViewAdapter {
+    private fun setupAdapter(recycleView: RecyclerView){
+        val entriesContainer = TreeSet<MediaNode> { a, b ->
+            when {
+                (a is MediaDir && b !is MediaDir) -> -1
+                (b is MediaDir && a !is MediaDir) -> 1
+                else -> b.name.compareTo(a.name)
+            }
+        }
+
+        val mediaNodeKeyProvider = MediaNodeKeyProvider(entriesContainer)
+
+        listAdapter = ViewAdapter(entriesContainer, mediaNodeKeyProvider) {
             if(it is MediaDir){
                 viewModel.setCurrentDir(it)
                 expandMediaDir(it){
@@ -207,10 +245,37 @@ class FileBrowser : Fragment() {
                 mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
                 playerVM.play(it)
             }
+        }.apply {
+            setHasStableIds(true)
+        }
+
+        recycleView.adapter = listAdapter
+
+        listAdapter.selectionTracker = SelectionTracker.Builder<String>(
+            "fileSelection",
+            recycleView,
+            mediaNodeKeyProvider,
+            MediaNodeDetailsLookup(recycleView),
+            StorageStrategy.createStringStorage()
+        )
+            .withSelectionPredicate(SelectionPredicates.createSelectAnything())
+            .build()
+
+        viewModel.currentDir.value?.let {
+            expandMediaDir(it) {
+                listAdapter.setEntries(it)
+            }
         }
     }
 
-    private class MediaNodeViewHolder(itemView: View, private val clickHandler: (MediaNode) -> Unit) : RecyclerView.ViewHolder(itemView) {
+    private fun updateMenuFileInfo(){
+        val chaptersItem = mainMenu.findItem(R.id.filebrowser_menu_details)
+        chaptersItem.isEnabled = listAdapter.selectionTracker.selection.size() == 1
+    }
+
+    //region recycle-view helper classes
+    private class MediaNodeViewHolder(itemView: View, private val clickHandler: (MediaNode) -> Unit)
+        : RecyclerView.ViewHolder(itemView) {
 
         lateinit var entry: MediaNode
 
@@ -225,20 +290,21 @@ class FileBrowser : Fragment() {
             this.itemView.findViewById<TextView>(R.id.v_mn_text).text = "${entry.javaClass.simpleName}: ${entry.name}"
         }
 
-    }
-    private class ViewAdapter(private val entryClickHandler: (MediaNode) -> Unit): RecyclerView.Adapter<MediaNodeViewHolder>() {
-
-        private val entries: MutableSet<MediaNode>
-
-        init{
-            entries = TreeSet { a, b ->
-                when {
-                    (a is MediaDir && b !is MediaDir) -> -1
-                    (b is MediaDir && a !is MediaDir) -> 1
-                    else -> b.name.compareTo(a.name)
-                }
-            }
+        fun setIsSelected(selected: Boolean){
+            if(selected)
+                this.itemView.setBackgroundResource(R.color.selection_highlight)
+            else
+                this.itemView.setBackgroundResource(R.color.design_default_color_background)
         }
+    }
+
+    private class ViewAdapter(
+        val elements: TreeSet<MediaNode>,
+        val keyProvider: MediaNodeKeyProvider,
+        private val entryClickHandler: (MediaNode) -> Unit
+    ) : RecyclerView.Adapter<MediaNodeViewHolder>() {
+
+        var selectionTracker: SelectionTracker<String> by OnceSettable()
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MediaNodeViewHolder {
             val view = LayoutInflater.from(parent.context).inflate(R.layout.view_media_node, parent, false)
@@ -246,27 +312,59 @@ class FileBrowser : Fragment() {
         }
 
         override fun onBindViewHolder(holder: MediaNodeViewHolder, position: Int) {
-            holder.setData(entries.elementAt(position))
+            holder.setData(elements.elementAt(position))
+            holder.setIsSelected(selectionTracker.isSelected(mediaNodeSelectionKey(holder.entry)))
         }
 
         override fun getItemCount(): Int {
-            return entries.size
+            return elements.size
+        }
+
+        override fun getItemId(position: Int): Long {
+            return position.toLong()
         }
 
         fun setEntries(entries: List<MediaNode>){
-            this.entries.clear()
-            this.entries.addAll(entries)
+            elements.clear()
+            elements.addAll(entries)
             this.notifyDataSetChanged()
         }
         fun addEntry(entry: MediaNode){
-            entries.add(entry)
+            elements.add(entry)
             this.notifyDataSetChanged()
         }
         fun removeEntry(node: MediaNode){
-            entries.remove(node)
+            elements.remove(node)
             this.notifyDataSetChanged()
         }
     }
+
+    private class MediaNodeKeyProvider(private val elements: TreeSet<MediaNode>)
+        : ItemKeyProvider<String>(SCOPE_CACHED){
+
+        override fun getKey(position: Int): String {
+            return mediaNodeSelectionKey(elements.elementAt(position))
+        }
+
+        override fun getPosition(key: String): Int {
+            return elements.indexOfFirst { mediaNodeSelectionKey(it) == key }
+        }
+    }
+
+    private class MediaNodeDetailsLookup(private val recycleView: RecyclerView) : ItemDetailsLookup<String>(){
+        override fun getItemDetails(e: MotionEvent): ItemDetails<String>? {
+            val view = recycleView.findChildViewUnder(e.x, e.y)
+            if(view === null)
+                return null
+
+            val holder = recycleView.getChildViewHolder(view) as MediaNodeViewHolder
+            return object : ItemDetailsLookup.ItemDetails<String>(){
+                override fun getPosition(): Int = holder.adapterPosition
+                override fun getSelectionKey(): String = mediaNodeSelectionKey(holder.entry)
+            }
+        }
+    }
+    //endregion
 }
 
 private fun expandMediaDir(dir: MediaDir, next: suspend (List<MediaNode>) -> Unit){
@@ -274,3 +372,5 @@ private fun expandMediaDir(dir: MediaDir, next: suspend (List<MediaNode>) -> Uni
         next(listOf(dir.getDirs(), dir.getFiles()).flatten())
     }
 }
+
+private fun mediaNodeSelectionKey(entry: MediaNode) = entry.name

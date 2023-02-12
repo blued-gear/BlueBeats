@@ -4,4 +4,6 @@
     <string name="main_tab_player">Player</string>
     <string name="player_fullscreen">Fullscreen</string>
     <string name="filebrowser_perm_needed">This App need storage permissions to scan for media-files</string>
+    <string name="player_chapters">Chapters</string>
+    <string name="filebrowser_menu_fileinfo">File Info</string>
 </resources>
