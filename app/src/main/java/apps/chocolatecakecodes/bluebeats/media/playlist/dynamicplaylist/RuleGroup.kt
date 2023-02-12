@@ -6,9 +6,6 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import apps.chocolatecakecodes.bluebeats.util.takeOrAll
 import java.util.*
-import kotlin.NoSuchElementException
-import kotlin.collections.HashSet
-import kotlin.collections.LinkedHashSet
 
 internal class RuleGroup private constructor(
     private val entityId: Long,
@@ -131,7 +128,7 @@ internal class RuleGroup private constructor(
         //region api
         @Transaction
         open fun createNew(initialShare: Rule.Share): RuleGroup {
-            return load(insertEntity(RuleGroupEntity(0, initialShare)))
+            return load(insertEntity(RuleGroupEntity(0, initialShare, false)))
         }
 
         fun load(id: Long): RuleGroup {
@@ -141,7 +138,7 @@ internal class RuleGroup private constructor(
                 .map { Pair(loadRule(it.rule, KnownRuleTypes.values()[it.type]), it.negated) }
 
             return RuleGroup(
-                entity.id, entity.share,
+                entity.id, entity.share, entity.andMode,
                 ruleEntries.map { Pair(it.first, it.second) },
             )
         }
@@ -187,6 +184,8 @@ internal class RuleGroup private constructor(
                     updateEntryPos(group.entityId, id, type.ordinal, pos, negated)
                 }
             }
+
+            updateEntity(RuleGroupEntity(group.entityId, group.share, group.combineWithAnd))
         }
 
         @Transaction
@@ -207,6 +206,9 @@ internal class RuleGroup private constructor(
         //region sql
         @Insert
         protected abstract fun insertEntity(entity: RuleGroupEntity): Long
+
+        @Update
+        protected abstract fun updateEntity(entity: RuleGroupEntity)
 
         @Query("DELETE FROM RuleGroupEntity WHERE id = :id;")
         protected abstract fun deleteEntity(id: Long)
@@ -322,7 +324,8 @@ internal class RuleGroup private constructor(
 @Entity
 internal data class RuleGroupEntity(
     @PrimaryKey(autoGenerate = true) val id: Long,
-    @Embedded(prefix = "share_") val share: Rule.Share
+    @Embedded(prefix = "share_") val share: Rule.Share,
+    @ColumnInfo(name = "andMode") val andMode: Boolean
 )
 
 @Entity(
