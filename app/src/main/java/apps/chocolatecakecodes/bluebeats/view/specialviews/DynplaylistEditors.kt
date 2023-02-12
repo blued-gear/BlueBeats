@@ -118,7 +118,7 @@ private class DynplaylistGroupEditor(
     }
 
     private fun createItem(ruleItem: Pair<Rule, Boolean>): AbstractDynplaylistEditorView {
-        return createEditor(ruleItem.first, changedCallback, this.context).apply {
+        return createEditor(ruleItem.first, changedCallback, this.context).apply editorView@{
             SimpleAddableRuleHeaderView.CommonVisuals.negateCheckbox(context).apply {
                 setOnCheckedChangeListener { _, checked ->
                     group.setRuleNegated(ruleItem.first, checked)
@@ -126,6 +126,19 @@ private class DynplaylistGroupEditor(
                 this.isChecked = ruleItem.second
             }.let {
                 this.header.addVisual(it, false)
+            }
+
+            ImageButton(context).apply {
+                setImageResource(R.drawable.ic_baseline_remove_24)
+                imageTintList = ColorStateList.valueOf(Color.BLACK)
+                setBackgroundColor(Color.TRANSPARENT)
+                setOnClickListener {
+                    group.removeRule(ruleItem.first)
+                    changedCallback(group)
+                    contentList.removeView(this@editorView)
+                }
+            }.let {
+                this.header.addVisual(it, true)
             }
         }
     }
