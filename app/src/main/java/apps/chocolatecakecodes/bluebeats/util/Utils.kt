@@ -104,7 +104,7 @@ object Utils {
     fun showPopup(context: Context, anchor: View,
                   contentLayout: Int,
                   closeOnClick: Boolean,
-                  initContent: ((View) -> Unit)) {
+                  initContent: ((View) -> Unit)): PopupWindow {
         val inflater = LayoutInflater.from(context)
         val content = inflater.inflate(contentLayout, null)
 
@@ -129,6 +129,8 @@ object Utils {
         }
 
         popup.showAtLocation(anchor, Gravity.CENTER, 0, 0)
+
+        return popup
     }
 }
 
