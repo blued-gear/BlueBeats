@@ -9,6 +9,7 @@ import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.debounce
@@ -72,6 +73,7 @@ internal class SearchViewModel : ViewModel() {
         if(text == searchText.value)
             return
 
+        Utils.trySetValueImmediately(searchTextRW, text)
         debounceSearch(text)
     }
 
@@ -167,7 +169,7 @@ internal class SearchViewModel : ViewModel() {
 
     private fun setupSearchDebouncer() {
         CoroutineScope(Dispatchers.IO).launch {
-            channelFlow {
+            callbackFlow {
                 this@SearchViewModel.addCloseable {
                     this.close()
                 }
@@ -175,9 +177,9 @@ internal class SearchViewModel : ViewModel() {
                 debounceSearch = {
                     trySend(it)
                 }
-            }.debounce(SEARCH_DEBOUNCE_TIMEOUT).collect {
-                Utils.trySetValueImmediately(searchTextRW, it)
 
+                awaitClose {  }
+            }.debounce(SEARCH_DEBOUNCE_TIMEOUT).collect {
                 withContext(Dispatchers.IO) {
                     search(it)
                 }

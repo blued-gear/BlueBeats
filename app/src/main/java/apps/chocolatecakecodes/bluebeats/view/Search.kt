@@ -181,7 +181,7 @@ internal class Search : Fragment(R.layout.search_fragment) {
         setupSubgroupsSelectionListener()
 
         searchText.get().doAfterTextChanged {
-            viewModel.setSearchText(it.toString())
+            viewModel.setSearchText(searchText.get().text.toString())
         }
 
         this.requireActivity().onBackPressedDispatcher.addCallback(SmartBackPressedCallback(this.lifecycle, this::onBackPressed))
@@ -322,8 +322,10 @@ internal class Search : Fragment(R.layout.search_fragment) {
 
     private fun applySearchText(text: String) {
         searchText.get().let {
-            it.text.clear()
-            it.text.append(text)
+            if(text != it.text.toString()) {
+                it.text.clear()
+                it.text.append(text)
+            }
         }
     }
 
