@@ -17,6 +17,7 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
 import apps.chocolatecakecodes.bluebeats.media.playlist.StaticPlaylist
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.RequireNotNull
+import apps.chocolatecakecodes.bluebeats.util.Utils
 import com.mikepenz.fastadapter.FastAdapter
 import com.mikepenz.fastadapter.GenericItem
 import com.mikepenz.fastadapter.ISelectionListener
@@ -27,6 +28,10 @@ import com.mikepenz.fastadapter.drag.SimpleDragCallback
 import com.mikepenz.fastadapter.listeners.addTouchListener
 import com.mikepenz.fastadapter.select.getSelectExtension
 import kotlinx.coroutines.*
+
+private const val MNU_ID_OVERVIEW_RM = 11
+private const val MNU_ID_PLAYLIST_RM = 21
+private const val MNU_ID_PLAYLIST_INFO = 22
 
 internal class Playlists : Fragment() {
 
@@ -252,9 +257,16 @@ internal class Playlists : Fragment() {
     }
 
     private fun onBackPressed() {
-        if(inSelection) {
+        if(mainVM.currentDialog.value == MainActivityViewModel.Dialogs.FILE_DETAILS) {// close dialog
+            this.parentFragmentManager.beginTransaction()
+                .remove(this.parentFragmentManager.findFragmentByTag(MainActivityViewModel.Dialogs.FILE_DETAILS.tag)!!)
+                .commit()
+
+            Utils.trySetValueImmediately(mainVM.currentDialog, MainActivityViewModel.Dialogs.NONE)
+            updateMenu()
+        } else if(inSelection) {// deselect all
             itemsAdapter.getSelectExtension().deselect()
-        } else if(viewModel.showOverview.value == false) {
+        } else if(viewModel.showOverview.value == false) {// go back to overview
             viewModel.showOverview.value = true
         }
     }
@@ -345,7 +357,7 @@ internal class Playlists : Fragment() {
         updateMenu()
     }
     private fun buildMenuItemsForOverview(menu: Menu) {
-        menu.add(Menu.NONE, 11, Menu.NONE, R.string.misc_remove).apply {
+        menu.add(Menu.NONE, MNU_ID_OVERVIEW_RM, Menu.NONE, R.string.misc_remove).apply {
             setOnMenuItemClickListener {
                 onDeleteSelectedPlaylists()
                 true
@@ -353,14 +365,14 @@ internal class Playlists : Fragment() {
         }
     }
     private fun buildMenuItemsForPlaylist(menu: Menu) {
-        menu.add(Menu.NONE, 21, Menu.NONE, R.string.misc_remove).apply {
+        menu.add(Menu.NONE, MNU_ID_PLAYLIST_RM, Menu.NONE, R.string.misc_remove).apply {
             setOnMenuItemClickListener {
                 onDeleteSelectedMedia()
                 true
             }
         }
 
-        menu.add(Menu.NONE, 22, Menu.NONE, R.string.filebrowser_menu_fileinfo).apply {
+        menu.add(Menu.NONE, MNU_ID_PLAYLIST_INFO, Menu.NONE, R.string.filebrowser_menu_fileinfo).apply {
             setOnMenuItemClickListener {
                 onShowMediaInfo()
                 true
@@ -377,18 +389,21 @@ internal class Playlists : Fragment() {
         }
     }
     private fun updateOverviewMenu(menu: Menu) {
-        menu.findItem(11).apply {
+        menu.findItem(MNU_ID_OVERVIEW_RM).apply {
             isEnabled = itemsAdapter.getSelectExtension().selectedItems.isNotEmpty()
         }
     }
     private fun updatePlaylistMenu(menu: Menu) {
-        menu.findItem(21).apply {
-            isEnabled = itemsAdapter.getSelectExtension().selectedItems.isNotEmpty()
+        menu.findItem(MNU_ID_PLAYLIST_RM).apply {
+            val staticPlaylist = viewModel.selectedPlaylist is StaticPlaylist
+            val someSelected = itemsAdapter.getSelectExtension().selectedItems.isNotEmpty()
+            isEnabled = staticPlaylist && someSelected
         }
 
-        menu.findItem(22).apply {
-            isEnabled = viewModel.selectedMedia !== null
-                    && viewModel.selectedPlaylist is StaticPlaylist
+        menu.findItem(MNU_ID_PLAYLIST_INFO).apply {
+            val dialogOpen = mainVM.currentDialog.value == MainActivityViewModel.Dialogs.FILE_DETAILS
+            val mediaSelected = viewModel.selectedMedia !== null
+            isEnabled = !dialogOpen && mediaSelected
         }
     }
 
@@ -426,7 +441,16 @@ internal class Playlists : Fragment() {
     }
 
     private fun onShowMediaInfo() {
-        //TODO
+        viewModel.selectedMedia!!.let {
+            Utils.trySetValueImmediately(mainVM.currentDialog, MainActivityViewModel.Dialogs.FILE_DETAILS)
+
+            val dlg = FileDetails(it)
+            this.parentFragmentManager.beginTransaction()
+                .add(R.id.main_content, dlg, MainActivityViewModel.Dialogs.FILE_DETAILS.tag)
+                .commit()
+
+            updateMenu()
+        }
     }
     //endregion
 }

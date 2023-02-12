@@ -36,8 +36,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.*
 
-private const val FILE_DETAILS_DLG_TAG = "dlg-file_details"
-
 class FileBrowser : Fragment() {
 
     companion object {
@@ -292,7 +290,7 @@ class FileBrowser : Fragment() {
     private fun onBackPressed() {
         if(mainVM.currentDialog.value == MainActivityViewModel.Dialogs.FILE_DETAILS){// close dialog
             this.parentFragmentManager.beginTransaction()
-                .remove(this.parentFragmentManager.findFragmentByTag(FILE_DETAILS_DLG_TAG)!!)
+                .remove(this.parentFragmentManager.findFragmentByTag(MainActivityViewModel.Dialogs.FILE_DETAILS.tag)!!)
                 .commit()
 
             Utils.trySetValueImmediately(mainVM.currentDialog, MainActivityViewModel.Dialogs.NONE)
@@ -373,7 +371,7 @@ class FileBrowser : Fragment() {
 
             val dlg = FileDetails(it)
             this.parentFragmentManager.beginTransaction()
-                .add(R.id.main_content, dlg, FILE_DETAILS_DLG_TAG)
+                .add(R.id.main_content, dlg, MainActivityViewModel.Dialogs.FILE_DETAILS.tag)
                 .commit()
 
             updateMenuItems()
