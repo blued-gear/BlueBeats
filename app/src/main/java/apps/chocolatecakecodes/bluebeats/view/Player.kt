@@ -12,6 +12,7 @@ import androidx.lifecycle.ViewModelProvider
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import apps.chocolatecakecodes.bluebeats.taglib.Chapter
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import kotlinx.coroutines.*
@@ -230,8 +231,8 @@ class Player : Fragment() {
                 if(totalTime > 0) {
                     val segments = Array<SegmentedSeekBar.Segment>(chapters.size) {
                         val chapter = chapters[it]
-                        val start = ((chapter.timeOffset.toDouble() / totalTime) * SEEK_STEP).toInt()
-                        val end = (((chapter.timeOffset + chapter.duration).toDouble() / totalTime) * SEEK_STEP).toInt()
+                        val start = ((chapter.start.toDouble() / totalTime) * SEEK_STEP).toInt()
+                        val end = ((chapter.end.toDouble() / totalTime) * SEEK_STEP).toInt()
                         return@Array SegmentedSeekBar.Segment(start, end, chapter.name)
                     }
 
@@ -375,15 +376,15 @@ class Player : Fragment() {
         // generate chapter items
         val chapters = viewModel.chapters.value!!
         val itemTexts = chapters.map {
-            val start = Utils.formatTime(it.timeOffset)
-            val end = Utils.formatTime(it.timeOffset + it.duration)
+            val start = Utils.formatTime(it.start)
+            val end = Utils.formatTime(it.end)
             return@map "${it.name} ($start - $end)"
         }.toTypedArray()
 
         dlgBuilder.setItems(itemTexts){ dlg, itemIdx ->
             // jump to chapter
             val chapter = chapters[itemIdx]
-            viewModel.updatePlayPosition(chapter.timeOffset)
+            viewModel.updatePlayPosition(chapter.start)
         }
 
         dlgBuilder.create().show()
@@ -499,7 +500,22 @@ class Player : Fragment() {
                         newMediaLoading = false
 
                         // chapter-info should now be loaded
-                        viewModel.setChapters(player.getChapters(-1) ?: Utils.emptyArray())
+                        // 1.: use chapters from MediaFile; 2.: if not available use from player; 3.: leve empty
+                        val chapters: List<Chapter>
+                        val mediaChapters = viewModel.currentMedia.value!!.chapters
+                        if(!mediaChapters.isNullOrEmpty()){
+                            chapters = mediaChapters
+                        }else{
+                            val vlcChapters: Array<MediaPlayer.Chapter>? = player.getChapters(-1)
+                            if(vlcChapters !== null){
+                                chapters = vlcChapters.map {
+                                    Chapter(it.timeOffset, it.timeOffset + it.duration, it.name)
+                                }
+                            }else{
+                                chapters = emptyList()
+                            }
+                        }
+                        viewModel.setChapters(chapters)
                     }
                 }
             }
