@@ -128,7 +128,7 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
     }
 
     suspend fun saveChanges(): Boolean {
-        if(!checkRuleShares(playlist.rootRuleGroup)){
+        if(!checkRuleShares(editCopy)){
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, R.string.dynpl_edit_rules_not_100, Toast.LENGTH_LONG).show()
             }
