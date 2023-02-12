@@ -10,6 +10,7 @@ public class TagParser{
     }
 
     private final String filepath;
+    private boolean parsed = false;
     private TagFields tagFields;// set by JNI
     private UserTags userTags;// set by JNI
     private List<Chapter> chapters;// set by JNI
@@ -21,6 +22,7 @@ public class TagParser{
     public void parse() throws ParseException{
         //TODO check file type (and maybe support other formats)
         parseMp3(filepath);
+        parsed = true;
     }
 
     public TagFields getTagFields(){
@@ -37,6 +39,10 @@ public class TagParser{
 
     public String getFilepath(){
         return filepath;
+    }
+
+    public boolean isParsed(){
+        return parsed;
     }
 
     private native void parseMp3(String filepath) throws ParseException;
