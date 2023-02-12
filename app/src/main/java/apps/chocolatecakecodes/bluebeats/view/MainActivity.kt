@@ -237,6 +237,7 @@ class MainActivity : AppCompatActivity() {
                 when(it){
                     MainActivityViewModel.Tabs.MEDIA -> Pair(getText(R.string.main_tab_media).toString(), {FileBrowser.newInstance()})
                     MainActivityViewModel.Tabs.PLAYER -> Pair(getText(R.string.main_tab_player).toString(), {Player.newInstance()})
+                    MainActivityViewModel.Tabs.PLAYLISTS -> Pair(getText(R.string.main_tab_playlists).toString(), {Playlists.newInstance()})
                 }
             }
         }

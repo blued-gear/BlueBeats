@@ -9,4 +9,5 @@
     <string name="tagname_title">Title</string>
     <string name="tagname_length">Length</string>
     <string name="tagname_artist">Artist</string>
+    <string name="main_tab_playlists">Playlists</string>
 </resources>

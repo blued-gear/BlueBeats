@@ -9,7 +9,7 @@ import androidx.lifecycle.*
 internal class MainActivityViewModel : ViewModel(){
 
     enum class Tabs{
-        MEDIA, PLAYER
+        MEDIA, PLAYER, PLAYLISTS
     }
 
     enum class Dialogs{

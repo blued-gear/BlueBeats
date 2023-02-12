@@ -60,6 +60,7 @@ class Player : Fragment() {
 
     override fun onDestroy() {
         super.onDestroy()
+
         player.release()
         if(currentMedia !== null)
             currentMedia!!.release()
