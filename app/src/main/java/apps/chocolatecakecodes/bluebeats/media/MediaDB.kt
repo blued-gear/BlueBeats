@@ -29,6 +29,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
     companion object {
         val NOOP_EVENT_HANDLER: ScanEventHandler = object : ScanEventHandler(null) {}
 
+        private const val LOG_TAG = "MediaDB"
         //TODO extend this list
         private const val IGNORE_LIST_OPTION = ":ignore-filetypes=db,nfo,ini,jpg,jpeg,ljpg,gif,png,pgm,pgmyuv,pbm,pam,tga,bmp,pnm,xpm,xcf,pcx,tif,tiff,lbm,sfv,txt,sub,idx,srt,ssa,ass,smi,utf,utf-8,rt,aqt,txt,usf,jss,cdg,psb,mpsub,mpl2,pjs,dks,stl,vtt,ttml,pdf"
     }
@@ -202,7 +203,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
                         files.add(child)
                     }
                     else -> {
-                        Log.d("MediaDB", "unknown media type encountered: ${child.type}  -  ${child.uri}")
+                        Log.d(LOG_TAG, "unknown media type encountered: ${child.type}  -  ${child.uri}")
                     }
                 }
             }
