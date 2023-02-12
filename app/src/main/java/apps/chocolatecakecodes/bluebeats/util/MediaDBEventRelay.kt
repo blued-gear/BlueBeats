@@ -12,9 +12,8 @@ class MediaDBEventRelay() : MediaDB.ScanEventHandler(null) {
     //region public methods
 
     fun setSubject(mediaDB: MediaDB){
-        if(subject.get() !== null)
+        if(!subject.compareAndSet(null, mediaDB))
             throw IllegalStateException("subject already set")
-        subject.set(mediaDB)
     }
     fun getSubject(): MediaDB{
         val subject = this.subject.get()
