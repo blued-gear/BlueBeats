@@ -45,7 +45,7 @@ internal abstract class MediaDirDAO{
             val entity = getEntityForId(id)
 
             if(entity === null) {
-                // this can happen when the dir is removed concurrently while a cild-file is loaded
+                // this can happen when the dir is removed concurrently while a child-file is loaded
                 return@get MediaNode.UNSPECIFIED_DIR
             }
 

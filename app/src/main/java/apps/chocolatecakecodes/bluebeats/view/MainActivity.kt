@@ -257,7 +257,7 @@ class MainActivity : AppCompatActivity() {
                     if(nameSubPos > 0) {
                         val filesDirName = it.absolutePath.substring(0, nameSubPos)
                         if(filesDirName != internalStoragePath) {
-                            externalPaths.add(filesDirName);
+                            externalPaths.add(filesDirName)
                         }
                     }
                 }

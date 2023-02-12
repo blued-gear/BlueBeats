@@ -459,46 +459,53 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
         return Bitmap.createScaledBitmap(src, sWidth, sHeight, true)
     }
 
-    private fun checkForDeletedScanRoots(): List<MediaDir> {
-        val rootParts = scanRoots.map {
-            listOf("/") + it.split('/').filter {
+    private fun checkForDeletedScanRoots(): Set<MediaDir> {
+        class PathPart(val part: String) {
+            val next = ArrayList<PathPart>()
+            var isTerminator = false
+
+            fun addSub(name: String): PathPart {
+                return next.find {
+                    it.part == name
+                } ?: run {
+                    PathPart(name).also {
+                        next.add(it)
+                    }
+                }
+            }
+        }
+
+        fun checkDir(dir: MediaDir, currentPathPart: PathPart): Set<MediaDir> {
+            if(currentPathPart.isTerminator) {
+                return if(dir.name == currentPathPart.part)
+                    emptySet()
+                else
+                    setOf(dir)
+            }
+
+            return dir.getDirs().fold(emptySet()) { acc, cur ->
+                acc + let {
+                    currentPathPart.next.find {
+                        it.part == cur.name
+                    }?.let {
+                        checkDir(cur, it)
+                    } ?: setOf(cur)
+                }
+            }
+        }
+
+        val rootParts = PathPart("/")
+        scanRoots.forEach {
+            it.split('/').filter {
                 it.isNotEmpty()
+            }.fold(rootParts) { acc, cur ->
+               acc.addSub(cur)
+            }.also {
+                it.isTerminator = true
             }
         }
 
-        fun nextParts(parts: List<List<String>>): Pair<Set<String>, List<List<String>>> {
-            parts.filter {
-                it.isNotEmpty()
-            }.let {
-                val first = it.filter {
-                    it.isNotEmpty()
-                }.fold(emptySet<String>()) { acc, list ->
-                    acc + list.first()
-                }
-                val reminder = it.map {
-                    it.subList(1, it.size)
-                }.filter {
-                    it.isNotEmpty()
-                }
-                return Pair(first, reminder)
-            }
-        }
-
-        fun checkDir(dir: MediaDir, deleted: List<MediaDir>, pathParts: Pair<Set<String>, List<List<String>>>): List<MediaDir> {
-            if(!pathParts.first.contains(dir.name))
-                return deleted + dir
-
-            if(pathParts.second.isNotEmpty()) {
-                val nextParts = nextParts(pathParts.second)
-                return dir.getDirs().fold(deleted) { acc, subDir ->
-                    checkDir(subDir, acc, nextParts)
-                }
-            }
-
-            return deleted
-        }
-
-        return checkDir(getMediaTreeRoot(), emptyList(), nextParts(rootParts))
+        return checkDir(getMediaTreeRoot(), rootParts)
     }
     //endregion
 
