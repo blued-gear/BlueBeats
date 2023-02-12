@@ -137,7 +137,8 @@ internal class Search : Fragment(R.layout.search_fragment) {
             }
             override fun onTabUnselected(tab: TabLayout.Tab) {}
             override fun onTabReselected(tab: TabLayout.Tab) {
-                //TODO maybe jump to top
+                if(itemListAdapter.adapterItems.isNotEmpty())
+                    itemListView.get().scrollToPosition(0)
             }
         })
     }
