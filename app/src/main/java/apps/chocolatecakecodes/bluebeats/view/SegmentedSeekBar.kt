@@ -1,6 +1,7 @@
 package apps.chocolatecakecodes.bluebeats.view
 
 import android.content.Context
+import android.content.res.TypedArray
 import android.graphics.*
 import android.util.AttributeSet
 import android.view.*
@@ -44,21 +45,21 @@ class SegmentedSeekBar : FrameLayout {
                 m.setBackgroundColor(value)
             sectionTitle.setTextColor(value)
         }
-    var titleColor: Int//TODO init with default WHITE
+    var titleColor: Int
         get(){
             return sectionTitle.textColors.defaultColor
         }
         set(value){
             sectionTitle.setTextColor(value)
         }
-
-    var currentSegment: Segment? = null
-        private set
     var showTitle: Boolean = true
         set(value){
             field = value
-            sectionTitle.visibility = if(value) View.INVISIBLE else View.GONE
+            sectionTitle.visibility = if(value) View.VISIBLE else View.GONE
         }
+
+    var currentSegment: Segment? = null
+        private set
     var segments: Array<Segment> = Utils.emptyArray()
         set(value) {
             field = value
@@ -69,13 +70,15 @@ class SegmentedSeekBar : FrameLayout {
     constructor(context: Context) : this(context, null)
     constructor(context: Context, attrs: AttributeSet?) : this(context, attrs, 0)
     constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int) : super(context, attrs, defStyleAttr){
-        setup(context, attrs, defStyleAttr)
+        setup(context)
+        loadAttributes(context, attrs, defStyleAttr)
     }
     constructor(context: Context, attrs: AttributeSet, defStyleAttr: Int, defStyleRes: Int): super(context, attrs, defStyleAttr, defStyleRes){
-        setup(context, attrs, defStyleAttr)
+        setup(context)
+        loadAttributes(context, attrs, defStyleAttr)
     }
 
-    private fun setup(context: Context, attrs: AttributeSet?, defStyleAttr: Int){
+    private fun setup(context: Context){
         val view = LayoutInflater.from(context).inflate(R.layout.segmented_seek_bar, this)
 
         seekBar = view.findViewById(R.id.ssb_seek)
@@ -85,6 +88,19 @@ class SegmentedSeekBar : FrameLayout {
         seekBar.setOnSeekBarChangeListener(SeekHandler())
 
         this.setBackgroundColor(Color.TRANSPARENT)
+    }
+
+    private fun loadAttributes(context: Context, attrs: AttributeSet?, defStyleAttr: Int){
+        val style: TypedArray = context.obtainStyledAttributes(attrs, R.styleable.SegmentedSeekBar,
+            R.attr.default_SegmentedSeekBarStyle, R.style.default_SegmentedSeekBarStyle)
+
+        max = style.getInt(R.styleable.SegmentedSeekBar_max, 100)
+        value = style.getInt(R.styleable.SegmentedSeekBar_value, 0)
+        markerColor = style.getColor(R.styleable.SegmentedSeekBar_markerColor, Color.BLUE)
+        titleColor = style.getColor(R.styleable.SegmentedSeekBar_titleColor, Color.WHITE)
+        showTitle = style.getBoolean(R.styleable.SegmentedSeekBar_showTitle, true)
+
+        style.recycle()
     }
 
     private fun createMarkers(){

@@ -1,0 +1,11 @@
+<resources>
+    <attr name="default_SegmentedSeekBarStyle" format="reference" />
+    <declare-styleable name="SegmentedSeekBar">
+        <attr name="default_SegmentedSeekBarStyle" />
+        <attr name="max" format="integer" />
+        <attr name="value" format="integer" />
+        <attr name="markerColor" format="color" />
+        <attr name="titleColor" format="color" />
+        <attr name="showTitle" format="boolean" />
+    </declare-styleable>
+</resources>
