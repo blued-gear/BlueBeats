@@ -8,16 +8,16 @@
 
     <TextView
             android:text="NAME"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="128dp"
+            android:layout_height="match_parent"
             android:id="@+id/filedetails_tag_entry_name"
-            android:layout_weight="1"
+            android:layout_weight="0"
             android:layout_marginEnd="4dp" />
 
     <TextView
             android:text="VALUE"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:id="@+id/filedetails_tag_entry_value"
             android:layout_weight="1" />
 </LinearLayout>
