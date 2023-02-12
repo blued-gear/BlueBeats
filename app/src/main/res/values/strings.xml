@@ -25,4 +25,5 @@
     <string name="misc_add">Add</string>
     <string name="dynpl_edit_deep_dir">Inc. Subdirs</string>
     <string name="dynpl_type_usertags">Usertags-Rule</string>
+    <string name="misc_saved">Changes saved</string>
 </resources>

@@ -5,6 +5,7 @@ import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
@@ -77,6 +78,10 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
             CoroutineScope(Dispatchers.IO).launch {
                 RoomDB.DB_INSTANCE.dynamicPlaylistDao().save(playlist)
                 modified = false
+
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, R.string.misc_saved, Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
