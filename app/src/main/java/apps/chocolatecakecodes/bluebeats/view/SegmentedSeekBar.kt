@@ -106,7 +106,7 @@ class SegmentedSeekBar : FrameLayout {
     private fun createMarkers(){
         // clear old makers
         for(m in markers)
-            this.removeView(m)
+            markerContainer.removeView(m)
 
         markers = Array(segments.size){
             val segment = segments[it]
