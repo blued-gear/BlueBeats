@@ -49,7 +49,9 @@ internal class Search : Fragment(R.layout.search_fragment) {
         super.onCreate(savedInstanceState)
 
         val vmProvider = ViewModelProvider(this.requireActivity())
-        viewModel = vmProvider.get(SearchViewModel::class.java)
+        viewModel = vmProvider.get(SearchViewModel::class.java).apply {
+            contextProvider = { this@Search.requireContext() }
+        }
         mainVM = vmProvider.get(MainActivityViewModel::class.java)
         playerVM = vmProvider.get(PlayerViewModel::class.java)
     }
@@ -192,8 +194,9 @@ internal class Search : Fragment(R.layout.search_fragment) {
                 when(tab.position){
                     0 -> SearchViewModel.Grouping.FILENAME
                     1 -> SearchViewModel.Grouping.TITLE
-                    2 -> SearchViewModel.Grouping.ID3_TAG
-                    3 -> SearchViewModel.Grouping.USER_TAG
+                    2 -> SearchViewModel.Grouping.TYPE
+                    3 -> SearchViewModel.Grouping.ID3_TAG
+                    4 -> SearchViewModel.Grouping.USER_TAG
                     else -> throw AssertionError()
                 }.let {
                     viewModel.setGrouping(it)
@@ -310,8 +313,9 @@ internal class Search : Fragment(R.layout.search_fragment) {
         when(grouping) {
             SearchViewModel.Grouping.FILENAME -> tabs.selectTab(tabs.getTabAt(0))
             SearchViewModel.Grouping.TITLE -> tabs.selectTab(tabs.getTabAt(1))
-            SearchViewModel.Grouping.ID3_TAG -> tabs.selectTab(tabs.getTabAt(2))
-            SearchViewModel.Grouping.USER_TAG -> tabs.selectTab(tabs.getTabAt(3))
+            SearchViewModel.Grouping.TYPE -> tabs.selectTab(tabs.getTabAt(2))
+            SearchViewModel.Grouping.ID3_TAG -> tabs.selectTab(tabs.getTabAt(3))
+            SearchViewModel.Grouping.USER_TAG -> tabs.selectTab(tabs.getTabAt(4))
         }
 
         // show / hide subgroups

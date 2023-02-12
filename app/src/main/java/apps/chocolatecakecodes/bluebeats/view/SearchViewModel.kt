@@ -2,9 +2,11 @@
 
 package apps.chocolatecakecodes.bluebeats.view
 
+import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.util.Utils
@@ -18,7 +20,7 @@ private const val SEARCH_DEBOUNCE_TIMEOUT = 200L
 @OptIn(FlowPreview::class)
 internal class SearchViewModel : ViewModel() {
 
-    enum class Grouping { FILENAME, TITLE, ID3_TAG, USER_TAG }
+    enum class Grouping { FILENAME, TITLE, TYPE, ID3_TAG, USER_TAG }
 
     private val groupingRW = MutableLiveData<Grouping>()
     val grouping: LiveData<Grouping> = groupingRW
@@ -30,6 +32,8 @@ internal class SearchViewModel : ViewModel() {
     val subgroup: LiveData<String?> = subgroupRW
     private val searchTextRW = MutableLiveData("")
     val searchText: LiveData<String> = searchTextRW
+
+    lateinit var contextProvider: () -> Context
 
     private lateinit var debounceSearch: (String) -> Unit
     private lateinit var allItems: Map<String, List<MediaFile>>
@@ -95,6 +99,7 @@ internal class SearchViewModel : ViewModel() {
         when(grouping) {
             Grouping.FILENAME -> loadByFilename()
             Grouping.TITLE -> loadByTitle()
+            Grouping.TYPE -> loadByType()
             Grouping.ID3_TAG -> loadByID3Tag(subgroup!!)
             Grouping.USER_TAG -> loadByUsertag()
         }
@@ -124,6 +129,21 @@ internal class SearchViewModel : ViewModel() {
                 it.second
             }.map {
                 it.first
+            }
+        }.toSortedMap()
+
+        loadLazyFileAttributes(allItems.values)
+    }
+
+    private fun loadByType() {
+        allItems = RoomDB.DB_INSTANCE.mediaFileDao().getAllFiles().groupBy {
+            fileTypeStr(it.type, contextProvider())
+        }.mapValues {
+            it.value.sortedBy {
+                if(!it.mediaTags.title.isNullOrEmpty())
+                    it.mediaTags.title
+                else
+                    it.name
             }
         }.toSortedMap()
 
@@ -192,6 +212,23 @@ internal class SearchViewModel : ViewModel() {
                             it.value.map { it.second }
                         }
                     }
+                    Grouping.TYPE -> {
+                        allItems.flatMap { group ->
+                            group.value.map {
+                                val title = if(!it.mediaTags.title.isNullOrEmpty())
+                                        it.mediaTags.title
+                                    else
+                                        it.name
+                                Pair(title, Pair(group.key, it))
+                            }
+                        }.let {
+                            performSearch(parsedQuery, it)
+                        }.groupBy {
+                            it.first
+                        }.mapValues {
+                            it.value.map { it.second }
+                        }
+                    }
                     Grouping.ID3_TAG, Grouping.USER_TAG -> {
                         allItems.map {
                             Pair(it.key, Pair(it.key, it.value))
@@ -241,6 +278,12 @@ internal class SearchViewModel : ViewModel() {
         in 'a'..'z', in 'A'..'Z' -> c.uppercase()
         in listOf('ä', 'Ä', 'ü', 'Ü', 'ö', 'Ö', 'ß') -> "Ä"
         else -> "#"
+    }
+
+    private fun fileTypeStr(type: MediaFile.Type, context: Context) = when(type) {
+        MediaFile.Type.AUDIO -> context.getString(R.string.misc_filetype_audio)
+        MediaFile.Type.VIDEO -> context.getString(R.string.misc_filetype_video)
+        MediaFile.Type.OTHER -> context.getString(R.string.misc_filetype_other)
     }
 
     @Suppress("UnusedEquals")

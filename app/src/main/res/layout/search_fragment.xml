@@ -26,12 +26,19 @@
         <com.google.android.material.tabs.TabItem
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:id="@+id/tabItem"
+                android:text="@string/search_cat_type" />
+
+        <com.google.android.material.tabs.TabItem
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:text="@string/search_cat_id3" />
 
         <com.google.android.material.tabs.TabItem
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/search_cat_usertag" />
+
     </com.google.android.material.tabs.TabLayout>
 
     <EditText

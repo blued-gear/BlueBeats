@@ -48,4 +48,8 @@
     <string name="search_cat_usertag">User-Tags</string>
     <string name="search_mnu_expand_all">Expand all</string>
     <string name="search_mnu_collapse_all">Collapse all</string>
+    <string name="search_cat_type">Type</string>
+    <string name="misc_filetype_audio">Audio</string>
+    <string name="misc_filetype_video">Video</string>
+    <string name="misc_filetype_other">other</string>
 </resources>
