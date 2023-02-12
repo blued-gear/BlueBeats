@@ -15,9 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
-import apps.chocolatecakecodes.bluebeats.util.OnceSettable
-import apps.chocolatecakecodes.bluebeats.util.RequireNotNull
-import apps.chocolatecakecodes.bluebeats.util.SmartBackPressedCallback
+import apps.chocolatecakecodes.bluebeats.util.*
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaDirItem
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
 import com.google.android.material.tabs.TabLayout
@@ -133,7 +131,7 @@ internal class Search : Fragment(R.layout.search_fragment) {
             selectionListener = (object : ISelectionListener<GenericItem> {
                 override fun onSelectionChanged(item: GenericItem, selected: Boolean) {
                     if(item is MediaFileItem)
-                        this@Search.onSelectionChanged(item, selected)
+                        this@Search.onSelectionChanged()
                 }
             }) as ISelectionListener<GroupItem>
         }
@@ -220,7 +218,14 @@ internal class Search : Fragment(R.layout.search_fragment) {
     }
 
     private fun onBackPressed() {
-        itemListAdapter.getSelectExtension().deselect()
+        if(mainVM.currentDialog.value == MainActivityViewModel.Dialogs.FILE_DETAILS) {// close dialog
+            this.parentFragmentManager.beginTransaction()
+                .remove(this.parentFragmentManager.findFragmentByTag(MainActivityViewModel.Dialogs.FILE_DETAILS.tag)!!)
+                .commit()
+            updateMenu()
+        } else {// clear selection
+            itemListAdapter.getSelectExtension().deselect()
+        }
     }
 
     private fun onItemClick(item: MediaFileItem, pos: Int) {
@@ -232,13 +237,9 @@ internal class Search : Fragment(R.layout.search_fragment) {
         }
     }
 
-    private fun onSelectionChanged(item: MediaFileItem, selected: Boolean) {
-        val selectedCount = itemListAdapter.getSelectExtension().selectedItems.size
-        menu?.let {
-            it.findItem(R.id.search_mnu_addpl).isEnabled = selectedCount > 0
-            it.findItem(R.id.search_mnu_fi).isEnabled = selectedCount == 1
-        }
-        inSelection = selectedCount > 0
+    private fun onSelectionChanged() {
+        updateMenu()
+        inSelection = itemListAdapter.getSelectExtension().selectedItems.size > 0
     }
 
     private fun onAddToPlaylist() {
@@ -246,7 +247,17 @@ internal class Search : Fragment(R.layout.search_fragment) {
     }
 
     private fun onShowFileInfo() {
-        ;
+        Utils.trySetValueImmediately(mainVM.currentDialog, MainActivityViewModel.Dialogs.FILE_DETAILS)
+
+        val dlg = FileDetails(itemListAdapter.getSelectExtension().selectedItems.first().castTo<MediaFileItem>().file)
+        this.parentFragmentManager.beginTransaction()
+            .add(R.id.main_content, dlg, MainActivityViewModel.Dialogs.FILE_DETAILS.tag)
+            .commit()
+
+        menu?.let {
+            it.findItem(R.id.search_mnu_addpl).isEnabled = false
+            it.findItem(R.id.search_mnu_fi).isEnabled = false
+        }
     }
     //endregion
 
@@ -323,6 +334,14 @@ internal class Search : Fragment(R.layout.search_fragment) {
         itemListAdapter.getExpandableExtension().expand()
     }
     //endregion
+
+    private fun updateMenu() {
+        menu?.let {
+            val selectedCount = itemListAdapter.getSelectExtension().selectedItems.size
+            it.findItem(R.id.search_mnu_addpl).isEnabled = selectedCount > 0
+            it.findItem(R.id.search_mnu_fi).isEnabled = selectedCount == 1
+        }
+    }
 }
 
 //region item-models
