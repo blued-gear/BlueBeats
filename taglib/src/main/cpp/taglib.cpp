@@ -1,5 +1,6 @@
 #include <jni.h>
 #include <string>
+#include <cassert>
 
 #include "mpegfile.h"
 #include "tag.h"

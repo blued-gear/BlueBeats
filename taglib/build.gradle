@@ -18,6 +18,7 @@ repositories {
 
 android {
     compileSdk version_sdk
+    buildToolsVersion version_buildtools
 
     defaultConfig {
         minSdk 25
@@ -51,6 +52,8 @@ android {
     kotlinOptions {
         jvmTarget = '11'
     }
+
+    namespace 'apps.chocolatecakecodes.bluebeats.taglib'
 }
 
 dependencies {

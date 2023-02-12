@@ -53,6 +53,8 @@ android {
         jvmTarget = '11'
         freeCompilerArgs += '-Xjvm-default=enable'
     }
+
+    namespace 'apps.chocolatecakecodes.bluebeats'
 }
 
 dependencies {

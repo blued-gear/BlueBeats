@@ -39,6 +39,7 @@ android {
     kotlinOptions {
         jvmTarget = '1.11'
     }
+    namespace 'apps.chocolatecakecodes.bluebeats.lib_taglib'
 }
 
 dependencies {
