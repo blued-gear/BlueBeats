@@ -381,7 +381,7 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
                 wasChanged = true
                 file.chapters = fsVersion.chapters
             }
-            if(file.mediaTags != fsVersion.mediaTags){
+            if(!file.mediaTags.laxEquals(fsVersion.mediaTags)){
                 wasChanged = true
                 file.mediaTags = fsVersion.mediaTags
             }

@@ -90,9 +90,39 @@ public final class TagFields implements Cloneable{
                 && other.length == this.length;
     }
 
+    /**
+     * like equals(), just that empty strings and null-values are treated as equal
+     * @param other other object to compare against
+     * @return true if this and other are equal (with "" eq. null)
+     */
+    public boolean laxEquals(TagFields other) {
+        return cmpStringNEE(other.title, this.title)
+                && cmpStringNEE(other.artist, this.artist)
+                && cmpStringNEE(other.genre, this.genre)
+                && other.length == this.length;
+    }
+
     @Override
     public String toString(){
         return "TagFields: " + TagParser.Serializer.GSON.toJson(this);
+    }
+
+    /**
+     * compares two strings and return true if the are equal, or both null or empty
+     */
+    private boolean cmpStringNEE(String a, String b) {
+        if(a == null && b == null)
+            return true;
+        if(a == null && b.isEmpty())
+            return true;
+
+        if(a != null) {
+            if(a.isEmpty() && b == null)
+                return true;
+            return a.equals(b);
+        }
+
+        return false;
     }
 
     public static final class Serializer extends TypeAdapter<TagFields>{
