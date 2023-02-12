@@ -471,6 +471,7 @@ class Player : Fragment() {
         return "$timeStr / $lenStr"
     }
 
+    //region inner classes
     private inner class ControlsGestureHandler(private val view: View) : GestureDetector.SimpleOnGestureListener(){
 
         override fun onSingleTapConfirmed(e: MotionEvent?): Boolean {
@@ -716,12 +717,17 @@ class Player : Fragment() {
         }
 
         private fun onShuffleClick() {
-            val pl = viewModel.currentPlaylist.value!!
-            pl.shuffle = !pl.shuffle
-            btnShuffle.backgroundTintList = if(pl.shuffle) tintSelected else tintNotSelected
+            // DynamicPlaylist will run DB-Queries when re-shuffling
+            CoroutineScope(Dispatchers.IO).launch {
+                val pl = viewModel.currentPlaylist.value!!
+                pl.shuffle = !pl.shuffle
+                btnShuffle.backgroundTintList = if(pl.shuffle) tintSelected else tintNotSelected
 
-            // shuffle can reorder the items
-            loadItems()
+                withContext(Dispatchers.Main) {
+                    // shuffle can change the items
+                    loadItems()
+                }
+            }
         }
 
         private fun loadItems() {
@@ -734,7 +740,7 @@ class Player : Fragment() {
                         listAdapter.setNewList(it)
 
                         listAdapter.getSelectExtension().select(
-                            viewModel.currentPlaylist.value!!.currentPosition,
+                            viewModel.currentPlaylist.value!!.currentPosition.coerceAtLeast(0),
                             false,
                             false
                         )
@@ -743,4 +749,5 @@ class Player : Fragment() {
             }
         }
     }
+    //endregion
 }
