@@ -14,4 +14,5 @@ internal class PlaylistsViewModel : ViewModel() {
     var selectedPlaylist: Playlist? = null
     var allLists: List<PlaylistInfo>? = null
     var playlistItems: List<MediaFile>? = null
+    var selectedMedia: MediaFile? = null
 }

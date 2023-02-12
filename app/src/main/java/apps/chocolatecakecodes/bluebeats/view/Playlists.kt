@@ -2,6 +2,7 @@ package apps.chocolatecakecodes.bluebeats.view
 
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
@@ -20,10 +21,13 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.StaticPlaylist
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.RequireNotNull
 import com.mikepenz.fastadapter.FastAdapter
+import com.mikepenz.fastadapter.GenericItem
+import com.mikepenz.fastadapter.ISelectionListener
 import com.mikepenz.fastadapter.adapters.GenericFastItemAdapter
 import com.mikepenz.fastadapter.drag.IDraggable
 import com.mikepenz.fastadapter.drag.SimpleDragCallback
-import com.mikepenz.fastadapter.items.AbstractItem
+import com.mikepenz.fastadapter.listeners.addTouchListener
+import com.mikepenz.fastadapter.select.getSelectExtension
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.channels.awaitClose
@@ -40,9 +44,12 @@ internal class Playlists : Fragment() {
     private var mainVM: MainActivityViewModel by OnceSettable()
     private var itemsAdapter: GenericFastItemAdapter by OnceSettable()
     private var itemsDragCallback: SimpleDragCallback by OnceSettable()
+    private var itemsTouchHelper: ItemTouchHelper by OnceSettable()
     private var itemsMoveDebounceChannel: SendChannel<Unit> by OnceSettable()
+    private var itemsView = RequireNotNull<RecyclerView>()
     private var titleText = RequireNotNull<TextView>()
     private var upBtn = RequireNotNull<ImageButton>()
+    private var inSelection = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -84,8 +91,10 @@ internal class Playlists : Fragment() {
     }
 
     override fun onDestroyView() {
+        itemsView.set(null)
         titleText.set(null)
         upBtn.set(null)
+        itemsTouchHelper.attachToRecyclerView(null)
 
         super.onDestroyView()
     }
@@ -99,10 +108,43 @@ internal class Playlists : Fragment() {
     private fun setupFastAdapter() {
         itemsAdapter = GenericFastItemAdapter()
 
+        val select = itemsAdapter.getSelectExtension()
+        select.isSelectable = true
+        select.selectOnLongClick = true
+        select.allowDeselection = true
+        select.multiSelect = true
+
+        // prevent click-event when long-click for selection
+        itemsAdapter.onLongClickListener = { _, _, _, _ ->
+            true
+        }
+
         itemsDragCallback = SimpleDragCallback()
         itemsDragCallback.notifyAllDrops = false
         itemsDragCallback.isDragEnabled = false
+        itemsTouchHelper = ItemTouchHelper(itemsDragCallback)
+        itemsAdapter.addTouchListener<MediaItem.ViewHolder, GenericItem>(
+            resolveView = { holder ->
+                holder.itemView.findViewById(R.id.v_mf_handle)
+            },
+            onTouch = { v: View, event: MotionEvent, position: Int, fastAdapter: FastAdapter<GenericItem>, item: GenericItem ->
+                if(event.action == MotionEvent.ACTION_DOWN) {
+                    if(item is MediaItem && viewModel.selectedPlaylist is StaticPlaylist) {
+                        itemsView.get().findViewHolderForAdapterPosition(position)?.let {
+                            itemsTouchHelper.startDrag(it)
+                        }
 
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            }
+        )
+
+        //TODO simplify with SimpleDragCallback->ItemTouchCallback::itemTouchDropped
         setupItemMoveDebounce()
         itemsAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
             override fun onItemRangeMoved(fromPosition: Int, toPosition: Int, itemCount: Int) {
@@ -115,24 +157,37 @@ internal class Playlists : Fragment() {
         val recyclerView = this.requireView().findViewById<RecyclerView>(R.id.pls_entries)
         recyclerView.layoutManager = LinearLayoutManager(this.requireContext(), LinearLayoutManager.VERTICAL, false)
         recyclerView.adapter = itemsAdapter
-        ItemTouchHelper(itemsDragCallback).attachToRecyclerView(recyclerView)
+        itemsTouchHelper.attachToRecyclerView(recyclerView)
+
+        itemsView.set(recyclerView)
     }
 
     //region action handlers
     private fun wireActionHandlers() {
         wireItemsClickListener()
         wireUpBtn()
+
+        itemsAdapter.getSelectExtension().selectionListener = object : ISelectionListener<GenericItem> {
+            override fun onSelectionChanged(item: GenericItem, selected: Boolean) {
+                onItemSelectionChanged(item, selected)
+            }
+        }
     }
 
     private fun wireItemsClickListener(){
-        itemsAdapter.fastAdapter!!.onClickListener = { _, _, item, _ ->
-            if(viewModel.selectedPlaylist === null) {
-                onSelectPlaylist((item as ListsItem).playlist)
+        itemsAdapter.fastAdapter!!.onClickListener = { _, _, item, pos ->
+            if(inSelection){
+                itemsAdapter.getSelectExtension().toggleSelection(pos)
+                true
             } else {
-                onPlayPlaylistAt((item as MediaItem).media)
-            }
+                if (viewModel.selectedPlaylist === null) {
+                    onSelectPlaylist((item as ListsItem).playlist)
+                } else {
+                    onPlayPlaylistAt((item as MediaItem).media)
+                }
 
-            false
+                false
+            }
         }
     }
     private fun onSelectPlaylist(playlistInfo: PlaylistInfo) {
@@ -148,6 +203,30 @@ internal class Playlists : Fragment() {
     }
     private fun onPlayPlaylistAt(media: MediaFile) {
         TODO()
+    }
+
+    private fun onItemSelectionChanged(item: GenericItem, selected: Boolean) {
+        if(selected) {
+            if(item is MediaItem){
+                viewModel.selectedMedia = item.media
+            } else {
+                viewModel.selectedMedia = null
+            }
+        } else {
+            val selectedItems = itemsAdapter.getSelectExtension().selectedItems.toList()
+            if(selectedItems.size == 1) {
+                // if only one selection is left (and it is a file) use it as selected file
+                val selectedItem = selectedItems[0]
+                if(selectedItem is MediaItem)
+                    viewModel.selectedMedia = selectedItem.media
+            } else {
+                viewModel.selectedMedia = null
+            }
+        }
+
+        updateMenuItems()
+
+        inSelection = itemsAdapter.getSelectExtension().selectedItems.isNotEmpty()
     }
 
     @OptIn(FlowPreview::class)
@@ -207,8 +286,6 @@ internal class Playlists : Fragment() {
 
         titleText.get().text = null
         upBtn.get().visibility = Button.INVISIBLE
-
-        itemsDragCallback.isDragEnabled = false
     }
 
     private fun showPlaylistItems() {
@@ -220,8 +297,6 @@ internal class Playlists : Fragment() {
 
         titleText.get().text = viewModel.selectedPlaylist!!.name
         upBtn.get().visibility = Button.VISIBLE
-
-        itemsDragCallback.isDragEnabled = viewModel.selectedPlaylist is StaticPlaylist
     }
 
     private fun loadPlaylists(refresh: Boolean) {
@@ -253,17 +328,21 @@ internal class Playlists : Fragment() {
             MediaItem(it)
         })
     }
+
+    private fun updateMenuItems() {
+        //TODO
+    }
 }
 
 //region RecycleView-Items
-private class ListsItem(val playlist: PlaylistInfo) : AbstractItem<ListsItem.ViewHolder>() {
+private class ListsItem(val playlist: PlaylistInfo) : SelectableItem<ListsItem.ViewHolder>() {
 
     override val type: Int = R.layout.playlists_fragment * 100 + 1
     override val layoutRes: Int = R.layout.playlists_entry_list
 
     override fun getViewHolder(v: View) = ViewHolder(v)
 
-    class ViewHolder(view: View) : FastAdapter.ViewHolder<ListsItem>(view) {
+    class ViewHolder(view: View) : SelectableItem.ViewHolder<ListsItem>(view) {
 
         private val name = this.itemView.findViewById<TextView>(R.id.pls_lists_name)
 
@@ -276,23 +355,27 @@ private class ListsItem(val playlist: PlaylistInfo) : AbstractItem<ListsItem.Vie
     }
 }
 
-private class MediaItem(val media: MediaFile) : AbstractItem<MediaItem.ViewHolder>(), IDraggable {
+private class MediaItem(val media: MediaFile) : SelectableItem<MediaItem.ViewHolder>(), IDraggable {
 
     override val type: Int = R.layout.playlists_fragment * 100 + 2
-    override val layoutRes: Int = R.layout.view_media_node
+    override val layoutRes: Int = R.layout.view_media_file
 
     override val isDraggable: Boolean = true
 
     override fun getViewHolder(v: View) = ViewHolder(v)
 
-    class ViewHolder(view: View) : FastAdapter.ViewHolder<MediaItem>(view) {
+    class ViewHolder(view: View) : SelectableItem.ViewHolder<MediaItem>(view) {
 
-        private val title: TextView = view.findViewById(R.id.v_mn_text)
+        private val title: TextView = view.findViewById(R.id.v_mf_text)
 
         override fun bindView(item: MediaItem, payloads: List<Any>) {
+            super.bindView(item, payloads)
+
             title.text = item.media.name
         }
         override fun unbindView(item: MediaItem) {
+            super.unbindView(item)
+
             title.text = null
         }
     }
