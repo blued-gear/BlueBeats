@@ -99,7 +99,12 @@ internal class Search : Fragment(R.layout.search_fragment) {
             SearchViewModel.Grouping.ID3_TAG -> tabs.selectTab(tabs.getTabAt(2))
             SearchViewModel.Grouping.USER_TAG -> tabs.selectTab(tabs.getTabAt(3))
         }
-        //TODO hide or show spinner depending on tab
+
+        // show / hide subgroups
+        subgroupsSpinner.get().visibility = when(grouping) {
+            SearchViewModel.Grouping.ID3_TAG ->  View.VISIBLE
+            else -> View.GONE
+        }
     }
 
     private fun loadItems(grouping: SearchViewModel.Grouping) {
