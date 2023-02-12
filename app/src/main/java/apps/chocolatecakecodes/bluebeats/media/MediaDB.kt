@@ -291,11 +291,6 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
             updateFile(child)
         }
 
-        // trigger caching of hashCode (else it might happen, that a DB-query in the UI-Thread gets executed)
-        dir.getDirs().forEach { it.hashCode() }
-        dir.getFiles().forEach { it.hashCode() }
-        dir.hashCode()
-
         if(wasChanged)
             dirDao.save(dir)
     }
