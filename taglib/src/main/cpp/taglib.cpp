@@ -7,6 +7,8 @@
 #include "chapterframe.h"
 #include "textidentificationframe.h"
 
+#include "usertags_parser.h"
+
 using namespace TagLib::MPEG;
 using TagLib::Tag;
 using TagLib::String;
@@ -16,6 +18,7 @@ namespace {
     /// struct to cache all handles to java classes, fields and methods
     struct JavaIDs_t{
 
+        [[maybe_unused]]
         explicit JavaIDs_t(JNIEnv* jni) : jni(jni){
             c_ParseException = jni->FindClass("apps/chocolatecakecodes/bluebeats/taglib/ParseException");
 
@@ -33,9 +36,14 @@ namespace {
             c_Chapter = jni->FindClass("apps/chocolatecakecodes/bluebeats/taglib/Chapter");
             m_Chapter_Constructor  = jni->GetMethodID(c_Chapter, "<init>","(JJLjava/lang/String;)V");
 
+            c_Usertags = jni->FindClass("apps/chocolatecakecodes/bluebeats/taglib/UserTags");
+            m_Usertags_Constructor = jni->GetMethodID(c_Usertags, "<init>", "([Ljava/lang/String;)V");
+
             c_ArrayList = jni->FindClass("java/util/ArrayList");
             m_ArrayList_Constructor_Size = jni->GetMethodID(c_ArrayList, "<init>", "(I)V");
             m_ArrayList_Add = jni->GetMethodID(c_ArrayList, "add", "(Ljava/lang/Object;)Z");
+
+            c_String = jni->FindClass("java/lang/String");
         }
 
         JNIEnv* jni;
@@ -56,13 +64,18 @@ namespace {
         jclass c_Chapter = nullptr;
         jmethodID m_Chapter_Constructor = nullptr;
 
+        jclass c_Usertags = nullptr;
+        jmethodID m_Usertags_Constructor = nullptr;
+
         jclass c_ArrayList = nullptr;
         jmethodID m_ArrayList_Constructor_Size = nullptr;
         jmethodID m_ArrayList_Add = nullptr;
+
+        jclass c_String = nullptr;
     };
     typedef struct JavaIDs_t JavaIDs;
 
-    namespace BlueBeats {
+    namespace BlueBeats_Parser {
         // aliases for better type-checking
         typedef jobject TagFields;
         typedef jobject UserTags;
@@ -75,6 +88,8 @@ namespace {
         void readID3Tags(const JavaIDs& jid, const Tag *tag, const Properties* audioProps, TagFields dest);
 
         Chapters readChapters(const JavaIDs& jid, File& file, bool& err);
+
+        UserTags readUsertags(const JavaIDs& jid, File& file, bool& err);
     }
 }
 //endregion
@@ -87,36 +102,51 @@ Java_apps_chocolatecakecodes_bluebeats_taglib_TagParser_parseMp3(
         jstring filepath) {
     JavaIDs jni(env);
 
-    // create and parse file; copy java-string to cpp-string
-    const char* pathChars = env->GetStringUTFChars(filepath, nullptr);
-    std::string path(pathChars);
-    env->ReleaseStringUTFChars(filepath, pathChars);
-    File file(path.c_str(), true, Properties::ReadStyle::Average);
+    try {
+        // create and parse file; copy java-string to cpp-string
+        const char *pathChars = env->GetStringUTFChars(filepath, nullptr);
+        std::string path(pathChars);
+        env->ReleaseStringUTFChars(filepath, pathChars);
+        File file(path.c_str(),
+                  BlueBeats::Tag::MyFrameFactory::instance(),
+                  true, Properties::ReadStyle::Average);
 
-    // ensure the file was opened successful
-    if(!file.isOpen()){
-        BlueBeats::throwParseException(jni, "file could not be opened");
-        return;
+        // ensure the file was opened successful
+        if (!file.isOpen()) {
+            BlueBeats_Parser::throwParseException(jni, "file could not be opened");
+            return;
+        }
+
+        BlueBeats_Parser::TagFields tagFields = BlueBeats_Parser::readTags(jni, file);
+        if (tagFields == nullptr) return;// an error occurred and so an exception was thrown
+        env->SetObjectField(thisRef, jni.f_TagParser_TagFields, tagFields);
+
+        bool readChaptersErr = false;
+        BlueBeats_Parser::Chapters chapters = BlueBeats_Parser::readChapters(jni, file,
+                                                                             readChaptersErr);
+        if (readChaptersErr) return;// an error occurred and so an exception was thrown
+        env->SetObjectField(thisRef, jni.f_TagParser_Chapters, chapters);
+
+        bool readUsertagsErr = false;
+        BlueBeats_Parser::UserTags usertags = BlueBeats_Parser::readUsertags(jni, file,
+                                                                             readUsertagsErr);
+        if (readUsertagsErr) return;// an error occurred and so an exception was thrown
+        env->SetObjectField(thisRef, jni.f_TagParser_UserTags, usertags);
+    }catch(std::exception& e){
+        std::string msg("c++ exception occurred: ");
+        msg += e.what();
+        BlueBeats_Parser::throwParseException(jni, msg.c_str());
     }
-
-    BlueBeats::TagFields tagFields = BlueBeats::readTags(jni, file);
-    if(tagFields == nullptr) return;// an error occurred and so an exception was thrown
-    env->SetObjectField(thisRef, jni.f_TagParser_TagFields, tagFields);
-
-    bool readChaptersErr = false;
-    BlueBeats::Chapters chapters = BlueBeats::readChapters(jni, file, readChaptersErr);
-    if(readChaptersErr) return;// an error occurred and so an exception was thrown
-    env->SetObjectField(thisRef, jni.f_TagParser_Chapters, chapters);
 }
 //endregion
 
 //region private methods
-void BlueBeats::throwParseException(const JavaIDs& jid, const char* msg) {
+void BlueBeats_Parser::throwParseException(const JavaIDs& jid, const char* msg) {
     if(jid.jni->ExceptionCheck() == JNI_TRUE) return;// an exception is already being thrown
     jid.jni->ThrowNew(jid.c_ParseException, msg);
 }
 
-BlueBeats::TagFields BlueBeats::readTags(const JavaIDs& jid, const File &file) {
+BlueBeats_Parser::TagFields BlueBeats_Parser::readTags(const JavaIDs& jid, const File &file) {
     // create new TagFields class
     TagFields fields = jid.jni->NewObject(jid.c_TagFields, jid.m_TagFields_Constructor);
     if(fields == nullptr){
@@ -133,7 +163,7 @@ BlueBeats::TagFields BlueBeats::readTags(const JavaIDs& jid, const File &file) {
     return fields;
 }
 
-void BlueBeats::readID3Tags(const JavaIDs& jid, const Tag *tag, const Properties* audioProps, TagFields dest) {
+void BlueBeats_Parser::readID3Tags(const JavaIDs& jid, const Tag *tag, const Properties* audioProps, TagFields dest) {
     assert(tag != nullptr);
     assert(dest != nullptr);
 
@@ -157,8 +187,8 @@ void BlueBeats::readID3Tags(const JavaIDs& jid, const Tag *tag, const Properties
     }
 }
 
-BlueBeats::Chapters BlueBeats::readChapters(const JavaIDs &jid, File &file, bool &err) {
-    // parsing of chapters only supported for ID3v2
+BlueBeats_Parser::Chapters BlueBeats_Parser::readChapters(const JavaIDs &jid, File &file, bool &err) {
+    // parsing of chapters only is supported for ID3v2
     if(!file.hasID3v2Tag())
         return nullptr;
 
@@ -186,7 +216,7 @@ BlueBeats::Chapters BlueBeats::readChapters(const JavaIDs &jid, File &file, bool
         // search title (the first valid text frame)
         jstring title = nullptr;
         const TagLib::ID3v2::FrameList& subFrames = chapterFrame->embeddedFrameList();
-        for(const TagLib::ID3v2::Frame* subFrame : subFrames){
+        for(const TagLib::ID3v2::Frame* subFrame : subFrames){//TODO query for TIT2, alt TIT3 directly
             if(subFrame->frameID() == "TIT2" || subFrame->frameID() == "TIT3"){
                 auto textFrame = dynamic_cast<const TagLib::ID3v2::TextIdentificationFrame*>(subFrame);
                 if(textFrame != nullptr){
@@ -215,5 +245,54 @@ BlueBeats::Chapters BlueBeats::readChapters(const JavaIDs &jid, File &file, bool
     }
 
     return list;
+}
+
+BlueBeats_Parser::UserTags BlueBeats_Parser::readUsertags(const JavaIDs& jid, File& file, bool& err){
+    // parsing of usertags only is supported for ID3v2
+    if(!file.hasID3v2Tag())
+        return nullptr;
+
+    const TagLib::ID3v2::Tag* tag = file.ID3v2Tag(false);
+    assert(tag != nullptr);
+
+    // search usertags-frame
+    const TagLib::ID3v2::FrameList& privateFrames = tag->frameList("PRIV");
+    BlueBeats::Tag::UsertagsFrame* utFrame = nullptr;
+    for(auto& f : privateFrames){
+        utFrame = dynamic_cast<BlueBeats::Tag::UsertagsFrame*>(f);
+        if(utFrame != nullptr)
+            break;
+    }
+    if(utFrame == nullptr)
+        return nullptr;// no usertags were set
+
+    TagLib::StringList utEntries = utFrame->getTags();
+    jobjectArray tagsArr = jid.jni->NewObjectArray(utEntries.size(), jid.c_String, nullptr);
+    if(tagsArr == nullptr){
+        err = true;
+        throwParseException(jid, "unable to alloc object");
+        return nullptr;
+    }
+
+    for(jsize i = 0; i < utEntries.size(); i++){
+        std::string entryStr = utEntries[i].to8Bit(true);
+        jobject entryJStr = jid.jni->NewStringUTF(entryStr.c_str());
+
+        if(entryJStr == nullptr){
+            err = true;
+            throwParseException(jid, "unable to alloc object");
+            return nullptr;
+        }
+
+        jid.jni->SetObjectArrayElement(tagsArr, i, entryJStr);
+    }
+
+    jobject ret = jid.jni->NewObject(jid.c_Usertags, jid.m_Usertags_Constructor, tagsArr);
+    if(ret == nullptr){
+        err = true;
+        throwParseException(jid, "unable to alloc object");
+        return nullptr;
+    }
+    return ret;
 }
 //endregion
