@@ -65,8 +65,9 @@ public class TagParser{
 
     public static final class Serializer extends TypeAdapter<TagParser>{
 
+        public static final Gson GSON;
+
         private static final int NUMBER_OF_FIELDS = 5;
-        private static final Gson GSON;
 
         static{
             GSON = new GsonBuilder().serializeNulls().create();
