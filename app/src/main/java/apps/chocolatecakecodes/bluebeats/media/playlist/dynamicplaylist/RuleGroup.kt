@@ -7,18 +7,13 @@ import apps.chocolatecakecodes.bluebeats.util.Utils
 import apps.chocolatecakecodes.bluebeats.util.takeOrAll
 import java.util.*
 import kotlin.NoSuchElementException
-
-/*TODO
-    - all rules in a group should be negateable -> handle them as excludes (before share trimming)
-        -> rules do not need to take an amount for generation
-        -> (alternatively make an union of all excludes an give it as predicate to the generate-method (and keep the amount))
-    - group get a logic-mode: all entries are either ANDed or ORed
-        -> in AND-mode shares are ignored
- */
+import kotlin.collections.HashSet
+import kotlin.collections.LinkedHashSet
 
 internal class RuleGroup private constructor(
     private val entityId: Long,
     override var share: Rule.Share,
+    var combineWithAnd: Boolean = false,
     rules: List<Pair<Rule, Boolean>> = emptyList()
 ) : Rule {
 
@@ -38,18 +33,46 @@ internal class RuleGroup private constructor(
 
         val excludeAcc = exclude + negativeRules.flatMap { it.generateItems(-1, emptySet()) }
 
-        val absoluteItems = absoluteRules.flatMap {
-            val localAmount = if(amount >= 0) it.share.value.toInt() else -1
+        val absoluteItems = absoluteRules.map {
+            val localAmount = if(amount >= 0 && !combineWithAnd) it.share.value.toInt() else -1
             it.generateItems(localAmount, excludeAcc)
-        }.distinct()
+        }
 
-        val relativeAmount = if(amount >= 0) amount - absoluteItems.size else -1
-        val relativeItems = relativeRules.flatMap {
-            val localAmount = if(amount >= 0) (relativeAmount * it.share.value).toInt() else -1
+        val relativeAmount = let {
+            if(amount >= 0 && !combineWithAnd){
+                amount - absoluteItems.sumOf { it.size }
+            } else {
+                -1
+            }
+        }
+        val relativeItems = relativeRules.map {
+            val localAmount = if(amount >= 0 && !combineWithAnd) (relativeAmount * it.share.value).toInt() else -1
             it.generateItems(localAmount, excludeAcc)
-        }.distinct()
+        }
 
-        return absoluteItems.plus(relativeItems).takeOrAll(amount)
+        return let {
+            if(combineWithAnd){
+                absoluteItems
+                    .map { it.toSet() }
+                    .reduceOrNull { acc, cur ->
+                        acc.intersect(cur)
+                    }?.let {
+                        relativeItems
+                            .map { it.toSet() }
+                            .reduceOrNull { acc, cur ->
+                                acc.intersect(cur)
+                            }
+                    } ?: emptySet()
+            } else {
+                val absoluteCombined = LinkedHashSet<MediaFile>()
+                absoluteItems.forEach { absoluteCombined.addAll(it) }
+
+                val relativeCombined = LinkedHashSet<MediaFile>()
+                relativeItems.forEach { relativeCombined.addAll(it) }
+
+                absoluteCombined + relativeCombined.shuffled()
+            }
+        }.takeOrAll(amount)
     }
 
     /**
