@@ -1,6 +1,7 @@
 package apps.chocolatecakecodes.bluebeats.view
 
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -14,7 +15,9 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.Rule
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.view.specialviews.createEditorRoot
 import kotlinx.coroutines.*
+import java.lang.Exception
 
+private const val LOG_TAG = "DynplaylistEditor"
 private const val STATE_PLAYLIST_ID = "key:plId"
 private const val STATE_MODIFIED = "key:mod"
 
@@ -25,7 +28,7 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
 
     private var playlist: DynamicPlaylist by OnceSettable()
 
-    private var plName: TextView by OnceSettable()
+    private var plName: EditText by OnceSettable()
     private var plBufferSize: EditText by OnceSettable()
     private var plRules: LinearLayout by OnceSettable()
 
@@ -71,24 +74,18 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
         view.setOnClickListener {}
     }
 
-    override fun onStop() {
-        super.onStop()
-
-        if(modified) {
-            val ctx = context
-            CoroutineScope(Dispatchers.IO).launch {
-                RoomDB.DB_INSTANCE.dynamicPlaylistDao().save(playlist)
-                modified = false
-
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(ctx, R.string.misc_saved, Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
+    suspend fun saveChanges(): Boolean {
+        var saveSuccessful = true
+        if(plName.text.toString() != playlist.name)
+            saveSuccessful = saveSuccessful and savePlName()
+        if(modified || plBufferSize.text.toString() != playlist.iterationSize.toString())
+            saveSuccessful = saveSuccessful and savePlData()
+        return saveSuccessful
     }
 
     private fun showData() {
-        plName.text = playlist.name
+        plName.text.clear()
+        plName.text.append(playlist.name)
         plBufferSize.setText(playlist.iterationSize.toString())
         plRules.addView(
             createEditorRoot(playlist.rootRuleGroup, this::onRuleEdited, this.requireContext()),
@@ -98,5 +95,64 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
 
     private fun onRuleEdited(rule: Rule) {
         modified = true
+    }
+
+    private suspend fun savePlName(): Boolean {
+        val newName = plName.text.toString()
+
+        if(newName.isBlank()){
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, R.string.dynpl_edit_name_invalid_blank, Toast.LENGTH_LONG).show()
+            }
+
+            return false
+        }
+
+        return withContext(Dispatchers.IO) {
+            try {
+                RoomDB.DB_INSTANCE.dynamicPlaylistDao().changeName(playlist, newName)
+
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, R.string.dynpl_edit_name_saved, Toast.LENGTH_SHORT).show()
+                }
+
+                true
+            }catch (e: Exception) {
+                Log.e(LOG_TAG, "exception while changing playlist-name", e)
+
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, R.string.dynpl_edit_name_not_saved, Toast.LENGTH_LONG).show()
+                }
+
+                false
+            }
+        }
+    }
+
+    private suspend fun savePlData(): Boolean {
+        val ctx = context
+        playlist.iterationSize = plBufferSize.text.toString().toInt()
+
+        return withContext(Dispatchers.IO) {
+            try {
+
+                RoomDB.DB_INSTANCE.dynamicPlaylistDao().save(playlist)
+                modified = false
+
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(ctx, R.string.misc_saved, Toast.LENGTH_SHORT).show()
+                }
+
+                true
+            }catch (e: Exception) {
+                Log.e(LOG_TAG, "exception while saving playlist", e)
+
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(ctx, R.string.dynpl_edit_save_unsuccessful, Toast.LENGTH_SHORT).show()
+                }
+
+                false
+            }
+        }
     }
 }

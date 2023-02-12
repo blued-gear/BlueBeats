@@ -15,4 +15,9 @@ internal class PlaylistsViewModel : ViewModel() {
     var allLists: List<PlaylistInfo>? = null
     var playlistItems: List<MediaFile>? = null
     var selectedMedia: MediaFile? = null
+
+    val inOverview: Boolean
+        get() {
+            return selectedPlaylist === null
+        }
 }

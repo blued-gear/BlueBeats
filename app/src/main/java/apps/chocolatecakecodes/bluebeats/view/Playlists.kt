@@ -1,6 +1,7 @@
 package apps.chocolatecakecodes.bluebeats.view
 
 import android.os.Bundle
+import android.util.Log
 import android.view.*
 import android.widget.Button
 import android.widget.ImageButton
@@ -38,6 +39,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+private const val LOG_TAG = "Playlists"
 private const val MNU_ID_OVERVIEW_RM = 11
 private const val MNU_ID_OVERVIEW_NEW_DYN = 12
 private const val MNU_ID_OVERVIEW_EDIT_DYN = 13
@@ -61,6 +63,7 @@ internal class Playlists : Fragment() {
     private var upBtn = RequireNotNull<ImageButton>()
     private var menu: Menu? = null
     private var inSelection = false
+    private var dynplEditor = RequireNotNull<DynplaylistEditorFragment>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -204,7 +207,7 @@ internal class Playlists : Fragment() {
                 itemsAdapter.getSelectExtension().toggleSelection(pos)
                 true
             } else {
-                if (viewModel.selectedPlaylist === null) {
+                if (viewModel.inOverview) {
                     onSelectPlaylist((item as ListsItem).playlist)
                 } else {
                     onPlayPlaylistAt(pos)
@@ -290,15 +293,7 @@ internal class Playlists : Fragment() {
             Utils.trySetValueImmediately(mainVM.currentDialog, MainActivityViewModel.Dialogs.NONE)
             updateMenu()
         } else if(mainVM.currentDialog.value == MainActivityViewModel.Dialogs.DYNPLAYLIST_EDITOR){// close dialog
-            this.parentFragmentManager.beginTransaction()
-                .remove(this.parentFragmentManager.findFragmentByTag(MainActivityViewModel.Dialogs.DYNPLAYLIST_EDITOR.tag)!!)
-                .commit()
-
-            Utils.trySetValueImmediately(mainVM.currentDialog, MainActivityViewModel.Dialogs.NONE)
-
-            updateMenu()
-            if(viewModel.selectedPlaylist !== null)
-                loadPlaylistItems(true)
+            onCloseEditDynplDlg()
         } else if(inSelection) {// deselect all
             itemsAdapter.getSelectExtension().deselect()
         } else if(viewModel.showOverview.value == false) {// go back to overview
@@ -307,14 +302,35 @@ internal class Playlists : Fragment() {
     }
 
     private fun onEditDynamicPlaylist(playlist: DynamicPlaylist) {
-        val dlg = DynplaylistEditorFragment(playlist)
+        dynplEditor.set(DynplaylistEditorFragment(playlist))
         this.parentFragmentManager.beginTransaction()
-            .add(R.id.main_content, dlg, MainActivityViewModel.Dialogs.DYNPLAYLIST_EDITOR.tag)
+            .add(R.id.main_content, dynplEditor.get(), MainActivityViewModel.Dialogs.DYNPLAYLIST_EDITOR.tag)
             .commit()
 
         Utils.trySetValueImmediately(mainVM.currentDialog, MainActivityViewModel.Dialogs.DYNPLAYLIST_EDITOR)
 
         updateMenu()
+    }
+
+    private fun onCloseEditDynplDlg() {
+        CoroutineScope(Dispatchers.Unconfined).launch {
+            if(dynplEditor.get().saveChanges()){
+                withContext(Dispatchers.Main) {
+                    this@Playlists.parentFragmentManager.beginTransaction()
+                        .remove(this@Playlists.parentFragmentManager.findFragmentByTag(MainActivityViewModel.Dialogs.DYNPLAYLIST_EDITOR.tag)!!)
+                        .commit()
+
+                    dynplEditor.set(null)
+                    Utils.trySetValueImmediately(mainVM.currentDialog, MainActivityViewModel.Dialogs.NONE)
+
+                    updateMenu()
+                    if(!viewModel.inOverview)
+                        loadPlaylistItems(true)
+                    else
+                        loadPlaylists(true)
+                }
+            }
+        }
     }
     //endregion
 
@@ -366,6 +382,7 @@ internal class Playlists : Fragment() {
                     })
 
                     inSelection = false
+                    updateMenu()
                 }
             }
         } else {
@@ -388,6 +405,8 @@ internal class Playlists : Fragment() {
                 itemsAdapter.setNewList(viewModel.playlistItems!!.map {
                     MediaFileItem(it, isStaticPl)
                 })
+
+                updateMenu()
             }
         }
 
@@ -554,12 +573,19 @@ internal class Playlists : Fragment() {
 
                             try {
                                 val pl = dao.createNew(plName)
-                                dlg.dismiss()
-                                onEditDynamicPlaylist(pl)
+
+                                withContext(Dispatchers.Main) {
+                                    dlg.dismiss()
+                                    onEditDynamicPlaylist(pl)
+                                }
                             }catch (e: Exception){
-                                Toast.makeText(ctx,
-                                    "A playlist with this name does already exist",
-                                    Toast.LENGTH_LONG).show()
+                                Log.e(LOG_TAG, "exception while creating dynamic-playlist", e)
+
+                                withContext(Dispatchers.Main){
+                                    Toast.makeText(ctx,
+                                        R.string.dynpl_edit_name_not_saved,
+                                        Toast.LENGTH_LONG).show()
+                                }
                             }
                         }
                     }

@@ -134,7 +134,8 @@ private class DynplaylistGroupEditor(
             SimpleAddableRuleHeaderView.CommonVisuals.negateCheckbox(context).apply {
                 setOnCheckedChangeListener { _, checked ->
                     group.setRuleNegated(ruleItem.first, checked)
-                    changedCallback(group)
+                    if(checked != ruleItem.second)
+                        changedCallback(group)
                     this@editorView.header.shareBtn.visibility = if(checked) View.GONE else View.VISIBLE
                 }
                 this.isChecked = ruleItem.second
@@ -199,7 +200,9 @@ private class DynplaylistIncludeEditor(
                     }
                     deepCB.isChecked = item.second
                     deepCB.setOnCheckedChangeListener { _, checked ->
-                        onChangeDirDeep(item.first, checked)
+                        rule.setDirDeep(item.first, checked)
+                        if(checked != item.second)
+                            changedCallback(rule)
                     }
                 }
             }.forEach {
@@ -260,11 +263,6 @@ private class DynplaylistIncludeEditor(
     private fun onRemoveFile(entry: MediaFile) {
         rule.removeFile(entry)
         contentList.removeView(this)
-        changedCallback(rule)
-    }
-
-    private fun onChangeDirDeep(entry: MediaDir, newVal: Boolean) {
-        rule.setDirDeep(entry, newVal)
         changedCallback(rule)
     }
 }
@@ -476,9 +474,11 @@ private class SimpleAddableRuleHeaderView(ctx: Context) : LinearLayout(ctx) {
             var popup: PopupWindow? = null
             val popupContent = ShareEditor(ruleShare, context) { newVal ->
                 newVal?.let {
-                    onEditedHandler(it)
-                    ruleShare = it
-                    setShareBtnText(it)
+                    if(it != ruleShare) {
+                        onEditedHandler(it)
+                        ruleShare = it
+                        setShareBtnText(it)
+                    }
                 }
 
                 popup!!.dismiss()

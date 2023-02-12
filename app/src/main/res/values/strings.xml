@@ -29,4 +29,8 @@
     <string name="dynpl_share_absolute">Absolute</string>
     <string name="dynpl_share_value">Value</string>
     <string name="playlist_edit_dyn">Edit Dynamic Playlist</string>
+    <string name="dynpl_edit_save_unsuccessful">Changes could not be saved</string>
+    <string name="dynpl_edit_name_saved">Name saved</string>
+    <string name="dynpl_edit_name_not_saved">Name could not be saved (it is likely that the name already exists)</string>
+    <string name="dynpl_edit_name_invalid_blank">The name must not be empty</string>
 </resources>
