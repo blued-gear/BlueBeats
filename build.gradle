@@ -12,6 +12,17 @@ buildscript {
     }
 }
 
+plugins{
+    id 'idea'
+}
+
+idea{
+    module{
+        downloadJavadoc = true
+        downloadSources = true
+    }
+}
+
 allprojects {
     repositories {
         google()

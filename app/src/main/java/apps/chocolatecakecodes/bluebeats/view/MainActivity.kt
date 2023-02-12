@@ -30,10 +30,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mediaMngEventRelay: MediaDBEventRelay
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
-            throw Exception("only supporting max SDK-Version 29")//XXX
-        }
-
         super.onCreate(savedInstanceState)
         this.setContentView(R.layout.activity_main)
 

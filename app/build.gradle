@@ -4,6 +4,13 @@ plugins {
     id 'idea'
 }
 
+idea{
+    module{
+        downloadJavadoc = true
+        downloadSources = true
+    }
+}
+
 repositories {
     google()
     mavenCentral()
@@ -16,7 +23,7 @@ android {
     defaultConfig {
         applicationId "apps.chocolatecakecodes.bluebeats"
         minSdkVersion 25
-        targetSdkVersion 30
+        targetSdkVersion 31
         versionCode 1
         versionName "Alpha-0.1.0"
 
