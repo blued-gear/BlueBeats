@@ -42,6 +42,7 @@ class Player : Fragment() {
     private var playerContainer: ViewGroup by OnceSettable()
     private var seekBar: SegmentedSeekBar by OnceSettable()
     private var timeTextView: TextView by OnceSettable()
+    private lateinit var mainMenu: Menu
     private var currentMedia: IMedia? = null
     private var controlsVisible: Boolean = true
     private var controlsHideCoroutine: Job? = null
@@ -91,7 +92,9 @@ class Player : Fragment() {
 
     override fun onResume() {
         super.onResume()
+
         attachPlayer()
+        setupMainMenu()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -139,12 +142,6 @@ class Player : Fragment() {
         // toggle viewModel.timeTextAsRemaining on click at timeTextView
         timeTextView.setOnClickListener {
             viewModel.setTimeTextAsRemaining(!viewModel.timeTextAsRemaining.value!!)
-        }
-
-        // menu
-        val menuButton = view.findViewById<ImageButton>(R.id.player_controls_menu)
-        menuButton.setOnClickListener{
-            showMenu(menuButton)
         }
 
         // player-event-listener
@@ -218,9 +215,7 @@ class Player : Fragment() {
             timeTextView.text = formatPlayTime(player.time, player.length, it!!)
         }
 
-        viewModel.chapters.observe(this.viewLifecycleOwner){ it ->
-            val chapters = it
-
+        viewModel.chapters.observe(this.viewLifecycleOwner){ chapters ->
             if(chapters === null || chapters.isEmpty()){
                 seekBar.segments = emptyArray()
                 seekBar.showTitle = false
@@ -240,6 +235,19 @@ class Player : Fragment() {
                     seekBar.showTitle = true
                 }
             }
+
+            updateChaptersMenuItem()
+        }
+    }
+
+    private fun setupMainMenu(){
+        mainVM.menuProvider.value = { menu, menuInflater ->
+            mainMenu = menu
+
+            menuInflater.inflate(R.menu.player_menu, menu)
+
+            // configure items
+            updateChaptersMenuItem()
         }
     }
 
@@ -353,12 +361,8 @@ class Player : Fragment() {
         }
     }
 
-    private fun showMenu(menuButton: View){
-        val menu = PopupMenu(this.requireContext(), menuButton)
-        menu.inflate(R.menu.player_menu)
-
-        // configure items
-        val chaptersItem = menu.menu.findItem(R.id.player_menu_chapters)
+    private fun updateChaptersMenuItem(){
+        val chaptersItem = mainMenu.findItem(R.id.player_menu_chapters)
         val chapters = viewModel.chapters.value
         if(chapters === null || chapters.isEmpty())
             chaptersItem.isEnabled = false
@@ -366,8 +370,6 @@ class Player : Fragment() {
             showChapterMenu()
             return@setOnMenuItemClickListener true
         }
-
-        menu.show()
     }
 
     private fun showChapterMenu(){
@@ -381,7 +383,7 @@ class Player : Fragment() {
             return@map "${it.name} ($start - $end)"
         }.toTypedArray()
 
-        dlgBuilder.setItems(itemTexts){ dlg, itemIdx ->
+        dlgBuilder.setItems(itemTexts){ _, itemIdx ->
             // jump to chapter
             val chapter = chapters[itemIdx]
             viewModel.updatePlayPosition(chapter.start)
