@@ -21,8 +21,6 @@ import org.videolan.libvlc.interfaces.ILibVLC
 import org.videolan.libvlc.util.VLCVideoLayout
 import java.util.*
 
-//TODO create a wrapping session and use it in the app to control a VlcPlayer
-
 @Suppress("NestedLambdaShadowedImplicitParameter")
 @SuppressLint("RestrictedApi")
 internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventListener {
