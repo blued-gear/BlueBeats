@@ -24,10 +24,20 @@ internal class FileBrowserViewModel : ViewModel() {
     }
 
     fun setCurrentDir(dir: MediaDir){
-        currentDirRW.postValue(dir)
+        if(isMainThread())
+            currentDirRW.setValue(dir)
+        else
+            currentDirRW.postValue(dir)
     }
 
-    fun selectFile(file: MediaFile){
-        selectedFileRW.postValue(file)
+    fun selectFile(file: MediaFile?){
+        if(isMainThread())
+            selectedFileRW.setValue(file)
+        else
+            selectedFileRW.postValue(file)
+    }
+
+    private fun isMainThread(): Boolean{
+        return Looper.myLooper() == Looper.getMainLooper()
     }
 }
