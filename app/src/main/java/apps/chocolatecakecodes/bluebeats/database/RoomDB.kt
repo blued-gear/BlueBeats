@@ -3,15 +3,16 @@ package apps.chocolatecakecodes.bluebeats.database
 import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
-import androidx.room.*
+import androidx.room.Database
+import androidx.room.Room
+import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import apps.chocolatecakecodes.bluebeats.media.model.MediaDirEntity
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFileEntity
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
-import java.lang.IllegalStateException
 import java.util.concurrent.atomic.AtomicReference
 
-@Database(version = 1, entities = [MediaDirEntity::class, MediaFileEntity::class])
+@Database(version = 2, entities = [MediaDirEntity::class, MediaFileEntity::class, UserTagEntity::class, UserTagRelation::class])
 internal abstract class RoomDB : RoomDatabase() {
 
     companion object{
@@ -40,6 +41,7 @@ internal abstract class RoomDB : RoomDatabase() {
 
     internal abstract fun mediaDirDao(): MediaDirDAO
     internal abstract fun mediaFileDao(): MediaFileDAO
+    internal abstract fun userTagDao(): UserTagsDAO
 }
 
 private class DBUpgradeCallback : RoomDatabase.Callback(){

@@ -1,9 +1,9 @@
 package apps.chocolatecakecodes.bluebeats.database
 
 import androidx.room.*
+import androidx.room.OnConflictStrategy.IGNORE
 import apps.chocolatecakecodes.bluebeats.media.model.*
-import apps.chocolatecakecodes.bluebeats.media.model.MediaDirEntity
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFileEntity
+import apps.chocolatecakecodes.bluebeats.taglib.TagFields
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
 
@@ -94,14 +94,23 @@ internal abstract class MediaFileDAO{
 
     //region public methods
     fun newFile(name: String, type: MediaFile.Type, parent: Long): MediaFile{
-        val fileEntity = MediaFileEntity(MediaNode.UNALLOCATED_NODE_ID, name, parent, type)
+        val fileEntity = MediaFileEntity(MediaNode.UNALLOCATED_NODE_ID, name, parent, type,
+            TagFields(), null)
         val id = insertEntity(fileEntity)
 
         return getForId(id)
     }
 
     fun newFile(from: MediaFile): MediaFile{
-        return newFile(from.name, from.type, from.parent.entity.id)
+        val newFile = newFile(from.name, from.type, from.parent.entity.id)
+
+        // copy extra attributes (TODO update whenever attributes changes)
+        newFile.mediaTags = from.mediaTags
+        newFile.userTags = from.userTags
+        newFile.chapters = from.chapters
+        save(newFile)
+
+        return newFile
     }
 
     fun getForId(id: Long): MediaFile{
@@ -126,6 +135,7 @@ internal abstract class MediaFileDAO{
 
     fun save(file: MediaFile){
         updateEntity(file.entity)
+        RoomDB.DB_INSTANCE.userTagDao().saveUserTagsOfFile(file, file.userTags)
     }
 
     fun delete(file: MediaFile){
@@ -158,5 +168,91 @@ internal abstract class MediaFileDAO{
 
     @Delete
     protected abstract fun deleteEntity(entity: MediaFileEntity)
+
+    //endregion
+}
+
+@Dao
+internal abstract class UserTagsDAO{
+
+    //region public methods
+    fun getUserTagsForFile(file: MediaFile): List<String>{
+        return getUserTags(file.entity.id).map {
+            it.name
+        }
+    }
+
+    fun getAllUserTags(): List<String>{
+        return getAllUserTagEntities().map{
+            it.name
+        }
+    }
+
+    /**
+     * tags are OR combined
+     */
+    fun getFilesForTags(tags: List<String>): List<MediaFile>{
+        val fileDAO = RoomDB.DB_INSTANCE.mediaFileDao()
+        return getFileIdsWithTags(tags).map{
+            fileDAO.getForId(it)
+        }
+    }
+
+    fun saveUserTagsOfFile(file: MediaFile, tags: List<String>){
+        val tagsSet = tags.toHashSet()
+        val existingTags = getUserTagEntityForNames(tags).toHashSet()
+        val existingTagNames = existingTags.map{
+            it.name
+        }.toHashSet()
+
+        // save all missing tags
+        tagsSet.minus(existingTagNames).forEach{
+            saveUserTag(UserTagEntity(MediaNode.UNALLOCATED_NODE_ID, it))
+        }
+
+        // delete relations for removed tags
+        existingTags.filter {
+            !tagsSet.contains(it.name)
+        }.forEach {
+            removeRelation(it.id, file.entity.id)
+        }
+
+        // save relations
+        getUserTagEntityForNames(tags).forEach {
+            saveUserTagRelation(UserTagRelation(MediaNode.UNALLOCATED_NODE_ID, it.id, file.entity.id))
+        }
+    }
+
+    /**
+     * removes all UserTags from DB which have no file associated
+     */
+    @Query("DELETE FROM UserTagEntity WHERE id NOT IN (SELECT tag FROM UserTagRelation);")
+    abstract fun removeOrphanUserTags()
+    //endregion
+
+    //region db actions
+    @Query("SELECT tag.id, tag.name FROM MediaFileEntity AS file INNER JOIN UserTagRelation AS rel ON file.id = rel.file INNER JOIN UserTagEntity AS tag ON tag.id = rel.tag WHERE file.id = :fileId;")
+    protected abstract fun getUserTags(fileId: Long): List<UserTagEntity>
+
+    @Query("SELECT * FROM UserTagEntity")
+    protected abstract fun getAllUserTagEntities(): List<UserTagEntity>
+
+    @Query("SELECT file.id FROM MediaFileEntity AS file INNER JOIN UserTagRelation AS rel ON file.id = rel.file INNER JOIN UserTagEntity AS tag ON tag.id = rel.tag WHERE tag.name IN (:tags);")
+    protected abstract fun getFileIdsWithTags(tags: List<String>): List<Long>
+
+    @Query("SELECT * FROM UserTagEntity WHERE name IN (:names);")
+    protected abstract fun getUserTagEntityForNames(names: List<String>): List<UserTagEntity>
+
+    @Insert(onConflict = IGNORE)
+    protected abstract fun saveUserTagRelation(tagRelation: UserTagRelation)
+
+    @Insert(onConflict = IGNORE)
+    protected abstract fun saveUserTag(tag: UserTagEntity)
+
+    @Query("DELETE FROM UserTagRelation WHERE tag = :tag AND file = :file;")
+    protected abstract fun removeRelation(tag: Long, file: Long)
+
+    @Delete
+    protected abstract fun removeUserTag(tag: UserTagEntity)
     //endregion
 }
