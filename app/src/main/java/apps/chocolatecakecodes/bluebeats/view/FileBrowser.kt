@@ -5,19 +5,20 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.*
-import android.widget.ProgressBar
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.selection.*
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
+import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.MediaDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
+import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import kotlinx.coroutines.CoroutineScope
@@ -104,8 +105,12 @@ class FileBrowser : Fragment() {
                 onFileDetailsClicked()
                 true
             }
+            menu.findItem(R.id.filebrowser_menu_atp).setOnMenuItemClickListener {
+                onAddToPlClicked()
+                true
+            }
 
-            updateMenuFileInfo()
+            updateMenuItems()
         }
     }
 
@@ -118,7 +123,7 @@ class FileBrowser : Fragment() {
                     .commit()
 
                 Utils.trySetValueImmediately(mainVM.currentDialog, MainActivityViewModel.Dialogs.NONE)
-                updateMenuFileInfo()
+                updateMenuItems()
             }else{// go one dir up
                 // check if we can go up by one dir
                 val parentDir = viewModel.currentDir.value!!.parent
@@ -174,7 +179,7 @@ class FileBrowser : Fragment() {
                         }
                     }
 
-                    updateMenuFileInfo()
+                    updateMenuItems()
                 }
             }
         )
@@ -305,11 +310,15 @@ class FileBrowser : Fragment() {
         }
     }
 
-    private fun updateMenuFileInfo(){
-        val chaptersItem = mainMenu.findItem(R.id.filebrowser_menu_details)
+    private fun updateMenuItems(){
+        val fileInfoItem = mainMenu.findItem(R.id.filebrowser_menu_details)
         val dialogOpen = mainVM.currentDialog.value == MainActivityViewModel.Dialogs.FILE_DETAILS
-        chaptersItem.isEnabled = viewModel.selectedFile.value !== null
+        fileInfoItem.isEnabled = viewModel.selectedFile.value !== null
                 && !dialogOpen
+
+        val addToPlItem = mainMenu.findItem(R.id.filebrowser_menu_atp)
+        addToPlItem.isEnabled = viewModel.selectedFile.value !== null
+                || listAdapter.selectionTracker.hasSelection()
     }
 
     private fun onFileDetailsClicked(){
@@ -321,7 +330,70 @@ class FileBrowser : Fragment() {
                 .add(R.id.main_content, dlg, FILE_DETAILS_DLG_TAG)
                 .commit()
 
-            updateMenuFileInfo()
+            updateMenuItems()
+        }
+    }
+
+    private fun onAddToPlClicked(){
+        val ctx = this.requireContext()
+        CoroutineScope(Dispatchers.IO).launch {
+            val existingPlaylist = RoomDB.DB_INSTANCE.playlistManager().listAllPlaylist().filter {
+                it.value.first == PlaylistType.STATIC
+            }.mapValues {
+                it.value.second
+            }
+
+            withContext(Dispatchers.Main) {
+                //TODO create custom view with combination of TextEdit and Spinner
+                val plSelect = AutoCompleteTextView(ctx).apply {
+                    setAdapter(ArrayAdapter(
+                        ctx,
+                        R.layout.support_simple_spinner_dropdown_item,
+                        existingPlaylist.keys.toList()
+                    ))
+                    threshold = 0
+                }
+
+                AlertDialog.Builder(ctx)
+                    .setTitle(R.string.filebrowser_menu_add_playlist)
+                    .setView(plSelect)
+                    .setNegativeButton(R.string.misc_cancel) { dlg, _ ->
+                        dlg.cancel()
+                    }
+                    .setPositiveButton("OK") { dlg, _ ->
+                        CoroutineScope(Dispatchers.IO).launch {
+                            val plName = plSelect.text.toString()
+                            val dao = RoomDB.DB_INSTANCE.staticPlaylistDao()
+
+                            val pl = if(existingPlaylist.containsKey(plName)){
+                                dao.load(existingPlaylist[plName]!!)
+                            } else {
+                                try {
+                                    dao.createNew(plName)
+                                }catch (e: Exception){
+                                    Toast.makeText(ctx,
+                                        "A playlist with this name does already exist",
+                                        Toast.LENGTH_LONG).show()
+
+                                    null
+                                }
+                            }
+
+                            if(pl !== null) {
+                                if (viewModel.selectedFile.value !== null)
+                                    pl.addMedia(viewModel.selectedFile.value!!)
+                                //TODO add items from selection
+
+                                dao.save(pl)
+
+                                withContext(Dispatchers.Main) {
+                                    dlg.dismiss()
+                                }
+                            }
+                        }
+                    }
+                    .show()
+            }
         }
     }
 

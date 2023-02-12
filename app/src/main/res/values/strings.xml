@@ -10,4 +10,6 @@
     <string name="tagname_length">Length</string>
     <string name="tagname_artist">Artist</string>
     <string name="main_tab_playlists">Playlists</string>
+    <string name="filebrowser_menu_add_playlist">Add to Playlist</string>
+    <string name="misc_cancel">Cancel</string>
 </resources>
