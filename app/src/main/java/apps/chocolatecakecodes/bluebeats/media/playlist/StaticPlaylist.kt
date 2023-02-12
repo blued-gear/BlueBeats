@@ -79,7 +79,9 @@ internal class StaticPlaylist private constructor(
             return cache.get(id){
                 val name = playlistsManager.getPlaylistName(id)
 
-                val entries = getEntriesForPlaylist(id).map {
+                val entries = getEntriesForPlaylist(id).sortedBy {
+                    it.pos
+                }.map {
                     RoomDB.DB_INSTANCE.mediaFileDao().getForId(it.media)
                 }
 
@@ -92,8 +94,8 @@ internal class StaticPlaylist private constructor(
             val id = playlistsManager.getPlaylistId(playlist.name)
 
             deleteEntriesOfPlaylist(id)
-            playlist.items().map {
-                StaticPlaylistEntry(0, id, it.entity.id)
+            playlist.items().mapIndexed { idx, media ->
+                StaticPlaylistEntry(0, id, media.entity.id, idx)
             }.let {
                 insertPlaylistEntries(it)
             }
@@ -157,7 +159,8 @@ internal data class StaticPlaylistEntity(
 internal data class StaticPlaylistEntry(
     @PrimaryKey(autoGenerate = true) val id: Long,
     @ColumnInfo(name = "playlist", index = true) val playlist: Long,
-    @ColumnInfo(name = "media") val media: Long
+    @ColumnInfo(name = "media") val media: Long,
+    @ColumnInfo(name = "pos") val pos: Int
 )
 
 private class StaticPlaylistIterator(
