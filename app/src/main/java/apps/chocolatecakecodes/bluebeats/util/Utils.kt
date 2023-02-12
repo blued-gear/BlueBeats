@@ -1,7 +1,6 @@
 package apps.chocolatecakecodes.bluebeats.util
 
 import androidx.documentfile.provider.DocumentFile
-import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import org.videolan.libvlc.interfaces.AbstractVLCEvent
 import org.videolan.libvlc.interfaces.IMedia
 import org.videolan.libvlc.interfaces.IVLCObject

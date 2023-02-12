@@ -9,7 +9,6 @@ import android.widget.*
 import androidx.appcompat.widget.AppCompatSeekBar
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
-import apps.chocolatecakecodes.bluebeats.util.Utils
 
 /**
  * This view shows a seek-bar with segment-markers

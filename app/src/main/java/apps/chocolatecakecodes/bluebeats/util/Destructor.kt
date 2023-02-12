@@ -3,7 +3,6 @@ package apps.chocolatecakecodes.bluebeats.util
 import java.lang.ref.PhantomReference
 import java.lang.ref.Reference
 import java.lang.ref.ReferenceQueue
-import java.lang.ref.WeakReference
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
 
