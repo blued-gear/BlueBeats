@@ -163,6 +163,17 @@ class FileBrowser : Fragment() {
                             viewModel.selectFile(null)
                     }
 
+                    // if only one selection is left (and it is a file) use it as selected file
+                    if(!selected && listAdapter.selectionTracker.selection.size() == 1){
+                        val selectedKey = listAdapter.selectionTracker.selection.first()
+                        listView?.findViewHolderForAdapterPosition(listAdapter.keyProvider.getPosition(selectedKey))?.let{
+                            val holder = it as MediaNodeViewHolder
+                            val mediaNode = holder.entry
+                            if(mediaNode is MediaFile)
+                                viewModel.selectFile(mediaNode)
+                        }
+                    }
+
                     updateMenuFileInfo()
                 }
             }
