@@ -44,7 +44,7 @@ internal class RuleGroup private constructor(
 
         val relativeAmount = let {
             if(amount >= 0 && !combineWithAnd){
-                amount - absoluteItems.sumOf { it.size }
+                (amount - absoluteItems.sumOf { it.size }).coerceAtLeast(0)
             } else {
                 -1
             }

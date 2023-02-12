@@ -38,4 +38,6 @@
     <string name="tagname_genre">Genre</string>
     <string name="dynpl_type_id3tag">ID3 Tag</string>
     <string name="dynpl_edit_tag_type">Tag Type:</string>
+    <string name="dynpl_share_unlimited">Unlimited</string>
+    <string name="dynpl_share_relative">Relative</string>
 </resources>

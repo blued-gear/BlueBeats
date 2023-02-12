@@ -620,7 +620,10 @@ private class SimpleAddableRuleHeaderView(ctx: Context) : LinearLayout(ctx) {
             }.format(share.value)
             shareBtn.text = "S: ${sharePercentage}%"
         } else {
-            shareBtn.text = "S: ${share.value.toInt()}"
+            if(share.value == -1f)// unlimited
+                shareBtn.text = "inf"
+            else
+                shareBtn.text = "S: ${share.value.toInt()}"
         }
     }
 
@@ -656,7 +659,11 @@ private class ShareEditor(
     private val onResult: (Rule.Share?) -> Unit
 ) : FrameLayout(ctx) {
 
-    private val absoluteCb: CheckBox
+    private enum class ShareMode { RELATIVE, ABSOLUTE, UNLIMITED }
+
+    private val relativeRb: RadioButton
+    private val absoluteRb: RadioButton
+    private val unlimitedRb: RadioButton
     private val valueInp: EditText
     private val okBtn: Button
     private val cancelBtn: Button
@@ -667,11 +674,32 @@ private class ShareEditor(
         LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
 
-            absoluteCb = CheckBox(context).apply {
-                text = context.getString(R.string.dynpl_share_absolute)
-                isChecked = !initialShare.isRelative
+            relativeRb = RadioButton(ctx).apply {
+                setText(R.string.dynpl_share_relative)
+                isChecked = initialShare.isRelative
                 setOnCheckedChangeListener { _, checked ->
-                    onAbsoluteCheckedChanged(checked)
+                    if(checked)
+                        onShareModeChanged(ShareMode.RELATIVE)
+                }
+            }.also {
+                addView(it)
+            }
+            absoluteRb = RadioButton(ctx).apply {
+                setText(R.string.dynpl_share_absolute)
+                isChecked = !initialShare.isRelative && initialShare.value >= 0
+                setOnCheckedChangeListener { _, checked ->
+                    if(checked)
+                        onShareModeChanged(ShareMode.ABSOLUTE)
+                }
+            }.also {
+                addView(it)
+            }
+            unlimitedRb = RadioButton(ctx).apply {
+                setText(R.string.dynpl_share_unlimited)
+                isChecked = !initialShare.isRelative && initialShare.value < 0
+                setOnCheckedChangeListener { _, checked ->
+                    if(checked)
+                        onShareModeChanged(ShareMode.UNLIMITED)
                 }
             }.also {
                 addView(it)
@@ -727,29 +755,50 @@ private class ShareEditor(
 
     private fun onOk() {
         var shareVal = valueInp.text.toString().toFloat()
-        val relative = !absoluteCb.isChecked
-        if(relative)
-            shareVal = shareVal.coerceAtMost(1f)
-        onResult(Rule.Share(
-            if(relative) shareVal else truncate(shareVal),
-            relative
-        ))
+        if(unlimitedRb.isChecked) {
+            onResult(Rule.Share(-1f, false))
+        } else {
+            val relative = relativeRb.isChecked
+            if(relative)
+                shareVal = shareVal.coerceAtMost(1f)
+            onResult(Rule.Share(
+                if(relative) shareVal else truncate(shareVal),
+                relative
+            ))
+        }
     }
 
     private fun onCancel() {
         onResult(null)
     }
 
-    private fun onAbsoluteCheckedChanged(isAbs: Boolean) {
-        if(isAbs) {
-            valueInp.inputType = valueInp.inputType and EditorInfo.TYPE_NUMBER_FLAG_DECIMAL.inv()
-            valueInp.text.apply {
-                val currentVal = toString().toFloat()
-                clear()
-                append(currentVal.toInt().toString())
+    private fun onShareModeChanged(mode: ShareMode) {
+        when(mode) {
+            ShareMode.RELATIVE -> {
+                valueInp.isEnabled = true
+                valueInp.inputType = valueInp.inputType or EditorInfo.TYPE_NUMBER_FLAG_DECIMAL
+
+                absoluteRb.isChecked = false
+                unlimitedRb.isChecked = false
             }
-        } else {
-            valueInp.inputType = valueInp.inputType or EditorInfo.TYPE_NUMBER_FLAG_DECIMAL
+            ShareMode.ABSOLUTE -> {
+                valueInp.isEnabled = true
+                valueInp.inputType = valueInp.inputType and EditorInfo.TYPE_NUMBER_FLAG_DECIMAL.inv()
+                valueInp.text.apply {
+                    val currentVal = this.toString().toFloat()
+                    clear()
+                    append(currentVal.toInt().toString())
+                }
+
+                relativeRb.isChecked = false
+                unlimitedRb.isChecked = false
+            }
+            ShareMode.UNLIMITED -> {
+                valueInp.isEnabled = false
+
+                relativeRb.isChecked = false
+                absoluteRb.isChecked = false
+            }
         }
     }
 }
