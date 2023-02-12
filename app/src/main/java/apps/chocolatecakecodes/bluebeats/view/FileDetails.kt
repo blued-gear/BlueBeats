@@ -13,6 +13,7 @@ import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.taglib.TagFields
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
+import apps.chocolatecakecodes.bluebeats.util.Utils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -91,21 +92,15 @@ class FileDetails() : Fragment(R.layout.filedetails_fragment) {
         val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
         val ctx = this.requireContext()
 
-        tags.title?.let{
-            val name = ctx.getString(R.string.tagname_title) + ":"
-            tagListView.addView(TagEntry(name, it, ctx), lp)
-        }
+        addTag(R.string.tagname_title, tags.title)
 
         if(tags.length > 0){
             val name = ctx.getString(R.string.tagname_length) + ":"
-            val value = tags.length.toString()
+            val value = Utils.formatTime(tags.length)
             tagListView.addView(TagEntry(name, value, ctx), lp)
         }
 
-        tags.artist?.let{
-            val name = ctx.getString(R.string.tagname_artist) + ":"
-            tagListView.addView(TagEntry(name, it, ctx), lp)
-        }
+        addTag(R.string.tagname_artist, tags.artist)
     }
 
     private fun showUsertags(tags: List<String>){
@@ -118,6 +113,16 @@ class FileDetails() : Fragment(R.layout.filedetails_fragment) {
         }
 
         usertagListTitle.visibility = if(tags.isEmpty()) View.INVISIBLE else View.VISIBLE
+    }
+
+    private fun addTag(name: Int, value: String?){
+        if(!value.isNullOrEmpty()){
+            val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            val ctx = this.requireContext()
+
+            val nameStr = ctx.getString(name) + ":"
+            tagListView.addView(TagEntry(nameStr, value, ctx), lp)
+        }
     }
 }
 
