@@ -2,7 +2,12 @@ package apps.chocolatecakecodes.bluebeats.view
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
+import android.view.View
+import android.view.WindowInsets
+import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
@@ -26,6 +31,7 @@ class MainActivity : AppCompatActivity() {
     )
 
     private lateinit var viewModel: MainActivityViewModel
+    private lateinit var mainContentView: View
     private lateinit var mainTabContent: ViewPager2
     private lateinit var mainTabAdapter: TabContentAdapter
 
@@ -33,6 +39,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         this.setContentView(R.layout.activity_main)
 
+        mainContentView = this.findViewById(R.id.main_content)
         viewModel = ViewModelProvider(this).get(MainActivityViewModel::class.java)
 
         getAppPermissions()
@@ -72,6 +79,40 @@ class MainActivity : AppCompatActivity() {
     private fun wireObservers(){
         viewModel.currentTab.observe(this){
             mainTabContent.currentItem = it.ordinal
+        }
+
+        viewModel.fullScreenContent.observe(this){
+            if(it !== null){// open fullscreen
+                // make fullscreen
+                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
+                    this.window.insetsController!!.hide(WindowInsets.Type.systemBars())
+                }else{
+                    this.window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+                }
+                this.supportActionBar?.hide()
+
+                // show fullscreen-content
+                if(it.parent === null) {
+                    this.setContentView(it)
+                }else{
+                    Log.w("MainActivity", "can not show fullscreen-content: still attached to a parent")
+                }
+            }else{// close fullscreen
+                // make fullscreen
+                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
+                    this.window.insetsController!!.show(WindowInsets.Type.systemBars())
+                }else{
+                    this.window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+                }
+                this.supportActionBar?.show()
+
+                // show main-content
+                if(mainContentView.parent === null) {
+                    this.setContentView(mainContentView)
+                }else{
+                    Log.w("MainActivity", "can not show main-content: still attached to a parent")
+                }
+            }
         }
     }
 

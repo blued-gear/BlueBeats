@@ -1,5 +1,6 @@
 package apps.chocolatecakecodes.bluebeats.view
 
+import android.view.View
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 
@@ -10,5 +11,6 @@ class MainActivityViewModel : ViewModel(){
     }
 
     val currentTab = MutableLiveData<Tabs>(Tabs.MEDIA)
+    val fullScreenContent = MutableLiveData<View>()
 
 }
