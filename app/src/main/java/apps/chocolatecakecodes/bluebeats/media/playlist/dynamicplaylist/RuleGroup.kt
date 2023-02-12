@@ -44,12 +44,14 @@ internal class RuleGroup private constructor(
         val excludeAcc = exclude + negativeRules.flatMap { it.generateItems(-1, emptySet()) }
 
         val absoluteItems = absoluteRules.flatMap {
-            it.generateItems(it.share.value.toInt(), excludeAcc)
+            val localAmount = if(amount >= 0) it.share.value.toInt() else -1
+            it.generateItems(localAmount, excludeAcc)
         }.distinct()
 
-        val relativeAmount = amount - absoluteItems.size
+        val relativeAmount = if(amount >= 0) amount - absoluteItems.size else -1
         val relativeItems = relativeRules.flatMap {
-            it.generateItems((relativeAmount * it.share.value).toInt(), excludeAcc)
+            val localAmount = if(amount >= 0) (relativeAmount * it.share.value).toInt() else -1
+            it.generateItems(localAmount, excludeAcc)
         }.distinct()
 
         return absoluteItems.plus(relativeItems).takeOrAll(amount)
