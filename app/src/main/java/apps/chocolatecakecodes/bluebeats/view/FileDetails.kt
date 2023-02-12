@@ -1,32 +1,29 @@
 package apps.chocolatecakecodes.bluebeats.view
 
 import android.content.Context
-import androidx.lifecycle.ViewModelProvider
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatDialogFragment
-import androidx.fragment.app.DialogFragment
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.taglib.TagFields
-import apps.chocolatecakecodes.bluebeats.taglib.UserTags
 
 class FileDetails(private val file: MediaFile) : Fragment(R.layout.filedetails_fragment) {
 
     private lateinit var tagListView: LinearLayout
     private lateinit var usertagListView: LinearLayout
+    private lateinit var usertagListTitle: TextView
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         tagListView = view.findViewById(R.id.filedetails_taglist)
         usertagListView = view.findViewById(R.id.filedetails_usertaglist)
+        usertagListTitle = view.findViewById(R.id.filedetails_usertags_title)
 
         showData()
     }
@@ -65,6 +62,8 @@ class FileDetails(private val file: MediaFile) : Fragment(R.layout.filedetails_f
             val entryView = UsertagEntry(it, ctx)
             usertagListView.addView(entryView, lp)
         }
+
+        usertagListTitle.visibility = if(tags.isEmpty()) View.INVISIBLE else View.VISIBLE
     }
 }
 

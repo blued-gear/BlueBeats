@@ -42,6 +42,16 @@
                     android:id="@+id/filedetails_taglist" />
         </ScrollView>
 
+        <TextView
+                android:text="Usertags:"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/filedetails_usertags_title"
+                app:layout_constraintTop_toBottomOf="@+id/scrollView2"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintHorizontal_bias="0.0" />
+
         <HorizontalScrollView
                 android:layout_width="0dp"
                 android:layout_height="0dp"
@@ -50,7 +60,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 android:id="@+id/horizontalScrollView"
                 tools:visibility="visible"
-                app:layout_constraintTop_toTopOf="@+id/guideline6">
+                app:layout_constraintTop_toBottomOf="@+id/filedetails_usertags_title">
 
             <LinearLayout
                     android:layout_width="wrap_content"
