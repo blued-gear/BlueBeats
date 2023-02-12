@@ -40,8 +40,10 @@ import kotlinx.coroutines.withContext
 
 private const val MNU_ID_OVERVIEW_RM = 11
 private const val MNU_ID_OVERVIEW_NEW_DYN = 12
+private const val MNU_ID_OVERVIEW_EDIT_DYN = 13
 private const val MNU_ID_PLAYLIST_RM = 21
 private const val MNU_ID_PLAYLIST_INFO = 22
+private const val MNU_ID_PLAYLIST_EDIT_DYN = 23
 
 internal class Playlists : Fragment() {
 
@@ -100,7 +102,7 @@ internal class Playlists : Fragment() {
         if(viewModel.showOverview.value == true)
             loadPlaylists(true)
         else
-            loadPlaylistItems()
+            loadPlaylistItems(false)
     }
 
     override fun onDestroyView() {
@@ -295,7 +297,8 @@ internal class Playlists : Fragment() {
             Utils.trySetValueImmediately(mainVM.currentDialog, MainActivityViewModel.Dialogs.NONE)
 
             updateMenu()
-            loadPlaylists(true)
+            if(viewModel.selectedPlaylist !== null)
+                loadPlaylistItems(true)
         } else if(inSelection) {// deselect all
             itemsAdapter.getSelectExtension().deselect()
         } else if(viewModel.showOverview.value == false) {// go back to overview
@@ -308,7 +311,10 @@ internal class Playlists : Fragment() {
         this.parentFragmentManager.beginTransaction()
             .add(R.id.main_content, dlg, MainActivityViewModel.Dialogs.DYNPLAYLIST_EDITOR.tag)
             .commit()
+
         Utils.trySetValueImmediately(mainVM.currentDialog, MainActivityViewModel.Dialogs.DYNPLAYLIST_EDITOR)
+
+        updateMenu()
     }
     //endregion
 
@@ -344,7 +350,7 @@ internal class Playlists : Fragment() {
             return
 
         viewModel.allLists = null
-        loadPlaylistItems()
+        loadPlaylistItems(false)
     }
 
     private fun loadPlaylists(refresh: Boolean) {
@@ -371,9 +377,9 @@ internal class Playlists : Fragment() {
         }
     }
 
-    private fun loadPlaylistItems() {
+    private fun loadPlaylistItems(refresh: Boolean) {
         CoroutineScope(Dispatchers.IO).launch {
-            if(viewModel.playlistItems === null) {
+            if(viewModel.playlistItems === null || refresh) {
                 viewModel.playlistItems = viewModel.selectedPlaylist!!.items()
             }
 
@@ -415,12 +421,42 @@ internal class Playlists : Fragment() {
                 true
             }
         }
+
+        menu.add(Menu.NONE, MNU_ID_OVERVIEW_EDIT_DYN, Menu.NONE, R.string.playlist_edit_dyn).apply {
+            setOnMenuItemClickListener {
+                itemsAdapter.getSelectExtension().selectedItems.iterator().next().castTo<ListsItem>().playlist.third.let{ id ->
+                    CoroutineScope(Dispatchers.IO).launch {
+                        RoomDB.DB_INSTANCE.dynamicPlaylistDao().load(id).let {
+                            withContext(Dispatchers.Main) {
+                                onEditDynamicPlaylist(it)
+                            }
+                        }
+                    }
+                }
+
+                true
+            }
+        }
     }
     private fun buildMenuItemsForPlaylist(menu: Menu) {
-        menu.add(Menu.NONE, MNU_ID_PLAYLIST_RM, Menu.NONE, R.string.misc_remove).apply {
-            setOnMenuItemClickListener {
-                onDeleteSelectedMedia()
-                true
+        val isStaticPlaylist = viewModel.selectedPlaylist!! is StaticPlaylist
+        val isDynamicPlaylist = viewModel.selectedPlaylist!! is DynamicPlaylist
+
+        if(isDynamicPlaylist) {
+            menu.add(Menu.NONE, MNU_ID_PLAYLIST_EDIT_DYN, Menu.NONE, R.string.playlist_edit_dyn).apply {
+                setOnMenuItemClickListener {
+                    onEditDynamicPlaylist(viewModel.selectedPlaylist as DynamicPlaylist)
+                    true
+                }
+            }
+        }
+
+        if(isStaticPlaylist) {
+            menu.add(Menu.NONE, MNU_ID_PLAYLIST_RM, Menu.NONE, R.string.misc_remove).apply {
+                setOnMenuItemClickListener {
+                    onDeleteSelectedMedia()
+                    true
+                }
             }
         }
 
@@ -441,21 +477,39 @@ internal class Playlists : Fragment() {
         }
     }
     private fun updateOverviewMenu(menu: Menu) {
+        val dialogOpen = mainVM.currentDialog.value != MainActivityViewModel.Dialogs.NONE
+
         menu.findItem(MNU_ID_OVERVIEW_RM).apply {
-            isEnabled = itemsAdapter.getSelectExtension().selectedItems.isNotEmpty()
+            isEnabled = itemsAdapter.getSelectExtension().selectedItems.isNotEmpty() && !dialogOpen
+        }
+
+        menu.findItem(MNU_ID_OVERVIEW_NEW_DYN).apply {
+            isEnabled = !dialogOpen
+        }
+
+        menu.findItem(MNU_ID_OVERVIEW_EDIT_DYN).apply {
+            val selection = itemsAdapter.getSelectExtension().selectedItems.toList()
+            val oneDynplSelected = selection.size == 1
+                    && selection[0].castTo<ListsItem>().playlist.second == PlaylistType.DYNAMIC
+            isEnabled = oneDynplSelected && !dialogOpen
         }
     }
     private fun updatePlaylistMenu(menu: Menu) {
-        menu.findItem(MNU_ID_PLAYLIST_RM).apply {
+        val dialogOpen = mainVM.currentDialog.value != MainActivityViewModel.Dialogs.NONE
+
+        menu.findItem(MNU_ID_PLAYLIST_RM)?.apply {
             val staticPlaylist = viewModel.selectedPlaylist is StaticPlaylist
             val someSelected = itemsAdapter.getSelectExtension().selectedItems.isNotEmpty()
             isEnabled = staticPlaylist && someSelected
         }
 
         menu.findItem(MNU_ID_PLAYLIST_INFO).apply {
-            val dialogOpen = mainVM.currentDialog.value == MainActivityViewModel.Dialogs.FILE_DETAILS
             val mediaSelected = viewModel.selectedMedia !== null
             isEnabled = !dialogOpen && mediaSelected
+        }
+
+        menu.findItem(MNU_ID_PLAYLIST_EDIT_DYN).apply {
+            isEnabled = !dialogOpen
         }
     }
 
@@ -526,7 +580,7 @@ internal class Playlists : Fragment() {
             RoomDB.DB_INSTANCE.staticPlaylistDao().save(playlist)
 
             withContext(Dispatchers.Main) {
-                loadPlaylistItems()
+                loadPlaylistItems(true)
             }
         }
     }

@@ -28,4 +28,5 @@
     <string name="misc_saved">Changes saved</string>
     <string name="dynpl_share_absolute">Absolute</string>
     <string name="dynpl_share_value">Value</string>
+    <string name="playlist_edit_dyn">Edit Dynamic Playlist</string>
 </resources>
