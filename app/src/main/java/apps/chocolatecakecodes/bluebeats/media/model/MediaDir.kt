@@ -44,7 +44,7 @@ class MediaDir internal constructor(internal val entity: MediaDirEntity): MediaN
     }
 
     internal fun addFile(file: MediaFile){
-        if(this.entity != file.parent?.entity)
+        if(this.entity != file.parent.entity)
             throw IllegalArgumentException("file is not sub-item of this dir")
         files.add(file)
     }
