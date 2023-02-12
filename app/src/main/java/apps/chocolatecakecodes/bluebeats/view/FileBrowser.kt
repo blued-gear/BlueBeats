@@ -97,6 +97,11 @@ class FileBrowser : Fragment() {
 
             menuInflater.inflate(R.menu.file_browser_menu, menu)
 
+            menu.findItem(R.id.filebrowser_menu_details).setOnMenuItemClickListener {
+                onFileDetailsClicked()
+                true
+            }
+
             updateMenuFileInfo()
         }
     }
@@ -280,6 +285,16 @@ class FileBrowser : Fragment() {
     private fun updateMenuFileInfo(){
         val chaptersItem = mainMenu.findItem(R.id.filebrowser_menu_details)
         chaptersItem.isEnabled = viewModel.selectedFile.value !== null
+    }
+
+    private fun onFileDetailsClicked(){
+        viewModel.selectedFile.value?.let {
+            val dlg = FileDetails(it)
+            //dlg.show(this.requireActivity().supportFragmentManager, null)
+            this.parentFragmentManager.beginTransaction()
+                .add(R.id.main_content, dlg)
+                .commit()
+        }
     }
 
     //region recycle-view helper classes
