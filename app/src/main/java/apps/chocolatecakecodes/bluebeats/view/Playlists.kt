@@ -103,12 +103,15 @@ internal class Playlists : Fragment() {
         }
     }
     private fun onSelectPlaylist(playlistInfo: PlaylistInfo) {
-        viewModel.selectedPlaylist = when(playlistInfo.second) {
-            PlaylistType.STATIC -> RoomDB.DB_INSTANCE.staticPlaylistDao().load(playlistInfo.third)
-            PlaylistType.DYNAMIC -> TODO()
-        }
+        CoroutineScope(Dispatchers.IO).launch {
+            viewModel.selectedPlaylist = when (playlistInfo.second) {
+                PlaylistType.STATIC -> RoomDB.DB_INSTANCE.staticPlaylistDao()
+                    .load(playlistInfo.third)
+                PlaylistType.DYNAMIC -> TODO()
+            }
 
-        viewModel.showOverview.postValue(false)
+            viewModel.showOverview.postValue(false)
+        }
     }
     private fun onPlayPlaylistAt(media: MediaFile) {
         TODO()
