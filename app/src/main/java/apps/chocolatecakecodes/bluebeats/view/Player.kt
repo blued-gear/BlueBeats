@@ -1,6 +1,7 @@
 package apps.chocolatecakecodes.bluebeats.view
 
 import android.annotation.SuppressLint
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.util.Log
 import android.view.*
@@ -8,6 +9,7 @@ import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.core.view.GestureDetectorCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -19,6 +21,7 @@ import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import com.mikepenz.fastadapter.IAdapter
 import com.mikepenz.fastadapter.adapters.FastItemAdapter
+import com.mikepenz.fastadapter.select.getSelectExtension
 import kotlinx.coroutines.*
 import org.videolan.libvlc.MediaPlayer
 import org.videolan.libvlc.interfaces.IMedia
@@ -597,28 +600,34 @@ class Player : Fragment() {
 
     private inner class PlaylistOverviewPopup {
 
+        private val tintSelected = ColorStateList.valueOf(this@Player.requireContext().getColor(R.color.button_selected))
+        private val tintNotSelected = ColorStateList.valueOf(this@Player.requireContext().getColor(R.color.button_not_selected))
+
         private val listAdapter = setupListAdapter()
-        private lateinit var popup: PopupWindow
+        private var popup: PopupWindow by OnceSettable()
+        private var btnRepeat: ImageButton by OnceSettable()
+        private var btnShuffle: ImageButton by OnceSettable()
 
         fun createAndShow() {
-            viewModel.currentPlaylist.value!!.let {
-                CoroutineScope(Dispatchers.IO).launch {
-                    listAdapter.setNewList(it.getItems().map { MediaItem(it, false) })
+            loadItems()
 
-                    withContext(Dispatchers.Main) {
-                        popup = Utils.showPopup(this@Player.requireContext(), this@Player.requireView(),
-                            R.layout.player_playlist_fragment,
-                            true,
-                            this@PlaylistOverviewPopup::initContent)
-                    }
-                }
-            }
+            popup = Utils.showPopup(this@Player.requireContext(), this@Player.requireView(),
+                R.layout.player_playlist_fragment,
+                true,
+                this@PlaylistOverviewPopup::initContent)
+
+            setupCurrentItemObserver()
         }
 
         private fun initContent(view: View) {
             // prevent close when main-content is clicked
             catchAllTouches(view.findViewById(R.id.player_plfrgm_content))
+
             setupRecyclerView(view.findViewById(R.id.player_plfrgm_list))
+            setupButtons(
+                view.findViewById(R.id.player_plfrgm_rep),
+                view.findViewById(R.id.player_plfrgm_shuf)
+            )
         }
 
         private fun catchAllTouches(view: View) {
@@ -636,8 +645,48 @@ class Player : Fragment() {
             view.adapter = listAdapter
         }
 
+        private fun setupButtons(repeat: ImageButton, shuffle: ImageButton) {
+            btnRepeat = repeat
+            btnShuffle = shuffle
+
+            val pl = viewModel.currentPlaylist.value!!
+            repeat.backgroundTintList = if(pl.repeat) tintSelected else tintNotSelected
+            shuffle.backgroundTintList = if(pl.shuffle) tintSelected else tintNotSelected
+
+            repeat.setOnClickListener {
+                onRepeatClick()
+            }
+            shuffle.setOnClickListener {
+                onShuffleClick()
+            }
+        }
+
+        private fun setupCurrentItemObserver() {
+            val observer = Observer<MediaFile> {
+                val select = listAdapter.getSelectExtension()
+                select.deselect()
+                select.select(
+                    viewModel.currentPlaylist.value!!.currentPosition,
+                    false,
+                    false
+                )
+            }
+
+            viewModel.currentMedia.observe(this@Player.viewLifecycleOwner, observer)
+            popup.setOnDismissListener {
+                viewModel.currentMedia.removeObserver(observer)
+            }
+        }
+
         private fun setupListAdapter(): FastItemAdapter<MediaItem> {
             val adapter = FastItemAdapter<MediaItem>()
+
+            adapter.getSelectExtension().apply {
+                isSelectable = false
+                selectOnLongClick = false
+                allowDeselection = false
+                multiSelect = false
+            }
 
             adapter.onClickListener = { _, _, _, position ->
                 onItemClick(position)
@@ -654,6 +703,40 @@ class Player : Fragment() {
             }
 
             popup.dismiss()
+        }
+
+        private fun onRepeatClick() {
+            val pl = viewModel.currentPlaylist.value!!
+            pl.repeat = !pl.repeat
+            btnRepeat.backgroundTintList = if(pl.repeat) tintSelected else tintNotSelected
+        }
+
+        private fun onShuffleClick() {
+            val pl = viewModel.currentPlaylist.value!!
+            pl.shuffle = !pl.shuffle
+            btnShuffle.backgroundTintList = if(pl.shuffle) tintSelected else tintNotSelected
+
+            // shuffle can reorder the items
+            loadItems()
+        }
+
+        private fun loadItems() {
+            val pl = viewModel.currentPlaylist.value!!
+            CoroutineScope(Dispatchers.IO).launch {
+                pl.getItems().map {
+                    MediaItem(it, false)
+                }.let {
+                    withContext(Dispatchers.Main) {
+                        listAdapter.setNewList(it)
+
+                        listAdapter.getSelectExtension().select(
+                            viewModel.currentPlaylist.value!!.currentPosition,
+                            false,
+                            false
+                        )
+                    }
+                }
+            }
         }
     }
 }

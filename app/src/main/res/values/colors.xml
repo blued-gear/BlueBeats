@@ -13,4 +13,8 @@
     <color name="gray_600">#FF757575</color>
 
     <color name="selection_highlight">#CCDDFF</color>
+    <color name="button_selected">#FF29B6F6</color>
+    <color name="button_not_selected">#00FFFFFF</color>
+
+    <color name="popup_background">#346C6C6C</color>
 </resources>
