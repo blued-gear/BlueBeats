@@ -24,6 +24,13 @@ object Utils {
             idx = path.lastIndexOf('/', path.lastIndex - 1)
         return path.substring(0, idx) + "/"
     }
+
+    /**
+     * creates an empty array (size == 0) of the given type
+     */
+    inline fun <reified T> emptyArray(): Array<T>{
+        return Array<T>(0){throw AssertionError("nothing to initialize")}
+    }
 }
 
 inline fun <T : IVLCObject<E>, E : AbstractVLCEvent?> T.using(retain: Boolean = true, block: (T) -> Unit){
