@@ -291,26 +291,26 @@ internal class Playlists : Fragment() {
     }
 
     private fun showPlaylists() {
+        titleText.get().text = null
+        upBtn.get().visibility = Button.INVISIBLE
+
         if(viewModel.allLists !== null)// already showing playlists
             return
 
         viewModel.playlistItems = null
         viewModel.selectedPlaylist = null
         loadPlaylists(false)
-
-        titleText.get().text = null
-        upBtn.get().visibility = Button.INVISIBLE
     }
 
     private fun showPlaylistItems() {
+        titleText.get().text = viewModel.selectedPlaylist!!.name
+        upBtn.get().visibility = Button.VISIBLE
+
         if(viewModel.playlistItems !== null)// already showing playlist-items
             return
 
         viewModel.allLists = null
         loadPlaylistItems()
-
-        titleText.get().text = viewModel.selectedPlaylist!!.name
-        upBtn.get().visibility = Button.VISIBLE
     }
 
     private fun loadPlaylists(refresh: Boolean) {
