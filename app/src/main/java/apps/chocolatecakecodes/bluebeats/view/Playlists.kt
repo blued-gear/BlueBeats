@@ -17,9 +17,11 @@ import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
 import apps.chocolatecakecodes.bluebeats.media.playlist.StaticPlaylist
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylist
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylistIterator
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.RequireNotNull
 import apps.chocolatecakecodes.bluebeats.util.Utils
+import apps.chocolatecakecodes.bluebeats.util.castTo
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
 import apps.chocolatecakecodes.bluebeats.view.specialitems.SelectableItem
 import apps.chocolatecakecodes.bluebeats.view.specialviews.SpinnerTextbox
@@ -225,7 +227,11 @@ internal class Playlists : Fragment() {
     private fun onPlayPlaylistAt(idx: Int) {
         CoroutineScope(Dispatchers.IO).launch {
             val iter = viewModel.selectedPlaylist!!.getIterator(false, false)
-            iter.seek(idx)
+            if(iter is DynamicPlaylistIterator) {
+                iter.seekToMedia(itemsAdapter.getItem(idx)!!.castTo<MediaFileItem>().file)
+            } else {
+                iter.seek(idx)
+            }
 
             mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
             playerVM.playPlaylist(iter)

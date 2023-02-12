@@ -163,3 +163,10 @@ fun <T, I : Iterable<T>> I.takeOrAll(amount: Int): List<T> {
     else
         this.take(amount)
 }
+
+inline fun <reified T> Any.castTo(): T {
+    return this as T
+}
+inline fun <reified T> Any.castToOrNull(): T? {
+    return this as? T
+}

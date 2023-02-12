@@ -176,6 +176,19 @@ internal class DynamicPlaylistIterator(
         }
     }
 
+    /**
+     * Tries to find the media in the current buffer and selects it as the next media.
+     * If the media could not be found in the buffer, it will be inserted after the current item.
+     */
+    fun seekToMedia(media: MediaFile) {
+        val idx = mediaBuffer.indexOf(media)
+        if(idx != -1) {
+            currentPosition = idx - 1
+        } else {
+            mediaBuffer.add(currentPosition + 1, media)
+        }
+    }
+
     override fun isAtEnd(): Boolean {
         return false
     }
