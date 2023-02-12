@@ -137,10 +137,12 @@ class Player : Fragment() {
         // seek-bar
         seekBar.seekListener = seekHandler
 
+        // toggle viewModel.timeTextAsRemaining on click at timeTextView
         timeTextView.setOnClickListener {
             viewModel.setTimeTextAsRemaining(!viewModel.timeTextAsRemaining.value!!)
         }
 
+        // player-event-listener
         player.setEventListener(PlayerEventHandler())
     }
 
