@@ -425,9 +425,14 @@ class FileBrowser : Fragment() {
                             }
 
                             if(pl !== null) {
-                                if (viewModel.selectedFile.value !== null)
-                                    pl.addMedia(viewModel.selectedFile.value!!)
-                                //TODO add items from selection
+                                listAdapter.getSelectExtension().selectedItems
+                                    .filterIsInstance<FileItem>().map {
+                                        it.file
+                                    }.sortedBy {
+                                        it.name
+                                    }.forEach {
+                                        pl.addMedia(it)
+                                    }
 
                                 dao.save(pl)
 
@@ -436,8 +441,7 @@ class FileBrowser : Fragment() {
                                 }
                             }
                         }
-                    }
-                    .show()
+                    }.show()
             }
         }
     }
