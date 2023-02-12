@@ -25,6 +25,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.*
 
+private const val FILE_DETAILS_DLG_TAG = "dlg-file_details"
+
 class FileBrowser : Fragment() {
 
     companion object {
@@ -41,6 +43,7 @@ class FileBrowser : Fragment() {
     private var progressBar: ProgressBar? = null
     private lateinit var scanListener: MediaDB.ScanEventHandler
     private var scanRequested = false
+    private var dialogOpen = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -109,10 +112,17 @@ class FileBrowser : Fragment() {
     private fun wireObservers(){
         // add handler for back button (to get one dir up)
         mainVM.addBackPressListener(this.viewLifecycleOwner){
-            // check if we can go up by one dir
-            val parentDir = viewModel.currentDir.value!!.parent
-            if (parentDir !== null) {
-                viewModel.setCurrentDir(parentDir)
+            if(dialogOpen){// close dialog
+                this.parentFragmentManager.beginTransaction()
+                    .remove(this.parentFragmentManager.findFragmentByTag(FILE_DETAILS_DLG_TAG)!!)
+                    .commit()
+                dialogOpen = false
+            }else{// go one dir up
+                // check if we can go up by one dir
+                val parentDir = viewModel.currentDir.value!!.parent
+                if (parentDir !== null) {
+                    viewModel.setCurrentDir(parentDir)
+                }
             }
         }
 
@@ -289,10 +299,11 @@ class FileBrowser : Fragment() {
 
     private fun onFileDetailsClicked(){
         viewModel.selectedFile.value?.let {
+            dialogOpen = true
+
             val dlg = FileDetails(it)
-            //dlg.show(this.requireActivity().supportFragmentManager, null)
             this.parentFragmentManager.beginTransaction()
-                .add(R.id.main_content, dlg)
+                .add(R.id.main_content, dlg, FILE_DETAILS_DLG_TAG)
                 .commit()
         }
     }
