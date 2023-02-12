@@ -306,12 +306,16 @@ internal class Playlists : Fragment() {
                     itemsAdapter.setNewList(viewModel.allLists!!.map {
                         ListsItem(it)
                     })
+
+                    inSelection = false
                 }
             }
         } else {
             itemsAdapter.setNewList(viewModel.allLists!!.map {
                 ListsItem(it)
             })
+
+            inSelection = false
         }
     }
 
@@ -323,6 +327,8 @@ internal class Playlists : Fragment() {
         itemsAdapter.setNewList(viewModel.playlistItems!!.map {
             MediaItem(it)
         })
+
+        inSelection = false
     }
 
     //region menu
