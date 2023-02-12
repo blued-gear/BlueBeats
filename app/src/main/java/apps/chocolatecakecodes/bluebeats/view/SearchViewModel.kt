@@ -107,6 +107,9 @@ internal class SearchViewModel : ViewModel() {
                 it.name
             }
         }.toSortedMap()
+
+        loadLazyFileAttributes(allItems.values)
+
         itemsRW.postValue(allItems)
     }
 
@@ -120,6 +123,9 @@ internal class SearchViewModel : ViewModel() {
                 it.first
             }
         }.toSortedMap()
+
+        loadLazyFileAttributes(allItems.values)
+
         itemsRW.postValue(allItems)
     }
 
@@ -133,6 +139,9 @@ internal class SearchViewModel : ViewModel() {
                 it.first
             }
         }.toSortedMap()
+
+        loadLazyFileAttributes(allItems.values)
+
         itemsRW.postValue(allItems)
     }
 
@@ -146,6 +155,9 @@ internal class SearchViewModel : ViewModel() {
                 }
             }
         }.toSortedMap()
+
+        loadLazyFileAttributes(allItems.values)
+
         itemsRW.postValue(allItems)
     }
 
@@ -183,5 +195,12 @@ internal class SearchViewModel : ViewModel() {
         in 'a'..'z', in 'A'..'Z' -> c.uppercase()
         in listOf('ä', 'Ä', 'ü', 'Ü', 'ö', 'Ö', 'ß') -> "Ä"
         else -> "#"
+    }
+
+    @Suppress("UnusedEquals")
+    private fun loadLazyFileAttributes(items: Collection<List<MediaFile>>) {
+        items.flatten().forEach {
+            it.mediaTags.equals(null)
+        }
     }
 }
