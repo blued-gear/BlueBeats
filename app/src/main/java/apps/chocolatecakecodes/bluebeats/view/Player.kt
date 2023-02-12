@@ -94,6 +94,7 @@ class Player : Fragment() {
 
         wireObservers()
         wireActionHandlers(view)
+        refreshPlayerControls()
     }
 
     override fun onResume() {
@@ -101,7 +102,6 @@ class Player : Fragment() {
 
         attachPlayer()
         player.registerPlayerCallback(ContextCompat.getMainExecutor(this.requireContext()), playerCallback)
-        refreshPlayerControls()
 
         setupMainMenu()
     }
@@ -113,14 +113,6 @@ class Player : Fragment() {
         player.unregisterPlayerCallback(playerCallback)
 
         mainMenu = null
-    }
-
-    private fun refreshPlayerControls() {
-        if (player.castTo<VlcPlayer>().isPlaying()) {
-            playerContainer.findViewById<ImageButton>(R.id.player_controls_play).setImageResource(R.drawable.ic_baseline_pause)
-        }else {
-            playerContainer.findViewById<ImageButton>(R.id.player_controls_play).setImageResource(R.drawable.ic_baseline_play)
-        }
     }
 
     private fun attachPlayer() {
@@ -354,6 +346,18 @@ class Player : Fragment() {
                     Log.e("Player", "could not re-attach playerView: not released by parent")
                 }
             }
+        }
+    }
+
+    private fun refreshPlayerControls() {
+        if (player.castTo<VlcPlayer>().isPlaying()) {
+            playerContainer.findViewById<ImageButton>(R.id.player_controls_play).setImageResource(R.drawable.ic_baseline_pause)
+        }else {
+            playerContainer.findViewById<ImageButton>(R.id.player_controls_play).setImageResource(R.drawable.ic_baseline_play)
+        }
+
+        player.getCurrentMedia()?.let {
+            updateAltImg(it)
         }
     }
 
