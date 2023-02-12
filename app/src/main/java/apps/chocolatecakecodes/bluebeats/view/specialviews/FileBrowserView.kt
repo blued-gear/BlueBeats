@@ -41,6 +41,8 @@ internal class FileBrowserView(context: Context): FrameLayout(context){
     var notifyClickOnDir: Boolean = false
     /** if true a click on a dir will show its contents (only when not in selection) */
     var openDirs: Boolean = true
+    /** if true items can be selected with a simple click */
+    var startSelectionWithClick: Boolean = false
 
     var currentDir: MediaDir? = null
         set(value) {
@@ -50,6 +52,8 @@ internal class FileBrowserView(context: Context): FrameLayout(context){
                 expandDir(value)
             else
                 listAdapter.clear()
+
+            inDeselectClick = false
         }
 
     val selectedItems: List<MediaNode>
@@ -67,6 +71,7 @@ internal class FileBrowserView(context: Context): FrameLayout(context){
         private set
 
     private lateinit var listView: RecyclerView
+    private var inDeselectClick = false
 
     init {
         setupRecyclerViewAndAdapter()
@@ -109,6 +114,8 @@ internal class FileBrowserView(context: Context): FrameLayout(context){
                         select.selectByIdentifier(item.identifier, false, true)
                     }
                 }
+
+                inDeselectClick = !selected
             }
         }
     }
@@ -161,6 +168,10 @@ internal class FileBrowserView(context: Context): FrameLayout(context){
                 throw IllegalStateException("unsupported item was in list")
             }
         }
+
+        if(startSelectionWithClick && !inDeselectClick && !inSelection)
+            listAdapter.getSelectExtension().select(pos)
+        inDeselectClick = false
     }
 
     private fun callOnClick(item: GenericItem) {
