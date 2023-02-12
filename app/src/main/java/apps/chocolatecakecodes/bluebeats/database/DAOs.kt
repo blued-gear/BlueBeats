@@ -19,6 +19,10 @@ internal abstract class MediaDirDAO{
 
     private val cache: Cache<Long, MediaDir>
 
+    private val mediaFileDao: MediaFileDAO by lazy {
+        RoomDB.DB_INSTANCE.mediaFileDao()
+    }
+
     init{
         cache = CacheBuilder.newBuilder().weakValues().build()
         TimerThread.INSTANCE.addInterval(TimeUnit.MINUTES.toMillis(5)) {
@@ -77,7 +81,13 @@ internal abstract class MediaDirDAO{
 
     @Transaction
     open fun delete(dir: MediaDir){
-        // children will be deleted too, because the foreign-keys are set to CASCADE
+        dir.getFiles().forEach {
+            mediaFileDao.delete(it)
+        }
+        dir.getDirs().forEach {
+            delete(it)
+        }
+
         deleteEntity(dir.entityId)
         cache.invalidate(dir.entityId)
     }

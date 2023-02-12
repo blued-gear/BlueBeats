@@ -12,7 +12,7 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.*
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.*
 import java.util.concurrent.atomic.AtomicReference
 
-@Database(version = 4, entities = [
+@Database(version = 5, entities = [
     MediaDirEntity::class, MediaFileEntity::class,
     ID3TagTypeEntity::class, ID3TagValueEntity::class, ID3TagReferenceEntity::class,
     UserTagEntity::class, UserTagRelation::class,

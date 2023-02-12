@@ -6,7 +6,7 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 @Entity(
     foreignKeys = [ForeignKey(entity = MediaDirEntity::class,
         parentColumns = ["id"], childColumns = ["parent"],
-        onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE)],
+        onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.RESTRICT)],
     indices = [Index(value = ["name", "parent"], unique = true)]
 )
 internal data class MediaDirEntity(
@@ -18,7 +18,7 @@ internal data class MediaDirEntity(
 @Entity(
     foreignKeys = [ForeignKey(entity = MediaDirEntity::class,
         parentColumns = ["id"], childColumns = ["parent"],
-        onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE)],
+        onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.RESTRICT)],
     indices = [Index(value = ["name", "parent"], unique = true)]
 )
 internal data class MediaFileEntity(
