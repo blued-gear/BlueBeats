@@ -496,10 +496,16 @@ class Player : Fragment() {
         }
 
         private fun onEndReached() {
-            // reset player, or else seek will break
-            player.play(currentMedia!!)
-            viewModel.updatePlayPosition(0)
-            viewModel.pause()
+            val pl = viewModel.currentPlaylist.value
+            if(pl !== null) {
+                if(!pl.isAtEnd()) {
+                    viewModel.play(pl.nextMedia())
+                } else {
+                    onTotalEndReached()
+                }
+            } else {
+                onTotalEndReached()
+            }
         }
 
         private fun onMediaChanged() {
@@ -528,6 +534,13 @@ class Player : Fragment() {
                 }
                 viewModel.setChapters(chapters)
             }
+        }
+
+        private fun onTotalEndReached() {
+            // reset player, or else seek will break
+            player.play(currentMedia!!)
+            viewModel.updatePlayPosition(0)
+            viewModel.pause()
         }
     }
 }
