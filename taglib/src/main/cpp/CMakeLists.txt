@@ -47,7 +47,6 @@ add_library( # Sets the name of the library.
              SHARED
 
              # Provides a relative path to your source file(s).
-             usertags_parser.h usertags_parser.cpp
              taglib.cpp )
 
 add_library(libtaglib SHARED IMPORTED)

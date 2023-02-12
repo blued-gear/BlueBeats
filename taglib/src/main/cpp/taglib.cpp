@@ -8,11 +8,14 @@
 #include "chapterframe.h"
 #include "textidentificationframe.h"
 
-#include "usertags_parser.h"
-
 using namespace TagLib::MPEG;
 using TagLib::Tag;
 using TagLib::String;
+using TagLib::StringList;
+using TagLib::List;
+
+constexpr const char* USERTAGS_IDENTIFIER = "_BlueBeats::Usertags::v1";
+constexpr const char* USERTAGS_TAG_SEPARATOR = " ; ";
 
 //region forward declarations
 namespace {
@@ -257,7 +260,7 @@ BlueBeats_Parser::Chapters BlueBeats_Parser::readChapters(const JavaIDs &jid, Fi
     return list;
 }
 
-BlueBeats_Parser::UserTags BlueBeats_Parser::readUsertags(const JavaIDs& jid, File& file, bool& err){
+BlueBeats_Parser::UserTags BlueBeats_Parser::readUsertags(const JavaIDs& jid, File& file, bool& err) {
     // parsing of usertags only is supported for ID3v2
     if(!file.hasID3v2Tag())
         return nullptr;
@@ -265,30 +268,43 @@ BlueBeats_Parser::UserTags BlueBeats_Parser::readUsertags(const JavaIDs& jid, Fi
     const TagLib::ID3v2::Tag* tag = file.ID3v2Tag(false);
     assert(tag != nullptr);
 
-    // search usertags-frame
-    const TagLib::ID3v2::FrameList& privateFrames = tag->frameList("PRIV");
-    BlueBeats::Tag::UsertagsFrame* utFrame = nullptr;
-    for(auto& f : privateFrames){
-        utFrame = dynamic_cast<BlueBeats::Tag::UsertagsFrame*>(f);
-        if(utFrame != nullptr)
-            break;
-    }
-    if(utFrame == nullptr)
-        return nullptr;// no usertags were set
+    const TagLib::ID3v2::FrameList& userTexts = tag->frameList("TXXX");
 
-    TagLib::StringList utEntries = utFrame->getTags();
+    // search usertags-entry
+    const String* usertagsString = nullptr;
+    for(const auto& f : userTexts) {
+        auto userText = dynamic_cast<const TagLib::ID3v2::UserTextIdentificationFrame*>(f);
+        assert(userText != nullptr);
+
+        if(userText->description() != USERTAGS_IDENTIFIER)
+            continue;
+
+        const auto& entries = userText->fieldList();
+        if(entries.size() < 2)
+            continue;
+
+        usertagsString = &entries[1];
+        break;
+    }
+
+
+    if(usertagsString == nullptr || usertagsString->isEmpty())// no usertags
+        return nullptr;
+
+    StringList utEntries = usertagsString->split(USERTAGS_TAG_SEPARATOR);
+
     jobjectArray tagsArr = jid.jni->NewObjectArray(utEntries.size(), jid.c_String, nullptr);
-    if(tagsArr == nullptr){
+    if(tagsArr == nullptr) {
         err = true;
         throwParseException(jid, "unable to alloc object");
         return nullptr;
     }
 
-    for(jsize i = 0; i < utEntries.size(); i++){
+    for(jsize i = 0; i < utEntries.size(); i++) {
         std::string entryStr = utEntries[i].to8Bit(true);
         jobject entryJStr = jid.jni->NewStringUTF(entryStr.c_str());
 
-        if(entryJStr == nullptr){
+        if(entryJStr == nullptr) {
             err = true;
             throwParseException(jid, "unable to alloc object");
             return nullptr;
@@ -298,7 +314,7 @@ BlueBeats_Parser::UserTags BlueBeats_Parser::readUsertags(const JavaIDs& jid, Fi
     }
 
     jobject ret = jid.jni->NewObject(jid.c_Usertags, jid.m_Usertags_Constructor, tagsArr);
-    if(ret == nullptr){
+    if(ret == nullptr) {
         err = true;
         throwParseException(jid, "unable to alloc object");
         return nullptr;

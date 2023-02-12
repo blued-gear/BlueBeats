@@ -30,6 +30,7 @@ android {
             keyPassword properties.getProperty("keystore.password")
         }
     }
+
     compileSdkVersion version_sdk
     buildToolsVersion version_buildtools
 
