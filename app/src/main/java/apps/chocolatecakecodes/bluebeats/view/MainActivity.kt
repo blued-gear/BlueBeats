@@ -94,38 +94,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         viewModel.fullScreenContent.observe(this){
-            if(it !== null){// open fullscreen
-                // make fullscreen
-                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
-                    val insetsController = this.window.insetsController!!
-                    insetsController.systemBarsBehavior = WindowInsetsController.BEHAVIOR_DEFAULT
-                    insetsController.hide(WindowInsets.Type.systemBars())
-                }else{
-                    this.window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
-                }
-                this.supportActionBar?.hide()
-
-                // show fullscreen-content
-                if(it.parent === null) {
-                    this.setContentView(it)
-                }else{
-                    Log.w("MainActivity", "can not show fullscreen-content: still attached to a parent")
-                }
-            }else{// close fullscreen
-                // make fullscreen
-                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
-                    this.window.insetsController!!.show(WindowInsets.Type.systemBars())
-                }else{
-                    this.window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
-                }
-                this.supportActionBar?.show()
-
-                // show main-content
-                if(mainContentView.parent === null) {
-                    this.setContentView(mainContentView)
-                }else{
-                    Log.w("MainActivity", "can not show main-content: still attached to a parent")
-                }
+            if(it !== null){
+                showFullscreenContent(it)
+            }else{
+                resetFullscreen()
             }
         }
     }
@@ -165,6 +137,42 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+        }
+    }
+
+    private fun showFullscreenContent(content: View){
+        // make fullscreen
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
+            val insetsController = this.window.insetsController!!
+            insetsController.systemBarsBehavior = WindowInsetsController.BEHAVIOR_DEFAULT
+            insetsController.hide(WindowInsets.Type.systemBars())
+        }else{
+            this.window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+        }
+        this.supportActionBar?.hide()
+
+        // show fullscreen-content
+        if(content.parent === null) {
+            this.setContentView(content)
+        }else{
+            Log.w("MainActivity", "can not show fullscreen-content: still attached to a parent")
+        }
+    }
+
+    private fun resetFullscreen(){
+        // undo fullscreen
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
+            this.window.insetsController!!.show(WindowInsets.Type.systemBars())
+        }else{
+            this.window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+        }
+        this.supportActionBar?.show()
+
+        // show main-content
+        if(mainContentView.parent === null) {
+            this.setContentView(mainContentView)
+        }else{
+            Log.w("MainActivity", "can not show main-content: still attached to a parent")
         }
     }
 
