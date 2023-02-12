@@ -1,5 +1,6 @@
 package apps.chocolatecakecodes.bluebeats.view
 
+import android.content.Context
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -314,64 +315,68 @@ class FileBrowser : Fragment() {
     }
 
     private fun onAddToPlClicked(){
-        val ctx = this.requireContext()
-        CoroutineScope(Dispatchers.IO).launch {
-            val existingPlaylist = RoomDB.DB_INSTANCE.playlistManager().listAllPlaylist().filter {
-                it.value.first == PlaylistType.STATIC
-            }.mapValues {
-                it.value.second
+        val toAdd = browser.selectedItems
+            .filterIsInstance<MediaFile>().map {
+                it
+            }.sortedBy {
+                it.name
             }
-
-            withContext(Dispatchers.Main) {
-                val plSelect = SpinnerTextbox(ctx).apply {
-                    setItems(existingPlaylist.keys.toList())
-                }
-
-                AlertDialog.Builder(ctx)
-                    .setTitle(R.string.filebrowser_menu_add_playlist)
-                    .setView(plSelect)
-                    .setNegativeButton(R.string.misc_cancel) { dlg, _ ->
-                        dlg.cancel()
-                    }
-                    .setPositiveButton(R.string.misc_ok) { dlg, _ ->
-                        CoroutineScope(Dispatchers.IO).launch {
-                            val plName = plSelect.text
-                            val dao = RoomDB.DB_INSTANCE.staticPlaylistDao()
-
-                            val pl = if(existingPlaylist.containsKey(plName)){
-                                dao.load(existingPlaylist[plName]!!)
-                            } else {
-                                try {
-                                    dao.createNew(plName)
-                                }catch (e: Exception){
-                                    Toast.makeText(ctx,
-                                        "A playlist with this name does already exist",
-                                        Toast.LENGTH_LONG).show()
-
-                                    null
-                                }
-                            }
-
-                            if(pl !== null) {
-                                browser.selectedItems
-                                    .filterIsInstance<MediaFile>().map {
-                                        it
-                                    }.sortedBy {
-                                        it.name
-                                    }.forEach {
-                                        pl.addMedia(it)
-                                    }
-
-                                dao.save(pl)
-
-                                withContext(Dispatchers.Main) {
-                                    dlg.dismiss()
-                                }
-                            }
-                        }
-                    }.show()
-            }
-        }
+        showAddToPlDlg(this.requireContext(), toAdd)
     }
     //endregion
+}
+
+internal fun showAddToPlDlg(ctx: Context, toAdd: List<MediaFile>) {
+    CoroutineScope(Dispatchers.IO).launch {
+        val existingPlaylist = RoomDB.DB_INSTANCE.playlistManager().listAllPlaylist().filter {
+            it.value.first == PlaylistType.STATIC
+        }.mapValues {
+            it.value.second
+        }
+
+        withContext(Dispatchers.Main) {
+            val plSelect = SpinnerTextbox(ctx).apply {
+                setItems(existingPlaylist.keys.toList())
+            }
+
+            AlertDialog.Builder(ctx)
+                .setTitle(R.string.filebrowser_menu_add_playlist)
+                .setView(plSelect)
+                .setNegativeButton(R.string.misc_cancel) { dlg, _ ->
+                    dlg.cancel()
+                }
+                .setPositiveButton(R.string.misc_ok) { dlg, _ ->
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val plName = plSelect.text
+                        val dao = RoomDB.DB_INSTANCE.staticPlaylistDao()
+
+                        val pl = if(existingPlaylist.containsKey(plName)){
+                            dao.load(existingPlaylist[plName]!!)
+                        } else {
+                            try {
+                                dao.createNew(plName)
+                            }catch (e: Exception){
+                                Toast.makeText(ctx,
+                                    "A playlist with this name does already exist",
+                                    Toast.LENGTH_LONG).show()
+
+                                null
+                            }
+                        }
+
+                        if(pl !== null) {
+                            toAdd.forEach {
+                                pl.addMedia(it)
+                            }
+
+                            dao.save(pl)
+
+                            withContext(Dispatchers.Main) {
+                                dlg.dismiss()
+                            }
+                        }
+                    }
+                }.show()
+        }
+    }
 }

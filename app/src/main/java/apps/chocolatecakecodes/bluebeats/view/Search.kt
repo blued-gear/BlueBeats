@@ -243,7 +243,15 @@ internal class Search : Fragment(R.layout.search_fragment) {
     }
 
     private fun onAddToPlaylist() {
-        ;
+        val toAdd = itemListAdapter.getSelectExtension().selectedItems
+            .filterIsInstance<MediaFileItem>().map {
+                it
+            }.map {
+                it.file
+            }.sortedBy {
+                it.name
+            }
+        showAddToPlDlg(this.requireContext(), toAdd)
     }
 
     private fun onShowFileInfo() {
