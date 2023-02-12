@@ -11,9 +11,7 @@ import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylist
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 
 private const val STATE_PLAYLIST_ID = "key:plId"
 
@@ -46,7 +44,11 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
 
-        outState.putLong(STATE_PLAYLIST_ID, playlistManager.getPlaylistId(playlist.name))
+        runBlocking {
+            withContext(Dispatchers.IO) {
+                outState.putLong(STATE_PLAYLIST_ID, playlistManager.getPlaylistId(playlist.name))
+            }
+        }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
