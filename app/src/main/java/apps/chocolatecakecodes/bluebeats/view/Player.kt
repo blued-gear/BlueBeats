@@ -60,7 +60,7 @@ class Player : Fragment() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        viewModel.updatePlayPosition(player.position)
+        viewModel.updatePlayPosition(player.time)
     }
 
     private fun wireActionHandlers(view: View){
@@ -90,7 +90,7 @@ class Player : Fragment() {
 
         viewModel.playPos.observe(this.viewLifecycleOwner){
             if(it !== null){
-                player.position = it
+                player.time = it
             }
         }
     }

@@ -11,12 +11,12 @@ class PlayerViewModel : ViewModel() {
     public val currentMedia: LiveData<MediaFile> = currentMediaRW// public read-only property
     private val isPlayingRW: MutableLiveData<Boolean> = MutableLiveData(false)
     public val isPlaying: LiveData<Boolean> = isPlayingRW// public read-only property
-    private val playPosRW: MutableLiveData<Float> = MutableLiveData(0.0f)
-    public val playPos: LiveData<Float> = playPosRW// public read-only property
+    private val playPosRW: MutableLiveData<Long> = MutableLiveData(0)
+    public val playPos: LiveData<Long> = playPosRW// public read-only property
 
     fun play(media: MediaFile){
         currentMediaRW.postValue(media)
-        playPosRW.postValue(0.0f)
+        updatePlayPosition(0)
         resume()
     }
 
@@ -28,7 +28,7 @@ class PlayerViewModel : ViewModel() {
         isPlayingRW.postValue(true)
     }
 
-    fun updatePlayPosition(time: Float){
+    fun updatePlayPosition(time: Long){
         playPosRW.postValue(time)
     }
 }
