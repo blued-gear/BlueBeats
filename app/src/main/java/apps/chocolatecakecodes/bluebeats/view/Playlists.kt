@@ -407,7 +407,7 @@ internal class Playlists : Fragment() {
             val playlist = viewModel.selectedPlaylist as StaticPlaylist
             itemsAdapter.getSelectExtension().selectedItems.map {
                 itemsAdapter.getPosition(it)
-            }.forEach {
+            }.sorted().asReversed().forEach {// remove by index in reversed order so that I do not have to account for changed indexes
                 playlist.removeMedia(it)
             }
 
