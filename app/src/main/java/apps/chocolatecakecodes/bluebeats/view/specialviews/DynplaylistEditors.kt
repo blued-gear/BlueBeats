@@ -18,7 +18,6 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.*
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.ExcludeRule
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.IncludeRule
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.Rule
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGroup
@@ -120,105 +119,6 @@ private class DynplaylistGroupEditor(
                 this.header.addVisual(it)
             }
         }
-    }
-}
-
-internal class DynplaylistExcludeEditor(
-    val rule: ExcludeRule,
-    private val changedCallback: ChangedCallback,
-    ctx: Context
-) : FrameLayout(ctx) {
-
-    private val header: SimpleAddableRuleHeaderView
-    private val contentList: LinearLayout
-    private var lastDir: MediaDir = VlcManagers.getMediaDB().getSubject().getMediaTreeRoot()
-
-    init {
-        header = SimpleAddableRuleHeaderView(context).apply {
-            title.text = "Exclude"//TODO rules should have names
-            addBtn.setOnClickListener {
-                onAddEntry()
-            }
-        }
-        contentList = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-
-        ExpandableCard(context, header, contentList, true, SUBITEM_INSET).let {
-            this.addView(it)
-        }
-
-        listItems()
-    }
-
-    private fun listItems() {
-        contentList.removeAllViews()
-
-        val lp = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
-        rule.getDirs()
-            .sortedBy {
-                it.first.path
-            }.map { item ->
-                MediaNodeView(item.first, this.context).apply {
-                    removeBtn.setOnClickListener {
-                        rule.removeDir(item.first)
-                        contentList.removeView(this)
-                        changedCallback(rule)
-                    }
-                    deepCB.isChecked = item.second
-                    deepCB.setOnCheckedChangeListener { _, checked ->
-                        rule.setDirDeep(item.first, checked)
-                        changedCallback(rule)
-                    }
-                }
-            }.forEach {
-                contentList.addView(it, lp)
-            }
-        rule.getFiles()
-            .sortedBy {
-                it.path
-            }.map { item ->
-                MediaNodeView(item, this.context).apply {
-                    removeBtn.setOnClickListener {
-                        rule.removeFile(item)
-                        contentList.removeView(this)
-                        changedCallback(rule)
-                    }
-                }
-            }.forEach {
-                contentList.addView(it, lp)
-            }
-    }
-
-    private fun onAddEntry() {
-        var popup: PopupWindow? = null
-        val popupContent = MediaNodeSelectPopup(context, lastDir, true) {
-            popup!!.dismiss()
-
-            if(it.isNotEmpty()) {
-                // set lastDir to parent of selection
-                it[0].let {
-                    lastDir = when (it) {
-                        is MediaFile -> it.parent
-                        is MediaDir -> it.parent ?: it
-                        else -> throw AssertionError()
-                    }
-                }
-
-                it.filterIsInstance<MediaDir>().forEach{ rule.addDir(it, false) }
-                it.filterIsInstance<MediaFile>().forEach { rule.addFile(it) }
-
-                listItems()
-
-                changedCallback(rule)
-            }
-        }
-        popup = PopupWindow(popupContent,
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
-            true
-        )
-
-        popup.showAtLocation(this, Gravity.CENTER, 0, 0)
     }
 }
 
@@ -423,7 +323,6 @@ private fun createEditor(
 ): AbstractDynplaylistEditorView {
     return when(item) {
         is RuleGroup -> DynplaylistGroupEditor(item, cb, ctx)
-        is ExcludeRule -> DynplaylistExcludeEditor(item, cb, ctx)
         is IncludeRule -> DynplaylistIncludeEditor(item, cb, ctx)
         is UsertagsRule -> DynplaylistUsertagsEditor(item, cb, ctx)
         else -> throw IllegalArgumentException("unsupported rule")
