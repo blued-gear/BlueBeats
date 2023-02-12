@@ -169,7 +169,7 @@ internal class DynamicPlaylistIterator(
 
         if(newPos == mediaBuffer.size) {
             generateItems()
-        } else if(newPos >= 0 && newPos < totalItems) {
+        } else if(newPos >= 0 && newPos < mediaBuffer.size) {
             currentPosition = newPos
         } else {
             throw IllegalArgumentException("seeking by $amount would result in an out-of-bounds position")

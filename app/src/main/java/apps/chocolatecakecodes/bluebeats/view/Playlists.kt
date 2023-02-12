@@ -223,11 +223,13 @@ internal class Playlists : Fragment() {
         }
     }
     private fun onPlayPlaylistAt(idx: Int) {
-        val iter = viewModel.selectedPlaylist!!.getIterator(false, false)
-        iter.seek(idx)
+        CoroutineScope(Dispatchers.IO).launch {
+            val iter = viewModel.selectedPlaylist!!.getIterator(false, false)
+            iter.seek(idx)
 
-        mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
-        playerVM.playPlaylist(iter)
+            mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
+            playerVM.playPlaylist(iter)
+        }
     }
 
     private fun onItemSelectionChanged(item: GenericItem, selected: Boolean) {
