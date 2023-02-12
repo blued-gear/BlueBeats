@@ -5,7 +5,7 @@ buildscript {
         version_buildtools = '33.0.0'
         version_cmake = '3.22.1'
 
-        version_kotlin = '1.7.10'
+        version_kotlin = '1.7.20'
 
         version_android_ktx = '1.9.0'
         version_appcompat = '1.5.1'
