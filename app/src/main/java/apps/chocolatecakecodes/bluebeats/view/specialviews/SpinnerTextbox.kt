@@ -5,6 +5,7 @@ import android.content.res.ColorStateList
 import android.graphics.Color
 import android.util.AttributeSet
 import android.view.Gravity
+import android.view.inputmethod.EditorInfo
 import android.widget.*
 import androidx.appcompat.widget.LinearLayoutCompat
 import apps.chocolatecakecodes.bluebeats.R
@@ -40,6 +41,7 @@ internal class SpinnerTextbox : FrameLayout {
         )
 
         textbox = AutoCompleteTextView(ctx).apply {
+            this.inputType = EditorInfo.TYPE_CLASS_TEXT and EditorInfo.TYPE_TEXT_FLAG_MULTI_LINE.inv()
             setAdapter(itemsAdapter)
         }
         layout.addView(textbox, LinearLayoutCompat.LayoutParams(
