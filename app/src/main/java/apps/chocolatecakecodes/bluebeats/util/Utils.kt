@@ -1,10 +1,12 @@
 package apps.chocolatecakecodes.bluebeats.util
 
 import androidx.documentfile.provider.DocumentFile
+import com.google.gson.reflect.TypeToken
 import org.videolan.libvlc.interfaces.AbstractVLCEvent
 import org.videolan.libvlc.interfaces.IMedia
 import org.videolan.libvlc.interfaces.IVLCObject
 import java.io.File
+import java.lang.reflect.Type
 
 object Utils {
 
@@ -64,6 +66,10 @@ object Utils {
             return String.format("%02d:%02d:%02d", hours, minutes, seconds)
         else
             return String.format("%02d:%02d", minutes, seconds)
+    }
+
+    inline fun <reified T> captureType(): Type{
+        return object : TypeToken<T>(){}.type
     }
 }
 

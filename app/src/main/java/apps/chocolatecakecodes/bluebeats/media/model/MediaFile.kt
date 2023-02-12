@@ -7,6 +7,7 @@ import apps.chocolatecakecodes.bluebeats.taglib.Chapter
 import apps.chocolatecakecodes.bluebeats.taglib.TagFields
 import apps.chocolatecakecodes.bluebeats.taglib.TagParser
 import apps.chocolatecakecodes.bluebeats.util.CachedReference
+import apps.chocolatecakecodes.bluebeats.util.Utils
 import java.util.*
 
 class MediaFile internal constructor(internal val entity: MediaFileEntity): MediaNode(){
@@ -41,7 +42,8 @@ class MediaFile internal constructor(internal val entity: MediaFileEntity): Medi
                     if(entity.chaptersJson.isNullOrEmpty())
                         loadedChapters = null
                     else
-                        loadedChapters = TagParser.Serializer.GSON.fromJson(entity.chaptersJson, List::class.java) as List<Chapter>?
+                        loadedChapters = TagParser.Serializer.GSON.fromJson(entity.chaptersJson,
+                            Utils.captureType<List<Chapter>>())
 
                     chaptersLoaded = true
                 }
