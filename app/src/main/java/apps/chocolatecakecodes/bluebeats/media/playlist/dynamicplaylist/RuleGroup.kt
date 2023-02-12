@@ -116,8 +116,8 @@ internal class RuleGroup private constructor(
 
             return RuleGroup(
                 entity.id, entity.share,
-                ruleEntries.map { loadRule(it.id, KnownRuleTypes.values()[it.type]) },
-                excludeEntries.map { loadExcludeRule(it.id) }
+                ruleEntries.map { loadRule(it.rule, KnownRuleTypes.values()[it.type]) },
+                excludeEntries.map { loadExcludeRule(it.rule) }
             )
         }
 
