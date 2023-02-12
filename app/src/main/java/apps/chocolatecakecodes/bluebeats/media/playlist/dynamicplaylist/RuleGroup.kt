@@ -1,10 +1,13 @@
 package apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist
 
+import androidx.room.*
+import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import java.util.*
 import kotlin.collections.ArrayList
 
-internal class RuleGroup(
+internal class RuleGroup private constructor(
+    private val entityId: Long,
     override var share: Rule.Share,
     rules: List<Rule> = emptyList(),
     excludes: List<ExcludeRule> = emptyList()
@@ -69,4 +72,269 @@ internal class RuleGroup(
     fun removeExcludeAt(idx: Int) {
         excludes.removeAt(idx)
     }
+
+    @Suppress("NAME_SHADOWING")
+    @Dao
+    internal abstract class RuleGroupDao {
+
+        private enum class KnownRuleTypes {
+            RULE_GROUP,
+            EXCLUDE_RULE,
+            INCLUDE_RULE
+        }
+
+        //region api
+        @Transaction
+        open fun createNew(initialShare: Rule.Share): RuleGroup {
+            return load(insertEntity(RuleGroupEntity(0, initialShare)))
+        }
+
+        fun load(id: Long): RuleGroup {
+            val entity = getEntity(id)
+            val (excludeEntries, ruleEntries) = getEntriesForGroup(id)
+                .sortedBy { it.pos }
+                .partition { it.type == KnownRuleTypes.EXCLUDE_RULE.ordinal }
+
+            return RuleGroup(
+                entity.id, entity.share,
+                ruleEntries.map { loadRule(it.id, KnownRuleTypes.values()[it.type]) },
+                excludeEntries.map { loadExcludeRule(it.id) }
+            )
+        }
+
+        @Transaction
+        open fun save(group: RuleGroup) {
+            // diff-alg: load all saved entries -> intersect group.rules with entries (as tuples (id, type)) ->
+            //  call save for intersection + left-diff ->
+            //  call delete for right-diff ->
+            //  save entries with new pos for left-diff ->
+            //  update pos for all entries
+
+            val existingRules = getEntriesForGroup(group.entityId).map {
+                Pair(it.rule, KnownRuleTypes.values()[it.type])
+            }.toSet()
+            val currentRules = group.excludes.associateBy {
+                Pair(getRuleEntityId(it), KnownRuleTypes.EXCLUDE_RULE)
+            } + group.rules.associateBy {
+                Pair(getRuleEntityId(it), getRuleType(it))
+            }
+
+            // update existing rules
+            existingRules.intersect(currentRules.keys)
+                .map { currentRules[it] }
+                .forEach {
+                    when (it) {
+                        is ExcludeRule -> saveExcludeRule(it)
+                        is Rule -> saveRule(it)
+                        else -> throw AssertionError()
+                    }
+                }
+
+            // delete removed rules
+            existingRules.minus(currentRules.keys).forEach {
+                if(it.second == KnownRuleTypes.EXCLUDE_RULE) {
+                    deleteExcludeRule(group.entityId, loadExcludeRule(it.first))
+                } else {
+                    deleteRule(group.entityId, loadRule(it.first, it.second))
+                }
+            }
+
+            // save new rules
+            currentRules.keys.minus(existingRules)
+                .map { currentRules[it] }
+                .forEach {
+                    when (it) {
+                        is ExcludeRule -> {
+                            saveExcludeRule(it)
+                            insertEntry(RuleGroupEntry(0,
+                                group.entityId,
+                                getRuleEntityId(it),
+                                KnownRuleTypes.EXCLUDE_RULE.ordinal,
+                                0
+                            ))
+                        }
+                        is Rule -> {
+                            val ruleInfo = saveRule(it)
+                            insertEntry(
+                                RuleGroupEntry(
+                                0,
+                                group.entityId,
+                                ruleInfo.first,
+                                ruleInfo.second.ordinal,
+                                0
+                            )
+                            )
+                        }
+                        else -> throw AssertionError()
+                    }
+                }
+
+            // update pos of entries
+            group.excludes.forEachIndexed { idx, rule ->
+                updateEntryPos(group.entityId,
+                    getRuleEntityId(rule), KnownRuleTypes.EXCLUDE_RULE.ordinal,
+                    idx)
+            }
+            group.rules.forEachIndexed { idx, rule ->
+                updateEntryPos(group.entityId,
+                    getRuleEntityId(rule), getRuleType(rule).ordinal,
+                    idx + group.excludes.size)
+            }
+        }
+
+        @Transaction
+        open fun delete(group: RuleGroup) {
+            group.excludes.forEach {
+                deleteExcludeRule(group.entityId, it)
+            }
+            group.rules.forEach {
+                deleteRule(group.entityId, it)
+            }
+
+            deleteEntity(group.entityId)
+        }
+
+        //endregion
+
+        //region sql
+        @Insert
+        protected abstract fun insertEntity(entity: RuleGroupEntity): Long
+
+        @Query("DELETE FROM RuleGroupEntity WHERE id = :id;")
+        protected abstract fun deleteEntity(id: Long)
+
+        @Query("SELECT * FROM RuleGroupEntity WHERE id = :id;")
+        protected abstract fun getEntity(id: Long): RuleGroupEntity
+
+        @Insert
+        protected abstract fun insertEntry(entry: RuleGroupEntry): Long
+
+        @Query("DELETE FROM RuleGroupEntry WHERE rulegroup = :group AND rule = :rule AND type = :type;")
+        protected abstract fun deleteEntry(group: Long, rule: Long, type: Int)
+
+        @Query("SELECT * FROM RuleGroupEntry WHERE rulegroup = :group;")
+        protected abstract fun getEntriesForGroup(group: Long): List<RuleGroupEntry>
+
+        @Query("UPDATE RuleGroupEntry SET pos = :pos WHERE rulegroup = :group AND rule = :rule AND type = :type;")
+        protected abstract fun updateEntryPos(group: Long, rule: Long, type: Int, pos: Int)
+
+        //endregion
+
+        //region private helpers
+        private fun loadExcludeRule(id: Long): ExcludeRule {
+            return RoomDB.DB_INSTANCE.dplExcludeRuleDao().load(id)
+        }
+
+        private fun loadRule(id: Long, type: KnownRuleTypes): Rule {
+            return when(type) {
+                KnownRuleTypes.RULE_GROUP -> this.load(id)
+                KnownRuleTypes.INCLUDE_RULE -> RoomDB.DB_INSTANCE.dplIncludeRuleDao().load(id)
+
+                KnownRuleTypes.EXCLUDE_RULE -> throw IllegalArgumentException("unsupported type")
+            }
+        }
+
+        private fun saveExcludeRule(rule: ExcludeRule) {
+            RoomDB.DB_INSTANCE.dplExcludeRuleDao().save(rule)
+        }
+
+        /**
+         * @return Pair<entityId, type>
+         */
+        private fun saveRule(rule: Rule): Pair<Long, KnownRuleTypes> {
+            return when(val type = getRuleType(rule)) {
+                KnownRuleTypes.RULE_GROUP -> {
+                    val rule = rule as RuleGroup
+                    this.save(rule)
+
+                    Pair(rule.entityId, type)
+                }
+                KnownRuleTypes.INCLUDE_RULE -> {
+                    val rule = rule as IncludeRule
+                    val dao = RoomDB.DB_INSTANCE.dplIncludeRuleDao()
+                    dao.save(rule)
+
+                    Pair(dao.getEntityId(rule), type)
+                }
+
+                KnownRuleTypes.EXCLUDE_RULE -> throw IllegalArgumentException("unsupported type")
+            }
+        }
+
+        private fun deleteExcludeRule(group: Long, rule: ExcludeRule) {
+            val dao = RoomDB.DB_INSTANCE.dplExcludeRuleDao()
+            deleteEntry(group, dao.getEntityId(rule), KnownRuleTypes.EXCLUDE_RULE.ordinal)
+            dao.delete(rule)
+        }
+
+        private fun deleteRule(group: Long, rule: Rule) {
+            when(val type = getRuleType(rule)) {
+                KnownRuleTypes.RULE_GROUP -> {
+                    val rule = rule as RuleGroup
+                    deleteEntry(group, rule.entityId, type.ordinal)
+                    this.delete(rule)
+                }
+                KnownRuleTypes.INCLUDE_RULE -> {
+                    val rule = rule as IncludeRule
+                    val dao = RoomDB.DB_INSTANCE.dplIncludeRuleDao()
+                    deleteEntry(group, dao.getEntityId(rule), type.ordinal)
+                    dao.delete(rule)
+                }
+
+                KnownRuleTypes.EXCLUDE_RULE -> throw IllegalArgumentException("unsupported type")
+            }
+        }
+
+        private fun getRuleType(rule: Rule) = when(rule) {
+            is RuleGroup -> KnownRuleTypes.RULE_GROUP
+            is IncludeRule -> KnownRuleTypes.INCLUDE_RULE
+            else -> throw IllegalArgumentException("unsupported type")
+        }
+
+        private fun getRuleEntityId(rule: Rule): Long {
+            return when(getRuleType(rule)) {
+                KnownRuleTypes.RULE_GROUP -> (rule as RuleGroup).entityId
+                KnownRuleTypes.INCLUDE_RULE -> RoomDB.DB_INSTANCE.dplIncludeRuleDao().getEntityId(rule as IncludeRule)
+
+                KnownRuleTypes.EXCLUDE_RULE -> throw IllegalArgumentException("unsupported type")
+            }
+        }
+
+        private fun getRuleEntityId(rule: ExcludeRule): Long {
+            return RoomDB.DB_INSTANCE.dplExcludeRuleDao().getEntityId(rule)
+        }
+
+        //endregion
+    }
 }
+
+//region entities
+@Entity
+internal data class RuleGroupEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long,
+    @Embedded(prefix = "share_") val share: Rule.Share
+)
+
+@Entity(
+    foreignKeys = [
+        ForeignKey(
+            entity = RuleGroupEntity::class,
+            parentColumns = ["id"], childColumns = ["rulegroup"],
+            onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.RESTRICT
+        )
+    ],
+    indices = [
+        Index(
+            value = ["rulegroup", "rule", "type"],
+            unique = true
+        )
+    ]
+)
+internal data class RuleGroupEntry(
+    @PrimaryKey(autoGenerate = true) val id: Long,
+    @ColumnInfo(name = "rulegroup", index = true) val ruleGroup: Long,
+    @ColumnInfo(name = "rule") val rule: Long,
+    @ColumnInfo(name = "type") val type: Int,
+    @ColumnInfo(name = "pos") val pos: Int
+)
+//endregion

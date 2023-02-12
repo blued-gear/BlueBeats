@@ -1,12 +1,15 @@
 package apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist
 
+import androidx.room.Dao
+import androidx.room.Transaction
 import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import java.util.*
 import kotlin.collections.HashMap
 import kotlin.collections.HashSet
 
-internal class IncludeRule(
+internal class IncludeRule private constructor(
+    private val entityId: Long,
     dirs: Set<DirPathInclude> = emptySet(),
     files: Set<MediaFile> = emptySet(),
     initialShare: Rule.Share
@@ -75,4 +78,37 @@ internal class IncludeRule(
             .plus(dir.getFiles())
             .toSet()
     }
+
+    @Dao
+    internal abstract class IncludeRuleDao {
+
+        @Transaction
+        open fun createNew(): IncludeRule {
+            TODO()
+        }
+
+        fun load(id: Long): IncludeRule {
+            TODO()
+        }
+
+        @Transaction
+        open fun save(rule: IncludeRule) {
+            TODO()
+        }
+
+        @Transaction
+        open fun delete(rule: IncludeRule) {
+            TODO()
+        }
+
+        fun getEntityId(rule: IncludeRule): Long {
+            return rule.entityId
+        }
+
+        //TODO
+    }
 }
+
+//region entities
+
+//endregion

@@ -49,7 +49,7 @@ internal class StaticPlaylist private constructor(
         media.add(newIndex, item)
     }
 
-    // DAO as internal class or else entity would have to be internal
+    // DAO as internal class or else some setters would have to be internal
     @Dao
     internal abstract class StaticPlaylistDao {
 

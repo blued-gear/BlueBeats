@@ -1,6 +1,8 @@
 package apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist
 
 import androidx.room.Dao
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.playlist.Playlist
 import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistIterator
@@ -11,14 +13,15 @@ import kotlin.collections.ArrayList
 
 private const val EXAMPLE_ITEM_COUNT = 50
 
-internal class DynamicPlaylist(name: String) : Playlist {
+internal class DynamicPlaylist private constructor(
+    name: String,
+    val rootRuleGroup: RuleGroup
+) : Playlist {
 
     override val type: PlaylistType = PlaylistType.DYNAMIC
 
     override var name: String = name
         private set
-
-    val rootRuleGroup = RuleGroup(Rule.Share(1f, true))
 
     /**
      * the minimum size after which media is allowed to repeat
@@ -108,7 +111,7 @@ internal class DynamicPlaylistIterator(
         val toExclude: ExcludeRule
         if(currentPosition >= 0) {
             currentMedia = currentMedia()
-            toExclude = ExcludeRule(files = setOf(currentMedia))// exclude to prevent repetition
+            toExclude = ExcludeRule.temporaryExclude(files = setOf(currentMedia))// exclude to prevent repetition
         } else {
             currentMedia = null
             toExclude = ExcludeRule.EMPTY_EXCLUDE
@@ -125,5 +128,8 @@ internal class DynamicPlaylistIterator(
 }
 
 //region entities
-
+@Entity
+internal data class DynamicPlaylistEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long
+)
 //endregion
