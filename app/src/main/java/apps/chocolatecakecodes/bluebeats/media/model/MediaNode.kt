@@ -20,7 +20,9 @@ abstract class MediaNode {
 
     abstract val name: String
     abstract val path: String
-    abstract val parent: MediaNode?// only be for runtime-caching
+    abstract val parent: MediaNode?// only for runtime-caching
+
+    private var hash: Int = -1
 
     abstract override fun equals(other: Any?): Boolean
 
@@ -28,6 +30,8 @@ abstract class MediaNode {
         return "${this.javaClass.simpleName}: $path"
     }
     override fun hashCode(): Int {
-        return Objects.hash(path, this.javaClass.canonicalName)
+        if(hash == -1)
+            hash = Objects.hash(this.javaClass.canonicalName, path)
+        return hash
     }
 }
