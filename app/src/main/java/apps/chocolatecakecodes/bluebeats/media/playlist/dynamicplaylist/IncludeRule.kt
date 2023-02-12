@@ -135,7 +135,7 @@ internal class IncludeRule private constructor(
 
         dest.writeInt(files.size)
         files.forEach {
-            dest.writeLong(it.entity.id)
+            dest.writeLong(it.entityId)
         }
     }
 
@@ -294,7 +294,7 @@ internal class IncludeRule private constructor(
                 IncludeRuleFileEntry(
                     0,
                     rule.entityId,
-                    it.entity.id
+                    it.entityId
                 )
             }
         }

@@ -5,7 +5,9 @@ import androidx.room.OnConflictStrategy.IGNORE
 import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
+import apps.chocolatecakecodes.bluebeats.taglib.Chapter
 import apps.chocolatecakecodes.bluebeats.taglib.TagFields
+import apps.chocolatecakecodes.bluebeats.taglib.TagParser
 import apps.chocolatecakecodes.bluebeats.util.TimerThread
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import com.google.common.cache.Cache
@@ -91,6 +93,9 @@ internal abstract class MediaFileDAO{
 
     private val cache: Cache<Long, MediaFile>
 
+    private val mediaDirDao: MediaDirDAO by lazy {
+        RoomDB.DB_INSTANCE.mediaDirDao()
+    }
     private val id3TagDao: ID3TagDAO by lazy {
         RoomDB.DB_INSTANCE.id3TagDao()
     }
@@ -107,14 +112,32 @@ internal abstract class MediaFileDAO{
     }
 
     //region public methods
-    fun newFile(name: String, type: MediaFile.Type, parent: Long): MediaFile{
+    fun createCopy(from: MediaFile): MediaFile{
+        val mediaTagsCpy = from.mediaTags.clone()
+        val chaptersCpy = from.chapters
+        val usertagsCpy = from.userTags
+
+        return MediaFile(
+            MediaNode.UNALLOCATED_NODE_ID,
+            from.name,
+            from.type,
+            { from.parent },
+            { mediaTagsCpy },
+            { chaptersCpy },
+            { usertagsCpy }
+        )
+    }
+
+    @Transaction
+    open fun newFile(name: String, type: MediaFile.Type, parent: Long): MediaFile{
         val fileEntity = MediaFileEntity(MediaNode.UNALLOCATED_NODE_ID, name, parent, type, null)
         val id = insertEntity(fileEntity)
 
         return getForId(id)
     }
 
-    fun newFile(from: MediaFile): MediaFile{
+    @Transaction
+    open fun newFile(from: MediaFile): MediaFile{
         val newFile = newFile(from.name, from.type, from.parent.entity.id)
 
         // copy extra attributes (TODO update whenever attributes changes)
@@ -128,7 +151,35 @@ internal abstract class MediaFileDAO{
 
     fun getForId(id: Long): MediaFile{
         return cache.get(id) {
-            MediaFile(getEntityForId(id))
+            val entity = getEntityForId(id)
+
+            val parentSupplier = {
+                mediaDirDao.getForId(entity.parent)
+            }
+            val mediaTagsProvider = {
+                RoomDB.DB_INSTANCE.id3TagDao().getTagsOfFile(id)
+            }
+            val chaptersSupplier: () -> List<Chapter>? = {
+                if(entity.chaptersJson.isNullOrEmpty())
+                    null
+                else
+                    TagParser.Serializer.GSON.fromJson(entity.chaptersJson,
+                        Utils.captureType<List<Chapter>>())
+            }
+            val usertagsSupplier = {
+                if(entity.id == MediaNode.UNALLOCATED_NODE_ID)// can not load tags from db if this file is not saved
+                    emptyList()
+                else
+                    RoomDB.DB_INSTANCE.userTagDao().getUserTagsForFile(id)
+            }
+
+            MediaFile(
+                id,
+                entity.name,
+                entity.type,
+                parentSupplier,
+                mediaTagsProvider, chaptersSupplier, usertagsSupplier
+            )
         }
     }
 
@@ -140,17 +191,31 @@ internal abstract class MediaFileDAO{
         return getForId(getFileIdForNameAndParent(name, parent))
     }
 
-    fun save(file: MediaFile){
-        updateEntity(file.entity)
+    @Transaction
+    open fun save(file: MediaFile){
+        val chaptersJson = file.chapters?.let {
+            TagParser.Serializer.GSON.toJson(it)
+        }
+        updateEntity(
+            MediaFileEntity(
+                file.entityId,
+                file.name,
+                file.parent.entity.id,
+                file.type,
+                chaptersJson
+            )
+        )
+
         userTagDao.saveUserTagsOfFile(file, file.userTags)
         id3TagDao.saveTagOfFile(file)
     }
 
-    fun delete(file: MediaFile){
+    @Transaction
+    open fun delete(file: MediaFile){
         userTagDao.deleteUserTagsOfFile(file)
         id3TagDao.deleteAllEntriesOfFile(file)
-        deleteEntity(file.entity)
-        cache.invalidate(file.entity.id)
+        deleteEntity(file.entityId)
+        cache.invalidate(file.entityId)
     }
 
     @Query("SELECT EXISTS(SELECT id FROM MediaFileEntity WHERE id = :id);")
@@ -176,8 +241,8 @@ internal abstract class MediaFileDAO{
     @Update
     protected abstract fun updateEntity(entity: MediaFileEntity)
 
-    @Delete
-    protected abstract fun deleteEntity(entity: MediaFileEntity)
+    @Query("DELETE FROM MediaFileEntity WHERE id = :id;")
+    protected abstract fun deleteEntity(id: Long)
 
     //endregion
 }
@@ -212,27 +277,27 @@ internal abstract class ID3TagDAO {
 
     @Transaction
     open fun saveTagOfFile(file: MediaFile) {
-        val existingTagTypes = findTagsForFile(file.entity.id).map { it.type }.toSet()
+        val existingTagTypes = findTagsForFile(file.entityId).map { it.type }.toSet()
         val currentTags = tagFieldsToMap(file.mediaTags)
         val currentTagTypes = currentTags.map { it.key }.toSet()
 
         Utils.diffChanges(existingTagTypes, currentTagTypes).let { (added, deleted, same) ->
             deleted.forEach {
-                deleteEntityForFile(file.entity.id, it)
+                deleteEntityForFile(file.entityId, it)
             }
 
             added.forEach {
-                insertEntity(ID3TagEntity(0, file.entity.id, it, currentTags[it]!!))
+                insertEntity(ID3TagEntity(0, file.entityId, it, currentTags[it]!!))
             }
 
             same.forEach {
-                updateEntity(file.entity.id, it, currentTags[it]!!)
+                updateEntity(file.entityId, it, currentTags[it]!!)
             }
         }
     }
 
     fun deleteAllEntriesOfFile(file: MediaFile) {
-        deleteAllEntitiesForFile(file.entity.id)
+        deleteAllEntitiesForFile(file.entityId)
     }
     //endregion
 
@@ -286,8 +351,8 @@ internal abstract class ID3TagDAO {
 internal abstract class UserTagsDAO{
 
     //region public methods
-    fun getUserTagsForFile(file: MediaFile): List<String>{
-        return getUserTags(file.entity.id).map {
+    fun getUserTagsForFile(fileId: Long): List<String>{
+        return getUserTags(fileId).map {
             it.name
         }
     }
@@ -327,21 +392,21 @@ internal abstract class UserTagsDAO{
         existingTags.filter {
             !tagsSet.contains(it.name)
         }.forEach {
-            removeRelation(it.id, file.entity.id)
+            removeRelation(it.id, file.entityId)
         }
 
         // save relations
         tags.map {
             getUserTagEntityForNames(listOf(it)).first()
         }.mapIndexed { pos, entity ->
-            UserTagRelation(MediaNode.UNALLOCATED_NODE_ID, entity.id, file.entity.id, pos)
+            UserTagRelation(MediaNode.UNALLOCATED_NODE_ID, entity.id, file.entityId, pos)
         }.forEach {
             saveUserTagRelation(it)
         }
     }
 
     fun deleteUserTagsOfFile(file: MediaFile) {
-        removeRelationsForFile(file.entity.id)
+        removeRelationsForFile(file.entityId)
         removeOrphanUserTags()
     }
 

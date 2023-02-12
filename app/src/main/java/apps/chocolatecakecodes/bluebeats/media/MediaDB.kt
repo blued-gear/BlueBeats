@@ -3,6 +3,7 @@ package apps.chocolatecakecodes.bluebeats.media
 import android.os.Handler
 import android.util.Log
 import apps.chocolatecakecodes.bluebeats.database.MediaDirEntity
+import apps.chocolatecakecodes.bluebeats.database.MediaFileDAO
 import apps.chocolatecakecodes.bluebeats.database.MediaFileEntity
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
@@ -42,6 +43,10 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
     private val scanRoots: MutableSet<String>
     private var mediaTree: MediaDir = MediaNode.UNSPECIFIED_DIR
     //TODO collections that maps files to types, tags, ...
+
+    private val mediaFileDao: MediaFileDAO by lazy {
+        RoomDB.DB_INSTANCE.mediaFileDao()
+    }
 
     constructor(libVLC: ILibVLC): this(libVLC, NOOP_EVENT_HANDLER){}
 
@@ -238,7 +243,6 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
 
     private fun updateDir(dir: MediaDir, contents: DirContents){//TODO should a onNodeUpdated be fired if the dir-content changes (new / removed files / dirs)?
         val dirDao = RoomDB.DB_INSTANCE.mediaDirDao()
-        val fileDao = RoomDB.DB_INSTANCE.mediaFileDao()
         var wasChanged = false
 
         // check dirs
@@ -271,7 +275,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
         newDiscoveredFiles.forEach {
             wasChanged = true
             val fileMedia = discoveredFilesWithName[it]!!
-            val newFile = fileDao.newFile(parseFile(fileMedia, dir))
+            val newFile = mediaFileDao.newFile(parseFile(fileMedia, dir))
             dir.addFile(newFile)
             eventHandler.onNewNodeFound(newFile)
         }
@@ -281,7 +285,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
             wasChanged = true
             val child = existingFilesWithName[it]!!
             dir.removeFile(child)
-            fileDao.delete(child)
+            mediaFileDao.delete(child)
             eventHandler.onNodeRemoved(child)
         }
 
@@ -321,7 +325,10 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
         }
 
         val mf = MediaFile(
-            MediaFileEntity(MediaNode.UNALLOCATED_NODE_ID, name, parent.entity.id, type, null)
+            MediaNode.UNALLOCATED_NODE_ID,
+            name,
+            type,
+            { RoomDB.DB_INSTANCE.mediaDirDao().getForId(parent.entity.id) }
         )
 
         parseTags(mf)
@@ -334,7 +341,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
     private fun updateFile(file: MediaFile){
         fileToVlcMedia(file.path)!!.using(false){
             val fsVersion = parseFile(it, file.parent)
-            val unchangedVersion = file.createCopy()
+            val unchangedVersion = mediaFileDao.createCopy(file)
             var wasChanged = false
 
             if(file.type != fsVersion.type) {
@@ -357,7 +364,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
             //TODO update more attributes
 
             if(wasChanged){
-                RoomDB.DB_INSTANCE.mediaFileDao().save(file)
+                mediaFileDao.save(file)
                 eventHandler.onNodeUpdated(file, unchangedVersion)
             }
         }
