@@ -1,6 +1,7 @@
 package apps.chocolatecakecodes.bluebeats.service
 
 import android.annotation.SuppressLint
+import android.app.Notification
 import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
@@ -27,6 +28,7 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.player.VlcPlayer
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.view.MainActivity
+import kotlinx.coroutines.*
 
 
 internal class PlayerService : MediaSessionService(){
@@ -93,6 +95,7 @@ private class NotificationProvider(
     }
 
     private val notificationManager = NotificationManagerCompat.from(context)
+    private var lastThumb: Pair<String, Bitmap>? = null
 
     private val contentAction: PendingIntent
     private val playAction: NotificationCompat.Action
@@ -194,6 +197,13 @@ private class NotificationProvider(
     }
 
     private fun getThumbnail(media: MediaFile): Bitmap {
+        lastThumb?.let {
+            if(it.first == media.path)
+                return it.second
+            else
+                lastThumb = null
+        }
+
         return VlcManagers.getMediaDB().getSubject().getThumbnail(media, -1, -1).let {
             if(it !== null) {
                 it
@@ -202,6 +212,8 @@ private class NotificationProvider(
             } else {
                 otherPlaceholderImg
             }
+        }.also {
+            lastThumb = Pair(media.path, it)
         }
     }
 
