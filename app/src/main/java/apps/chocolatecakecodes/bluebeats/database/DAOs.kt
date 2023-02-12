@@ -44,6 +44,11 @@ internal abstract class MediaDirDAO{
         return cache.get(id) {
             val entity = getEntityForId(id)
 
+            if(entity === null) {
+                // this can happen when the dir is removed concurrently while a cild-file is loaded
+                return@get MediaNode.UNSPECIFIED_DIR
+            }
+
             val parentSupplier = {
                 if(entity.parent < 0)
                     null// all invalid MediaNode-IDs are < 0
@@ -101,7 +106,7 @@ internal abstract class MediaDirDAO{
 
     //region db actions
     @Query("SELECT * FROM MediaDirEntity WHERE id = :id;")
-    protected abstract fun getEntityForId(id: Long): MediaDirEntity
+    protected abstract fun getEntityForId(id: Long): MediaDirEntity?
 
     @Query("SELECT id FROM MediaDirEntity WHERE parent = :parent;")
     protected abstract fun getSubdirIdsInDir(parent: Long): List<Long>
