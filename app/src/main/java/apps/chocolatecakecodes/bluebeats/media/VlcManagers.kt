@@ -5,22 +5,23 @@ import apps.chocolatecakecodes.bluebeats.util.MediaDBEventRelay
 import org.videolan.libvlc.FactoryManager
 import org.videolan.libvlc.interfaces.ILibVLC
 import org.videolan.libvlc.interfaces.ILibVLCFactory
+import java.util.concurrent.atomic.AtomicReference
 
 internal object VlcManagers {
 
-    private var vlc: ILibVLC? = null
-    private var mediaDB: MediaDBEventRelay? = null
+    private val vlc = AtomicReference<ILibVLC?>()
+    private val mediaDB = AtomicReference<MediaDBEventRelay?>()
 
     fun getLibVlc(): ILibVLC{
-        if(vlc === null)
+        if(vlc.get() === null)
             throw IllegalStateException("not initialized yet")
-        return vlc!!
+        return vlc.get()!!
     }
 
     fun getMediaDB(): MediaDBEventRelay{
-        if(mediaDB === null)
+        if(mediaDB.get() === null)
             throw IllegalStateException("not initialized yet")
-        return mediaDB!!
+        return mediaDB.get()!!
     }
 
     fun init(ctx: Context){
@@ -29,16 +30,16 @@ internal object VlcManagers {
                 throw IllegalStateException("already initialized")
 
             val libVlcFactory = FactoryManager.getFactory(ILibVLCFactory.factoryId) as ILibVLCFactory
-            vlc = libVlcFactory.getFromContext(ctx)
+            vlc.set(libVlcFactory.getFromContext(ctx))
 
             val mediaDB = MediaDBEventRelay()
             val mediaMng = MediaDB(getLibVlc(), mediaDB)
             mediaDB.setSubject(mediaMng)
-            this.mediaDB = mediaDB
+            this.mediaDB.set(mediaDB)
         }
     }
 
     fun isInitialized(): Boolean{
-        return vlc !== null
+        return vlc.get() !== null
     }
 }

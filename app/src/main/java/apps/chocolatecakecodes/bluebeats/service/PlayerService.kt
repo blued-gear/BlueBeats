@@ -8,6 +8,7 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Build
 import android.support.v4.media.session.PlaybackStateCompat
+import android.util.Log
 import android.view.KeyEvent
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
@@ -30,6 +31,8 @@ import apps.chocolatecakecodes.bluebeats.view.MainActivity
 internal class PlayerService : MediaSessionService(){
 
     companion object {
+        private const val LOG_TAG = "PlayerService"
+
         // really not the best way but works for my usecase
         private var instance: PlayerService? = null
 
@@ -44,6 +47,15 @@ internal class PlayerService : MediaSessionService(){
 
     override fun onCreate() {
         super.onCreate()
+
+        if(!VlcManagers.isInitialized()) {
+            Log.w(LOG_TAG, "VlcManagers nit initialized, even if they should; calling init")
+            try {
+                VlcManagers.init(this)
+            }catch(e: IllegalStateException) {
+                Log.w(LOG_TAG, "init failed (maybe it got already initialized)", e)
+            }
+        }
 
         player = VlcPlayer(VlcManagers.getLibVlc())
         setupSession()
