@@ -1,6 +1,8 @@
 package apps.chocolatecakecodes.bluebeats.view
 
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
@@ -14,15 +16,18 @@ import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.MediaDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
-import com.anggrayudi.storage.extension.launchOnUiThread
+import apps.chocolatecakecodes.bluebeats.util.MediaDBEventRelay
 import kotlinx.coroutines.*
+import java.util.*
 import java.util.concurrent.atomic.AtomicReference
 
-class FileBrowser(private val mediaDB: MediaDB) : Fragment() {
+class FileBrowser(private val mediaDB: MediaDBEventRelay) : Fragment() {
 
     private val listAdapter: ViewAdapter
     private var listView: RecyclerView? = null
     private var progressBar: ProgressBar? = null
+    private lateinit var scanListener: MediaDB.ScanEventHandler
+    private var currentDir: String = "/"
 
     companion object {
         /**
@@ -32,7 +37,7 @@ class FileBrowser(private val mediaDB: MediaDB) : Fragment() {
          * @return A new instance of fragment FileBrowser.
          */
         @JvmStatic
-        fun newInstance(mediaDB: MediaDB) =
+        fun newInstance(mediaDB: MediaDBEventRelay) =
             FileBrowser(mediaDB).apply {
                 arguments = Bundle().apply {
                     // put args
@@ -44,7 +49,9 @@ class FileBrowser(private val mediaDB: MediaDB) : Fragment() {
         val adapterRef = AtomicReference<ViewAdapter>(null)//XXX self-reference in init is not allowed
         listAdapter = ViewAdapter {
             if(it.type == MediaNode.Type.DIR){
-                adapterRef.get().setEntries(expandMediaDir(it as MediaDir))
+                val dir = it as MediaDir
+                currentDir = dir.path
+                adapterRef.get().setEntries(expandMediaDir(it))
             }else{
                 Log.d("MediaBrowser", "clicked file ${it.path}")
             }
@@ -76,6 +83,52 @@ class FileBrowser(private val mediaDB: MediaDB) : Fragment() {
         listView!!.layoutManager = LinearLayoutManager(this.requireContext())
         listView!!.adapter = listAdapter
 
+        // add media-scan listener
+        scanListener = object : MediaDB.ScanEventHandler(Handler(Looper.getMainLooper())){
+            override fun handleScanStarted() {
+                progressBar!!.isIndeterminate = true
+            }
+            override fun handleScanFinished() {
+                progressBar!!.isIndeterminate = false
+            }
+            override fun handleNewNodeFound(node: MediaNode) {
+                if(node.parent?.path == currentDir)
+                    listAdapter.addEntry(node)
+            }
+            override fun handleNodeRemoved(node: MediaNode) {
+                if(node.parent?.path == currentDir)
+                    listAdapter.removeEntry(node)
+            }
+            override fun handleNodeUpdated(node: MediaNode, oldVersion: MediaNode) {
+
+            }
+            override fun handleScanException(e: Exception) {
+
+            }
+        }
+        mediaDB.addSubscriber(scanListener)
+
+        mediaDB.addSubscriber(object : MediaDB.ScanEventHandler(){// debug listener
+            override fun handleScanStarted() {
+                Log.d("FileBrowser", "scan started")
+            }
+            override fun handleScanFinished() {
+                Log.d("FileBrowser", "scan finished")
+            }
+            override fun handleNewNodeFound(node: MediaNode) {
+                Log.d("FileBrowser", "new node found: ${node.path}")
+            }
+            override fun handleNodeRemoved(node: MediaNode) {
+                Log.d("FileBrowser", "node removed: ${node.path}")
+            }
+            override fun handleNodeUpdated(node: MediaNode, oldVersion: MediaNode) {
+                Log.d("FileBrowser", "node changed: ${node.path}")
+            }
+            override fun handleScanException(e: Exception) {
+                Log.e("FileBrowser", "exception in scan", e)
+            }
+        })
+
         scanMedia()
     }
 
@@ -84,24 +137,24 @@ class FileBrowser(private val mediaDB: MediaDB) : Fragment() {
 
         //TODO stop scan
 
+        mediaDB.removeSubscriber(scanListener)
+
         listView = null
         progressBar = null
     }
 
     private fun scanMedia(){
-        progressBar!!.isIndeterminate = true
+        currentDir = "/"
 
         GlobalScope.launch {
             withContext(Dispatchers.IO){
-                //TODO get all roots
-                val roots = arrayOf("/storage/3EB0-1BF2/Max/")
-                mediaDB.scanInAll(roots[0])
-                val mediaTree = mediaDB.getMediaTreeRoot()
+                mediaDB.getSubject().scanInAll()
 
+                /*
+                val mediaTree = mediaDB.getSubject().getMediaTreeRoot()
                 withContext(Dispatchers.Main){
                     listAdapter.setEntries(expandMediaDir(mediaTree))
-                    progressBar!!.isIndeterminate = false
-                }
+                }*/
             }
         }
     }
@@ -124,7 +177,17 @@ class FileBrowser(private val mediaDB: MediaDB) : Fragment() {
     }
     private class ViewAdapter(private val entryClickHandler: (MediaNode) -> Unit): RecyclerView.Adapter<MediaNodeViewHolder>() {
 
-        private val entries: MutableList<MediaNode> = ArrayList()
+        private val entries: MutableSet<MediaNode>
+
+        init{
+            entries = TreeSet(kotlin.Comparator { a, b ->
+                when {
+                    (a.type == MediaNode.Type.DIR && b.type !== MediaNode.Type.DIR) -> -1
+                    (b.type == MediaNode.Type.DIR && a.type !== MediaNode.Type.DIR) -> 1
+                    else -> b.name.compareTo(a.name)
+                }
+            })
+        }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MediaNodeViewHolder {
             val view = LayoutInflater.from(parent.context).inflate(R.layout.view_media_node, parent, false)
@@ -132,7 +195,7 @@ class FileBrowser(private val mediaDB: MediaDB) : Fragment() {
         }
 
         override fun onBindViewHolder(holder: MediaNodeViewHolder, position: Int) {
-            holder.setData(entries[position])
+            holder.setData(entries.elementAt(position))
         }
 
         override fun getItemCount(): Int {
@@ -142,15 +205,14 @@ class FileBrowser(private val mediaDB: MediaDB) : Fragment() {
         fun setEntries(entries: List<MediaNode>){
             this.entries.clear()
             this.entries.addAll(entries)
-
-            this.entries.sortWith{ a, b ->
-                when {
-                    (a.type == MediaNode.Type.DIR && b.type !== MediaNode.Type.DIR) -> -1
-                    (b.type == MediaNode.Type.DIR && a.type !== MediaNode.Type.DIR) -> 1
-                    else -> b.name.compareTo(a.name)
-                }
-            }
-
+            this.notifyDataSetChanged()
+        }
+        fun addEntry(entry: MediaNode){
+            entries.add(entry)
+            this.notifyDataSetChanged()
+        }
+        fun removeEntry(node: MediaNode){
+            entries.remove(node)
             this.notifyDataSetChanged()
         }
     }

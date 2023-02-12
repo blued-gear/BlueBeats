@@ -14,6 +14,7 @@ import androidx.viewpager2.widget.ViewPager2
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.MediaDB
 import apps.chocolatecakecodes.bluebeats.media.VlcPlayerManager
+import apps.chocolatecakecodes.bluebeats.util.MediaDBEventRelay
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 
@@ -26,6 +27,7 @@ class MainActivity : AppCompatActivity() {
     )
     private lateinit var vlcMng: VlcPlayerManager
     private lateinit var mediaMng: MediaDB
+    private lateinit var mediaMngEventRelay: MediaDBEventRelay
 
     override fun onCreate(savedInstanceState: Bundle?) {
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R){
@@ -38,7 +40,9 @@ class MainActivity : AppCompatActivity() {
         getAppPermissions()
 
         vlcMng = VlcPlayerManager(this)
-        mediaMng = MediaDB(vlcMng.libVlc, this)
+        mediaMngEventRelay = MediaDBEventRelay()
+        mediaMng = MediaDB(vlcMng.libVlc, this, mediaMngEventRelay)
+        mediaMngEventRelay.setSubject(mediaMng)
 
         setupTabs()
     }
@@ -68,11 +72,11 @@ class MainActivity : AppCompatActivity() {
 
     private inner class TabContentAdapter(fragmentManager: FragmentManager, lifecycle: Lifecycle): FragmentStateAdapter(fragmentManager, lifecycle) {
 
-        public val tabs: List<Pair<String, () -> Fragment>>
+        val tabs: List<Pair<String, () -> Fragment>>
 
         init{
             tabs = listOf(
-                Pair("Media", {FileBrowser.newInstance(mediaMng)})
+                Pair("Media", {FileBrowser.newInstance(mediaMngEventRelay)})
             )
         }
 
