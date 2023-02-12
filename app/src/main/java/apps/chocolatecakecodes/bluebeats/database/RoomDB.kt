@@ -26,7 +26,8 @@ import java.util.concurrent.atomic.AtomicReference
     StaticPlaylistEntity::class, StaticPlaylistEntry::class,
     DynamicPlaylistEntity::class,
     RuleGroupEntity::class, RuleGroupEntry::class,
-    //TODO
+    ExcludeRuleEntity::class, ExcludeRuleFileEntry::class, ExcludeRuleDirEntry::class,
+    IncludeRuleEntity::class, IncludeRuleFileEntry::class, IncludeRuleDirEntry::class
 ])
 internal abstract class RoomDB : RoomDatabase() {
 
