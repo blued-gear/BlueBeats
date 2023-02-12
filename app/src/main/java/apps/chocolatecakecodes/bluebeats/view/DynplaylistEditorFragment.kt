@@ -1,6 +1,5 @@
 package apps.chocolatecakecodes.bluebeats.view
 
-import android.graphics.Color
 import android.os.Bundle
 import android.view.View
 import android.widget.EditText
@@ -12,7 +11,7 @@ import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylist
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.Rulelike
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
-import apps.chocolatecakecodes.bluebeats.view.specialviews.createEditor
+import apps.chocolatecakecodes.bluebeats.view.specialviews.createEditorRoot
 import kotlinx.coroutines.*
 
 private const val STATE_PLAYLIST_ID = "key:plId"
@@ -86,7 +85,7 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
         plName.text = playlist.name
         plBufferSize.setText(playlist.iterationSize.toString())
         plRules.addView(
-            createEditor(playlist.rootRuleGroup, this::onRuleEdited, this.requireContext()),
+            createEditorRoot(playlist.rootRuleGroup, this::onRuleEdited, this.requireContext()),
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
         )
     }

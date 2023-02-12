@@ -9,10 +9,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.view.setPadding
-import androidx.fragment.app.FragmentActivity
-import androidx.fragment.app.FragmentContainerView
-import androidx.fragment.app.FragmentManager
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
@@ -41,11 +39,11 @@ internal fun createEditor(item: Rulelike, cb: ChangedCallback, ctx: Context): Vi
 }
 
 //region editors
-internal class DynplaylistGroupEditor(
+private class DynplaylistGroupEditor(
     val group: RuleGroup,
     private val changedCallback: ChangedCallback,
     ctx: Context
-) : FrameLayout(ctx) {
+) : AbstractDynplaylistEditorView(ctx) {
 
     private val ruleGenerators = mapOf(
         context.getString(R.string.dynpl_type_group) to {
@@ -62,23 +60,16 @@ internal class DynplaylistGroupEditor(
         }
     )
 
-    private val expander: ExpandableCard
-    private val header: SimpleAddableRuleHeaderView
-    private val contentList: LinearLayout
+    private val addBtn = SimpleAddableRuleHeaderView.CommonVisuals.addButton(context)
 
     init {
-        header = SimpleAddableRuleHeaderView(context).apply {
-            title.text = "Group"//TODO rules should have names
-            addBtn.setOnClickListener {
-                onAddEntry()
-            }
-        }
-        contentList = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
+        addBtn.setOnClickListener {
+            onAddEntry()
         }
 
-        expander = ExpandableCard(context, header, contentList, true, SUBITEM_INSET).also {
-            this.addView(it, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        header.apply {
+            title.text = "Group"//TODO rules should have names
+            addVisual(addBtn)
         }
 
         listItems()
@@ -88,9 +79,7 @@ internal class DynplaylistGroupEditor(
         contentList.removeAllViews()
 
         val lp = LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
-        group.getExcludesAndRules().map {
-            createEditor(it, changedCallback, this.context)
-        }.forEach {
+        group.getRules().map(this::createItem).forEach {
             contentList.addView(it, lp)
         }
     }
@@ -115,12 +104,25 @@ internal class DynplaylistGroupEditor(
                         dlg.dismiss()
 
                         changedCallback(group)
-                        contentList.addView(createEditor(rule, changedCallback, this@DynplaylistGroupEditor.context))
+                        contentList.addView(createItem(Pair(rule, group.getRuleNegated(rule))))
                         expander.expanded = true
                     }
                 }
             }
             .show()
+    }
+
+    private fun createItem(ruleItem: Pair<Rule, Boolean>): AbstractDynplaylistEditorView {
+        return createEditor(ruleItem.first, changedCallback, this.context).apply {
+            SimpleAddableRuleHeaderView.CommonVisuals.negateCheckbox(context).apply {
+                setOnCheckedChangeListener { _, checked ->
+                    group.setRuleNegated(ruleItem.first, checked)
+                }
+                this.isChecked = ruleItem.second
+            }.let {
+                this.header.addVisual(it)
+            }
+        }
     }
 }
 
@@ -223,30 +225,23 @@ internal class DynplaylistExcludeEditor(
     }
 }
 
-internal class DynplaylistIncludeEditor(
+private class DynplaylistIncludeEditor(
     val rule: IncludeRule,
     private val changedCallback: ChangedCallback,
     ctx: Context
-) : FrameLayout(ctx) {
+) : AbstractDynplaylistEditorView(ctx) {
 
-    private val header: SimpleAddableRuleHeaderView
-    private val contentList: LinearLayout
-    private val expander: ExpandableCard
     private var lastDir: MediaDir = VlcManagers.getMediaDB().getSubject().getMediaTreeRoot()
 
     init {
-        header = SimpleAddableRuleHeaderView(context).apply {
-            title.text = "Include"//TODO rules should have names
-            addBtn.setOnClickListener {
+        header.title.text = "Include"//TODO rules should have names
+
+        SimpleAddableRuleHeaderView.CommonVisuals.addButton(context).apply {
+            setOnClickListener {
                 onAddEntry()
             }
-        }
-        contentList = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-
-        expander = ExpandableCard(context, header, contentList, true, SUBITEM_INSET).also {
-            this.addView(it)
+        }.let {
+            header.addVisual(it, true)
         }
 
         listItems()
@@ -336,34 +331,33 @@ internal class DynplaylistIncludeEditor(
     }
 }
 
-internal class DynplaylistUsertagsEditor(
+private class DynplaylistUsertagsEditor(
     val rule: UsertagsRule,
     private val changedCallback: ChangedCallback,
     ctx: Context
-) : FrameLayout(ctx) {
+) : AbstractDynplaylistEditorView(ctx) {
 
-    private val header: SimpleAddableRuleHeaderView
-    private val contentList: LinearLayout
-    private val expander: ExpandableCard
+    val logicBtn = SimpleAddableRuleHeaderView.CommonVisuals.logicButton(context)
+    val addBtn = SimpleAddableRuleHeaderView.CommonVisuals.addButton(context)
 
     init {
-        header = SimpleAddableRuleHeaderView(context, true).apply {
-            title.text = "Tags"//TODO rules should have names
-            addBtn.setOnClickListener {
-                onAddEntry()
-            }
-            logicBtn.setOnClickListener {
+        header.title.text = "Tags"//TODO rules should have names
+
+        logicBtn.apply {
+            setOnClickListener {
                 onToggleLogicMode()
             }
-
-            setLogicBtnMode(rule.combineWithAnd)
-        }
-        contentList = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
+            setLogicMode(rule.combineWithAnd)
+        }.let {
+            header.addVisual(it)
         }
 
-        expander = ExpandableCard(context, header, contentList, true, SUBITEM_INSET).also {
-            this.addView(it)
+        addBtn.apply {
+            setOnClickListener {
+                onAddEntry()
+            }
+        }.let {
+            header.addVisual(it, true)
         }
 
         listItems()
@@ -417,7 +411,7 @@ internal class DynplaylistUsertagsEditor(
 
     private fun onToggleLogicMode() {
         rule.combineWithAnd = !rule.combineWithAnd
-        header.setLogicBtnMode(rule.combineWithAnd)
+        logicBtn.setLogicMode(rule.combineWithAnd)
     }
 }
 //endregion
@@ -425,41 +419,83 @@ internal class DynplaylistUsertagsEditor(
 //region private utils / vals
 private const val SUBITEM_INSET = 40
 
-private class SimpleAddableRuleHeaderView(
-    ctx: Context,
-    showLogicBtn: Boolean = false
-) : LinearLayout(ctx) {
+private fun createEditor(
+    item: Rulelike,
+    cb: ChangedCallback,
+    ctx: Context
+): AbstractDynplaylistEditorView {
+    return when(item) {
+        is RuleGroup -> DynplaylistGroupEditor(item, cb, ctx)
+        is ExcludeRule -> DynplaylistExcludeEditor(item, cb, ctx)
+        is IncludeRule -> DynplaylistIncludeEditor(item, cb, ctx)
+        is UsertagsRule -> DynplaylistUsertagsEditor(item, cb, ctx)
+        else -> throw IllegalArgumentException("unsupported rule")
+    }
+}
 
-    val title = TextView(context).apply {
-        gravity = Gravity.START or Gravity.CENTER_VERTICAL
+
+private abstract class AbstractDynplaylistEditorView(ctx: Context) : FrameLayout(ctx) {
+
+    protected val expander: ExpandableCard
+    protected val contentList: LinearLayout
+    val header: SimpleAddableRuleHeaderView
+
+    init {
+        contentList = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+
+        header = SimpleAddableRuleHeaderView(context)
+
+        expander = ExpandableCard(context, header, contentList, true, SUBITEM_INSET).also {
+            this.addView(it)
+        }
+    }
+}
+
+private class SimpleAddableRuleHeaderView(ctx: Context) : LinearLayout(ctx) {
+
+    object CommonVisuals {
+
+        fun addButton(ctx: Context) = AppCompatImageButton(ctx).apply {
+            setImageResource(R.drawable.ic_baseline_add_24)
+            imageTintList = ColorStateList.valueOf(Color.BLACK)
+            setBackgroundColor(Color.TRANSPARENT)
+        }
+
+        fun negateCheckbox(ctx: Context) = CheckBox(ctx).apply {
+            text = "negate"
+        }
+
+        fun logicButton(ctx: Context) = LogicButton(ctx)
+
+        class LogicButton(ctx: Context) : AppCompatImageButton(ctx) {
+            fun setLogicMode(and: Boolean) {
+                if(and)
+                    this.setImageResource(R.drawable.ic_intersect)
+                else
+                    this.setImageResource(R.drawable.ic_union)
+            }
+        }
     }
 
-    val logicBtn = ImageButton(context).apply {
-        gravity = Gravity.END
-        setImageResource(R.drawable.ic_union)
-    }
-
-    val addBtn = ImageButton(context).apply {
-        gravity = Gravity.END
-        setImageResource(R.drawable.ic_baseline_add_24)
-        imageTintList = ColorStateList.valueOf(Color.BLACK)
-        setBackgroundColor(Color.TRANSPARENT)
-    }
+    val title = TextView(context)
 
     init {
         this.orientation = HORIZONTAL
 
         addView(title, LayoutParams(0, LayoutParams.MATCH_PARENT, 5f))
-        if(showLogicBtn)
-            addView(logicBtn, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, 0f))
-        addView(addBtn, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, 0f))
     }
 
-    fun setLogicBtnMode(andMode: Boolean) {
-        if(andMode)
-            logicBtn.setImageResource(R.drawable.ic_intersect)
+    /**
+     * @param atEnd if true item will be placed as the last view; else it will be placed after the title
+     */
+    fun addVisual(item: View, atEnd: Boolean = false) {
+        val lp = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, 0f)
+        if(atEnd)
+            this.addView(item, lp)
         else
-            logicBtn.setImageResource(R.drawable.ic_union)
+            this.addView(item, 1, lp)
     }
 }
 
