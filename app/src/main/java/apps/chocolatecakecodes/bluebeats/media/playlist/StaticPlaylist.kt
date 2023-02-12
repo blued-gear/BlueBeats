@@ -40,14 +40,13 @@ internal class StaticPlaylist private constructor(
         media.add(toAdd)
     }
 
-    fun removeMedia(toRemove: MediaFile){
-        media.remove(toRemove)
+    fun removeMedia(index: Int){
+        media.removeAt(index)
     }
 
-    fun moveMedia(toMove: MediaFile, newIndex: Int){
-        if(!media.remove(toMove))
-            throw IllegalArgumentException("playlist does not contain this media")
-        media.add(newIndex, toMove)
+    fun moveMedia(from: Int, newIndex: Int){
+        val item = media.removeAt(from)
+        media.add(newIndex, item)
     }
 
     // DAO as internal class or else entity would have to be internal

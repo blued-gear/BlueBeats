@@ -9,22 +9,26 @@ import android.widget.ImageButton
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
+import apps.chocolatecakecodes.bluebeats.media.playlist.StaticPlaylist
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.RequireNotNull
 import com.mikepenz.fastadapter.FastAdapter
 import com.mikepenz.fastadapter.adapters.GenericFastItemAdapter
-import com.mikepenz.fastadapter.adapters.GenericItemAdapter
+import com.mikepenz.fastadapter.drag.IDraggable
+import com.mikepenz.fastadapter.drag.SimpleDragCallback
 import com.mikepenz.fastadapter.items.AbstractItem
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.SendChannel
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.debounce
 
 internal class Playlists : Fragment() {
 
@@ -35,6 +39,8 @@ internal class Playlists : Fragment() {
     private var viewModel: PlaylistsViewModel by OnceSettable()
     private var mainVM: MainActivityViewModel by OnceSettable()
     private var itemsAdapter: GenericFastItemAdapter by OnceSettable()
+    private var itemsDragCallback: SimpleDragCallback by OnceSettable()
+    private var itemsMoveDebounceChannel: SendChannel<Unit> by OnceSettable()
     private var titleText = RequireNotNull<TextView>()
     private var upBtn = RequireNotNull<ImageButton>()
 
@@ -45,7 +51,7 @@ internal class Playlists : Fragment() {
         viewModel = vmProvider.get(PlaylistsViewModel::class.java)
         mainVM = vmProvider.get(MainActivityViewModel::class.java)
 
-        itemsAdapter = GenericFastItemAdapter()
+        setupFastAdapter()
     }
 
     override fun onCreateView(
@@ -73,16 +79,38 @@ internal class Playlists : Fragment() {
     }
 
     override fun onDestroyView() {
-        super.onDestroyView()
-
         titleText.set(null)
         upBtn.set(null)
+
+        super.onDestroyView()
+    }
+
+    override fun onDestroy() {
+        itemsMoveDebounceChannel.close()
+
+        super.onDestroy()
+    }
+
+    private fun setupFastAdapter() {
+        itemsAdapter = GenericFastItemAdapter()
+
+        itemsDragCallback = SimpleDragCallback()
+        itemsDragCallback.notifyAllDrops = false
+        itemsDragCallback.isDragEnabled = false
+
+        setupItemMoveDebounce()
+        itemsAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
+            override fun onItemRangeMoved(fromPosition: Int, toPosition: Int, itemCount: Int) {
+                onItemsMoved(fromPosition, toPosition, itemCount)
+            }
+        })
     }
 
     private fun setupRecycleView() {
         val recyclerView = this.requireView().findViewById<RecyclerView>(R.id.pls_entries)
         recyclerView.layoutManager = LinearLayoutManager(this.requireContext(), LinearLayoutManager.VERTICAL, false)
         recyclerView.adapter = itemsAdapter
+        ItemTouchHelper(itemsDragCallback).attachToRecyclerView(recyclerView)
     }
 
     //region action handlers
@@ -117,6 +145,36 @@ internal class Playlists : Fragment() {
         TODO()
     }
 
+    @OptIn(FlowPreview::class)
+    private fun setupItemMoveDebounce() {
+        CoroutineScope(Dispatchers.Default).launch {
+            callbackFlow<Unit> {
+                itemsMoveDebounceChannel = channel
+                awaitClose()
+            }.debounce(2000).collect {
+                (viewModel.selectedPlaylist as? StaticPlaylist)?.let {
+                    withContext(Dispatchers.IO) {
+                        RoomDB.DB_INSTANCE.staticPlaylistDao().save(it)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun onItemsMoved(fromPosition: Int, toPosition: Int, itemCount: Int) {
+        val playlist = viewModel.selectedPlaylist!! as StaticPlaylist// only supported static playlist
+
+        CoroutineScope(Dispatchers.IO).launch {
+            (0 until itemCount).map {
+                val from = fromPosition + it
+                val to = toPosition + it
+                playlist.moveMedia(from, to)
+            }
+
+            itemsMoveDebounceChannel.send(Unit)
+        }
+    }
+
     private fun wireUpBtn() {
         upBtn.get().setOnClickListener {
             viewModel.showOverview.postValue(true)
@@ -128,16 +186,21 @@ internal class Playlists : Fragment() {
         viewModel.showOverview.observe(this.viewLifecycleOwner) {
             if(it) {
                 viewModel.playlistItems = null
+                viewModel.selectedPlaylist = null
                 loadPlaylists()
 
                 titleText.get().text = null
                 upBtn.get().visibility = Button.INVISIBLE
+
+                itemsDragCallback.isDragEnabled = false
             } else {
                 viewModel.allLists = null
                 loadPlaylistItems()
 
                 titleText.get().text = viewModel.selectedPlaylist!!.name
                 upBtn.get().visibility = Button.VISIBLE
+
+                itemsDragCallback.isDragEnabled = viewModel.selectedPlaylist is StaticPlaylist
             }
         }
     }
@@ -194,10 +257,12 @@ private class ListsItem(val playlist: PlaylistInfo) : AbstractItem<ListsItem.Vie
     }
 }
 
-private class MediaItem(val media: MediaFile) : AbstractItem<MediaItem.ViewHolder>() {
+private class MediaItem(val media: MediaFile) : AbstractItem<MediaItem.ViewHolder>(), IDraggable {
 
     override val type: Int = R.layout.playlists_fragment * 100 + 2
     override val layoutRes: Int = R.layout.view_media_node
+
+    override val isDraggable: Boolean = true
 
     override fun getViewHolder(v: View) = ViewHolder(v)
 
