@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import org.videolan.libvlc.MediaPlayer
 
 class PlayerViewModel : ViewModel() {
 
@@ -18,6 +19,8 @@ class PlayerViewModel : ViewModel() {
     private val timeTextAsRemainingRW: MutableLiveData<Boolean> = MutableLiveData(false)
     /** if true show the remaining time, instead of the current time, in the player-progress */
     public val timeTextAsRemaining: LiveData<Boolean> = timeTextAsRemainingRW// public read-only property
+    private val chaptersRW: MutableLiveData<Array<MediaPlayer.Chapter>> = MutableLiveData()
+    public val chapters: LiveData<Array<MediaPlayer.Chapter>> = chaptersRW// public read-only property
 
     fun play(media: MediaFile){
         currentMediaRW.postValue(media)
@@ -43,5 +46,9 @@ class PlayerViewModel : ViewModel() {
 
     fun setTimeTextAsRemaining(value: Boolean){
         timeTextAsRemainingRW.postValue(value)
+    }
+
+    fun setChapters(value: Array<MediaPlayer.Chapter>){
+        chaptersRW.postValue(value)
     }
 }
