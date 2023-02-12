@@ -28,10 +28,25 @@ internal data class MediaFileEntity(
     @ColumnInfo(name = "parent", index = true) val parent: Long,
     @ColumnInfo(name = "type", index = true) var type: MediaFile.Type,
 
-    @Embedded(prefix = "mediaTags_")
-    var mediaTags: TagFields,
     @ColumnInfo(name = "chapters", index = false)
     var chaptersJson: String?// store them as JSON because this is the easiest way to store lists
+)
+
+@Entity(
+    foreignKeys = [
+        ForeignKey(entity = MediaFileEntity::class,
+            parentColumns = ["id"], childColumns = ["file"],
+            onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.RESTRICT)
+    ],
+    indices = [
+        Index(value = ["file", "type"], unique = true)
+    ]
+)
+internal data class ID3TagEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long,
+    val file: Long,
+    val type: String,
+    val value: String
 )
 
 @Entity(
@@ -46,10 +61,10 @@ internal data class UserTagEntity(
     foreignKeys = [
         ForeignKey(entity = UserTagEntity::class,
             parentColumns = ["id"], childColumns = ["tag"],
-            onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE),
+            onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.RESTRICT),
         ForeignKey(entity = MediaFileEntity::class,
             parentColumns = ["id"], childColumns = ["file"],
-            onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE)
+            onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.RESTRICT)
     ],
     indices = [Index(value = ["tag", "file"], unique = true)]
 )

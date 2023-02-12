@@ -6,6 +6,7 @@ import apps.chocolatecakecodes.bluebeats.taglib.Chapter
 import apps.chocolatecakecodes.bluebeats.taglib.TagFields
 import apps.chocolatecakecodes.bluebeats.taglib.TagParser
 import apps.chocolatecakecodes.bluebeats.util.CachedReference
+import apps.chocolatecakecodes.bluebeats.util.LazyVar
 import apps.chocolatecakecodes.bluebeats.util.Utils
 
 class MediaFile internal constructor(internal val entity: MediaFileEntity): MediaNode(){
@@ -25,11 +26,9 @@ class MediaFile internal constructor(internal val entity: MediaFileEntity): Medi
             entity.type = value
         }
 
-    var mediaTags: TagFields
-        get() = entity.mediaTags
-        internal set(value) {
-            entity.mediaTags = value
-        }
+    var mediaTags: TagFields by LazyVar<MediaFile, TagFields> {
+        RoomDB.DB_INSTANCE.id3TagDao().getTagsOfFile(entity.id)
+    }
 
     private var loadedChapters: List<Chapter>? = null
     private var chaptersLoaded = false
@@ -79,7 +78,7 @@ class MediaFile internal constructor(internal val entity: MediaFileEntity): Medi
             }
         }
 
-    fun createCopy(): MediaFile{
+    internal fun createCopy(): MediaFile{
         val copy =  MediaFile(entity.copy(id = MediaNode.UNALLOCATED_NODE_ID))
         copy.chapters = this.chapters
         copy.userTags = this.userTags

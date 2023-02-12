@@ -7,6 +7,7 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.taglib.TagFields
 import apps.chocolatecakecodes.bluebeats.util.TimerThread
+import apps.chocolatecakecodes.bluebeats.util.Utils
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
 import java.util.concurrent.TimeUnit
@@ -90,6 +91,13 @@ internal abstract class MediaFileDAO{
 
     private val cache: Cache<Long, MediaFile>
 
+    private val id3TagDao: ID3TagDAO by lazy {
+        RoomDB.DB_INSTANCE.id3TagDao()
+    }
+    private val userTagDao: UserTagsDAO by lazy {
+        RoomDB.DB_INSTANCE.userTagDao()
+    }
+
     init{
         cache = CacheBuilder.newBuilder().weakValues().build()
         TimerThread.INSTANCE.addInterval(TimeUnit.MINUTES.toMillis(5)) {
@@ -100,8 +108,7 @@ internal abstract class MediaFileDAO{
 
     //region public methods
     fun newFile(name: String, type: MediaFile.Type, parent: Long): MediaFile{
-        val fileEntity = MediaFileEntity(MediaNode.UNALLOCATED_NODE_ID, name, parent, type,
-            TagFields(), null)
+        val fileEntity = MediaFileEntity(MediaNode.UNALLOCATED_NODE_ID, name, parent, type, null)
         val id = insertEntity(fileEntity)
 
         return getForId(id)
@@ -111,7 +118,7 @@ internal abstract class MediaFileDAO{
         val newFile = newFile(from.name, from.type, from.parent.entity.id)
 
         // copy extra attributes (TODO update whenever attributes changes)
-        newFile.mediaTags = from.mediaTags
+        newFile.mediaTags = from.mediaTags.clone()
         newFile.userTags = from.userTags
         newFile.chapters = from.chapters
         save(newFile)
@@ -135,10 +142,13 @@ internal abstract class MediaFileDAO{
 
     fun save(file: MediaFile){
         updateEntity(file.entity)
-        RoomDB.DB_INSTANCE.userTagDao().saveUserTagsOfFile(file, file.userTags)
+        userTagDao.saveUserTagsOfFile(file, file.userTags)
+        id3TagDao.saveTagOfFile(file)
     }
 
     fun delete(file: MediaFile){
+        userTagDao.deleteUserTagsOfFile(file)
+        id3TagDao.deleteAllEntriesOfFile(file)
         deleteEntity(file.entity)
         cache.invalidate(file.entity.id)
     }
@@ -169,6 +179,106 @@ internal abstract class MediaFileDAO{
     @Delete
     protected abstract fun deleteEntity(entity: MediaFileEntity)
 
+    //endregion
+}
+
+@Dao
+internal abstract class ID3TagDAO {
+
+    private val mediaFileDao: MediaFileDAO by lazy {
+        RoomDB.DB_INSTANCE.mediaFileDao()
+    }
+
+    // region public methods
+    fun getTagsOfFile(fileId: Long): TagFields {
+        return findTagsForFile(fileId).associate {
+            it.type to it.value
+        }.let {
+            mapToTagFields(it)
+        }
+    }
+
+    fun getFilesWithTag(type: String, value: String): List<MediaFile> {
+        return findFilesWithTag(type, value).map {
+            mediaFileDao.getForId(it)
+        }
+    }
+
+    @Query("SELECT DISTINCT type FROM ID3TagEntity;")
+    abstract fun getAllTagTypes(): List<String>
+
+    @Query("SELECT DISTINCT value FROM ID3TagEntity WHERE type = :type;")
+    abstract fun getAllTypeValues(type: String): List<String>
+
+    @Transaction
+    open fun saveTagOfFile(file: MediaFile) {
+        val existingTagTypes = findTagsForFile(file.entity.id).map { it.type }.toSet()
+        val currentTags = tagFieldsToMap(file.mediaTags)
+        val currentTagTypes = currentTags.map { it.key }.toSet()
+
+        Utils.diffChanges(existingTagTypes, currentTagTypes).let { (added, deleted, same) ->
+            deleted.forEach {
+                deleteEntityForFile(file.entity.id, it)
+            }
+
+            added.forEach {
+                insertEntity(ID3TagEntity(0, file.entity.id, it, currentTags[it]!!))
+            }
+
+            same.forEach {
+                updateEntity(file.entity.id, it, currentTags[it]!!)
+            }
+        }
+    }
+
+    fun deleteAllEntriesOfFile(file: MediaFile) {
+        deleteAllEntitiesForFile(file.entity.id)
+    }
+    //endregion
+
+    //region db actions
+    @Query("SELECT * FROM ID3TagEntity WHERE file = :file;")
+    protected abstract fun findTagsForFile(file: Long): List<ID3TagEntity>
+
+    @Query("SELECT file FROM ID3TagEntity WHERE type = :type AND value = :value;")
+    protected abstract fun findFilesWithTag(type: String, value: String): List<Long>
+
+    @Insert
+    protected abstract fun insertEntity(entity: ID3TagEntity)
+
+    @Query("UPDATE ID3TagEntity SET value = :value WHERE file = :file AND type = :type;")
+    protected abstract fun updateEntity(file: Long, type: String, value: String)
+
+    @Query("DELETE FROM ID3TagEntity WHERE file = :file;")
+    protected abstract fun deleteAllEntitiesForFile(file: Long)
+
+    @Query("DELETE FROM ID3TagEntity WHERE file = :file AND type = :type;")
+    protected abstract fun deleteEntityForFile(file: Long, type: String)
+    //endregion
+
+    //region private methods
+    private fun tagFieldsToMap(tags: TagFields): Map<String, String> {
+        val ret = HashMap<String, String>()
+
+        if(!tags.title.isNullOrEmpty())
+            ret.put("title", tags.title)
+        if(!tags.artist.isNullOrEmpty())
+            ret.put("artist", tags.artist)
+        if(tags.length > 0)
+            ret.put("length", tags.length.toString())
+
+        return ret
+    }
+
+    fun mapToTagFields(tags: Map<String, String>): TagFields {
+        val ret = TagFields()
+
+        tags["title"]?.let { ret.title = it }
+        tags["artist"]?.let { ret.artist = it }
+        tags["length"]?.let { ret.length = it.toLong() }
+
+        return ret
+    }
     //endregion
 }
 
@@ -230,6 +340,11 @@ internal abstract class UserTagsDAO{
         }
     }
 
+    fun deleteUserTagsOfFile(file: MediaFile) {
+        removeRelationsForFile(file.entity.id)
+        removeOrphanUserTags()
+    }
+
     /**
      * removes all UserTags from DB which have no file associated
      */
@@ -265,6 +380,9 @@ internal abstract class UserTagsDAO{
 
     @Query("DELETE FROM UserTagRelation WHERE tag = :tag AND file = :file;")
     protected abstract fun removeRelation(tag: Long, file: Long)
+
+    @Query("DELETE FROM UserTagRelation WHERE file = :file;")
+    protected abstract fun removeRelationsForFile(file: Long)
 
     @Delete
     protected abstract fun removeUserTag(tag: UserTagEntity)

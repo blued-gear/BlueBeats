@@ -12,9 +12,9 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.*
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.*
 import java.util.concurrent.atomic.AtomicReference
 
-@Database(version = 3, entities = [
+@Database(version = 4, entities = [
     MediaDirEntity::class, MediaFileEntity::class,
-    UserTagEntity::class, UserTagRelation::class,
+    ID3TagEntity::class, UserTagEntity::class, UserTagRelation::class,
     PlaylistName::class,
     StaticPlaylistEntity::class, StaticPlaylistEntry::class,
     DynamicPlaylistEntity::class,
@@ -50,6 +50,7 @@ internal abstract class RoomDB : RoomDatabase() {
 
     internal abstract fun mediaDirDao(): MediaDirDAO
     internal abstract fun mediaFileDao(): MediaFileDAO
+    internal abstract fun id3TagDao(): ID3TagDAO
     internal abstract fun userTagDao(): UserTagsDAO
 
     internal abstract fun playlistManager(): PlaylistsManager

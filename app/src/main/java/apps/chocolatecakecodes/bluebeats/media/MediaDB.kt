@@ -321,8 +321,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
         }
 
         val mf = MediaFile(
-            MediaFileEntity(MediaNode.UNALLOCATED_NODE_ID, name, parent.entity.id, type,
-            TagFields(), null)
+            MediaFileEntity(MediaNode.UNALLOCATED_NODE_ID, name, parent.entity.id, type, null)
         )
 
         parseTags(mf)
