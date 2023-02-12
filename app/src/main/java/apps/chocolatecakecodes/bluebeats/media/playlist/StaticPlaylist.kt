@@ -195,13 +195,7 @@ private class StaticPlaylistIterator(
         if(isAtEnd())
             throw NoSuchElementException("end reached")
 
-        currentPosition++
-        if(currentPosition == totalItems) {// not checking for repeat because it is done in isAtEnd()
-            currentPosition = 0
-            if(shuffle)
-                items.shuffle()
-        }
-
+        seek(1)
         return items[currentPosition]
     }
 
@@ -209,11 +203,28 @@ private class StaticPlaylistIterator(
         return items[currentPosition.coerceAtLeast(0)]
     }
 
+    /**
+     * seek relative to the current position
+     * (use negative amount for seeking backward)
+     *
+     * if repeat is true then seeking to one after the last item is allowed;
+     *  this will result to reset the iterator to the first item
+     *
+     * @throws IllegalArgumentException if seeking results in out-of-bounds
+     */
     override fun seek(amount: Int) {
         val newPos = currentPosition + amount
-        if(newPos < 0 || newPos >= totalItems)
+
+        if(newPos == totalItems && repeat) {
+            currentPosition = 0
+
+            if(shuffle)
+                items.shuffle()
+        } else if(newPos >= 0 && newPos < totalItems) {
+            currentPosition = newPos
+        } else {
             throw IllegalArgumentException("seeking by $amount would result in an out-of-bounds position")
-        currentPosition = newPos
+        }
     }
 
     override fun isAtEnd(): Boolean {
