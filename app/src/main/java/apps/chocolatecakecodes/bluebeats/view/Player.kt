@@ -347,11 +347,30 @@ class Player : Fragment() {
 
         override fun onStartTrackingTouch(seekBar: SeekBar?) {
             isSeeking = true
+
+            // cancel hiding of controls while seeking
+            controlsHideCoroutine?.cancel(null)
+            controlsHideCoroutine = null
         }
 
         override fun onStopTrackingTouch(seekBar: SeekBar?) {
             isSeeking = false
             viewModel.updatePlayPosition((player.length * (this@Player.seekBar.progress / SEEK_STEP)).toLong())
+
+            // re-schedule control-hiding
+            if(viewModel.isPlaying.value == true) {// only re-hide if playing
+                controlsHideCoroutine?.cancel(null)
+                controlsHideCoroutine = CoroutineScope(Dispatchers.Default).launch {
+                    delay(CONTROLS_FADE_OUT_DELAY)
+                    launch(Dispatchers.Main) {
+                        if (viewModel.isPlaying.value == true) {// only re-hide if playing
+                            runControlsTransition(false)
+                        }
+
+                        controlsHideCoroutine = null
+                    }
+                }
+            }
         }
     }
 
