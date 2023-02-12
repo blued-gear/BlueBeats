@@ -261,6 +261,7 @@ internal class Playlists : Fragment() {
 
         titleText.get().text = null
         upBtn.get().visibility = Button.INVISIBLE
+        itemsAdapter.getSelectExtension().isSelectable = false
     }
 
     private fun showPlaylistItems() {
@@ -272,6 +273,7 @@ internal class Playlists : Fragment() {
 
         titleText.get().text = viewModel.selectedPlaylist!!.name
         upBtn.get().visibility = Button.VISIBLE
+        itemsAdapter.getSelectExtension().isSelectable = true
     }
 
     private fun loadPlaylists(refresh: Boolean) {
