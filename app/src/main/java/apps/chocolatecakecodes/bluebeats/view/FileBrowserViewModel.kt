@@ -16,6 +16,7 @@ class FileBrowserViewModel : ViewModel() {
     public val currentDir: LiveData<MediaDir> = currentDirRW
     private val selectedFileRW = MutableLiveData<MediaFile>()
     public val selectedFile: LiveData<MediaFile> = selectedFileRW
+    public val storagePermissionsGranted = MutableLiveData<Boolean>()
 
     fun mediaScanned(){
         mediaWasScanned = true

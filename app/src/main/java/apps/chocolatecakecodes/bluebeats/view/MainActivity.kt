@@ -30,11 +30,14 @@ import java.time.Duration
 
 class MainActivity : AppCompatActivity() {
 
-    private val STORAGE_PER_REQ_ID = 11
-    private val PERMISSIONS_STORAGE = arrayOf(
-        Manifest.permission.READ_EXTERNAL_STORAGE,
-        Manifest.permission.WRITE_EXTERNAL_STORAGE
-    )
+    companion object {
+        internal const val STORAGE_PERM_REQ_ID = 11
+
+        private val PERMISSIONS_STORAGE = arrayOf(
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+        )
+    }
 
     private lateinit var viewModel: MainActivityViewModel
     private lateinit var mainContentView: View
@@ -48,8 +51,6 @@ class MainActivity : AppCompatActivity() {
         mainContentView = this.findViewById(R.id.main_content)
         viewModel = ViewModelProvider(this).get(MainActivityViewModel::class.java)
 
-        getAppPermissions()
-
         RoomDB.init(this)
 
         if(!VlcManagers.isInitialized())
@@ -59,6 +60,8 @@ class MainActivity : AppCompatActivity() {
         listMediaRoots()
         setupTabs()
         setupSystemBarsHider()
+
+        getAppPermissions()
     }
 
     override fun onBackPressed() {
@@ -70,9 +73,33 @@ class MainActivity : AppCompatActivity() {
             ActivityCompat.requestPermissions(
                 this,
                 PERMISSIONS_STORAGE,
-                STORAGE_PER_REQ_ID
+                STORAGE_PERM_REQ_ID
             )
+        }else{
+            val fbVM = ViewModelProvider(this).get(FileBrowserViewModel::class.java)
+            fbVM.storagePermissionsGranted.postValue(true)
         }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if(requestCode != STORAGE_PERM_REQ_ID) return
+
+        var grantSuccessful = true
+        for(res in grantResults){
+            if(res != PackageManager.PERMISSION_GRANTED){
+                grantSuccessful = false
+                break
+            }
+        }
+
+        val fbVM = ViewModelProvider(this).get(FileBrowserViewModel::class.java)
+        fbVM.storagePermissionsGranted.postValue(grantSuccessful)
     }
 
     private fun setupTabs(){
