@@ -8,6 +8,7 @@ import android.view.LayoutInflater
 import android.view.Menu
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -22,7 +23,7 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.Utils
-import apps.chocolatecakecodes.bluebeats.view.specialviews.FileBrowserFragment
+import apps.chocolatecakecodes.bluebeats.view.specialviews.FileBrowserView
 import apps.chocolatecakecodes.bluebeats.view.specialviews.SpinnerTextbox
 import apps.chocolatecakecodes.bluebeats.view.specialviews.mediaNodeToItem
 import kotlinx.coroutines.CoroutineScope
@@ -43,7 +44,7 @@ class FileBrowser : Fragment() {
     private lateinit var mainMenu: Menu
     private var progressBar: ProgressBar? = null
     private lateinit var scanListener: MediaDB.ScanEventHandler
-    private var browser: FileBrowserFragment by OnceSettable()
+    private var browser: FileBrowserView by OnceSettable()
     private var scanRequested = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,7 +66,8 @@ class FileBrowser : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        browser = this.childFragmentManager.findFragmentById(R.id.fb_entrylist) as FileBrowserFragment
+        browser = FileBrowserView(this.requireContext())
+        view.findViewById<FrameLayout>(R.id.fb_entrylist).addView(browser)
         progressBar = view.findViewById(R.id.fb_progress)
 
         setupBrowser()

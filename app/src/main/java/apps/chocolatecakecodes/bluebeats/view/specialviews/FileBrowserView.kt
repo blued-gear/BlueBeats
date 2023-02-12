@@ -1,5 +1,6 @@
 package apps.chocolatecakecodes.bluebeats.view.specialviews
 
+import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -30,7 +31,7 @@ fun mediaNodeToItem(node: MediaNode): AbstractItem<*>? = when(node) {
     else -> null
 }
 
-internal class FileBrowserFragment: Fragment(){
+internal class FileBrowserView(context: Context): FrameLayout(context){
 
     var itemClickListener: ((MediaNode) -> Unit)? = null
     var itemSelectionChangedListener: ((MediaNode, Boolean) -> Unit)? = null
@@ -67,25 +68,9 @@ internal class FileBrowserFragment: Fragment(){
 
     private lateinit var listView: RecyclerView
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    init {
         setupRecyclerViewAndAdapter()
-    }
-
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        return FrameLayout(this.requireContext()).apply {
-            addView(listView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
-        }
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        currentDir?.let {
-            expandDir(it)
-        }
+        this.addView(listView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     }
 
     fun setSelectable(filesSelectable: Boolean, dirsSelectable: Boolean, multiselect: Boolean) {
@@ -153,7 +138,7 @@ internal class FileBrowserFragment: Fragment(){
             }
         }
 
-        listView = RecyclerView(this.requireContext()).apply {
+        listView = RecyclerView(this.context).apply {
             layoutManager = LinearLayoutManager(context)
             adapter = listAdapter
         }
