@@ -9,78 +9,48 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ProgressBar
 import android.widget.TextView
-import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.MediaDB
-import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
-import apps.chocolatecakecodes.bluebeats.util.MediaDBEventRelay
+import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.*
-import java.util.concurrent.atomic.AtomicReference
 
-class FileBrowser(private val mediaDB: MediaDBEventRelay) : Fragment() {
+class FileBrowser : Fragment() {
 
-    private lateinit var playerVM: PlayerViewModel
-    private lateinit var mainVM: MainActivityViewModel
-    private val listAdapter: ViewAdapter
+    companion object {
+        @JvmStatic
+        fun newInstance() = FileBrowser()
+    }
+
+    private var viewModel: FileBrowserViewModel by OnceSettable()
+    private var playerVM: PlayerViewModel by OnceSettable()
+    private var mainVM: MainActivityViewModel by OnceSettable()
+    private var listAdapter: ViewAdapter by OnceSettable()
     private var listView: RecyclerView? = null
     private var progressBar: ProgressBar? = null
     private lateinit var scanListener: MediaDB.ScanEventHandler
-    private lateinit var currentDir: MediaDir
-
-    companion object {
-        /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
-         *
-         * @return A new instance of fragment FileBrowser.
-         */
-        @JvmStatic
-        fun newInstance() =
-            FileBrowser(VlcManagers.getMediaDB()).apply {
-                arguments = Bundle().apply {
-                    // put args
-                }
-            }
-    }
-
-    init{
-        val adapterRef = AtomicReference<ViewAdapter>(null)//XXX self-reference in init is not allowed
-        listAdapter = ViewAdapter {
-            if(it is MediaDir){
-                currentDir = it
-                expandMediaDir(it){
-                    withContext(Dispatchers.Main){
-                        adapterRef.get().setEntries(it)
-                    }
-                }
-            }else if(it is MediaFile){
-                mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
-                playerVM.play(it)
-            }
-        }
-        adapterRef.set(listAdapter)
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        this.arguments.let{
-            // read args
-        }
 
         val vmProvider = ViewModelProvider(this.requireActivity())
+        viewModel = vmProvider.get(FileBrowserViewModel::class.java)
         playerVM = vmProvider.get(PlayerViewModel::class.java)
         mainVM = vmProvider.get(MainActivityViewModel::class.java)
+
+        setupAdapter()
+
+        scanMedia()
     }
 
     override fun onCreateView(
@@ -101,21 +71,43 @@ class FileBrowser(private val mediaDB: MediaDBEventRelay) : Fragment() {
         listView!!.layoutManager = LinearLayoutManager(this.requireContext())
         listView!!.adapter = listAdapter
 
+        wireObservers()
+        wireScanListeners()
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+
+        //TODO stop scan
+
+        viewModel.mediaDB.removeSubscriber(scanListener)
+
+        listView = null
+        progressBar = null
+    }
+
+    private fun wireObservers(){
         // add handler for back button (to get one dir up)
         mainVM.addBackPressListener(this.viewLifecycleOwner){
             // check if we can go up by one dir
-            val parentDir = currentDir.parent
+            val parentDir = viewModel.currentDir.value!!.parent
             if (parentDir !== null) {
-                currentDir = parentDir
-                expandMediaDir(parentDir) {
+                viewModel.setCurrentDir(parentDir)
+            }
+        }
+
+        viewModel.currentDir.observe(this.viewLifecycleOwner){
+            if(it !== null){
+                expandMediaDir(it) {
                     withContext(Dispatchers.Main) {
                         listAdapter.setEntries(it)
                     }
                 }
             }
         }
+    }
 
-        // add media-scan listener
+    private fun wireScanListeners(){
         scanListener = object : MediaDB.ScanEventHandler(Handler(Looper.getMainLooper())){
             override fun handleScanStarted() {
                 progressBar!!.isIndeterminate = true
@@ -124,11 +116,11 @@ class FileBrowser(private val mediaDB: MediaDBEventRelay) : Fragment() {
                 progressBar!!.isIndeterminate = false
             }
             override fun handleNewNodeFound(node: MediaNode) {
-                if(node.parent == currentDir)
+                if(node.parent == viewModel.currentDir.value)
                     listAdapter.addEntry(node)
             }
             override fun handleNodeRemoved(node: MediaNode) {
-                if(node.parent == currentDir)
+                if(node.parent == viewModel.currentDir.value)
                     listAdapter.removeEntry(node)
             }
             override fun handleNodeUpdated(node: MediaNode, oldVersion: MediaNode) {
@@ -138,12 +130,12 @@ class FileBrowser(private val mediaDB: MediaDBEventRelay) : Fragment() {
 
             }
         }
-        mediaDB.addSubscriber(scanListener)
+        viewModel.mediaDB.addSubscriber(scanListener)
 
-        mediaDB.addSubscriber(object : MediaDB.ScanEventHandler(){// debug listener
-            override fun handleScanStarted() {
-                Log.d("FileBrowser", "scan started")
-            }
+        viewModel.mediaDB.addSubscriber(object : MediaDB.ScanEventHandler(){// debug listener
+        override fun handleScanStarted() {
+            Log.d("FileBrowser", "scan started")
+        }
             override fun handleScanFinished() {
                 Log.d("FileBrowser", "scan finished")
             }
@@ -160,35 +152,39 @@ class FileBrowser(private val mediaDB: MediaDBEventRelay) : Fragment() {
                 Log.e("FileBrowser", "exception in scan", e)
             }
         })
-
-        scanMedia()
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-
-        //TODO stop scan
-
-        mediaDB.removeSubscriber(scanListener)
-
-        listView = null
-        progressBar = null
     }
 
     private fun scanMedia(){
+        if(viewModel.mediaWasScanned)
+            return
+
         CoroutineScope(Dispatchers.IO).launch {
-            mediaDB.getSubject().loadDB()
+            val mediaDB = viewModel.mediaDB.getSubject()
 
-            // show root
-            val mediaTreeRoot = mediaDB.getSubject().getMediaTreeRoot()
-            currentDir = mediaTreeRoot
-            expandMediaDir(mediaTreeRoot){
-                withContext(Dispatchers.Main){
-                    listAdapter.setEntries(it)
+            mediaDB.loadDB()
+
+            viewModel.setCurrentDir(mediaDB.getMediaTreeRoot())
+
+            viewModel.mediaScanned()// call before scanInAll to prevent calls to scanMedia() before scan was complete
+
+            mediaDB.scanInAll()
+        }
+    }
+
+    private fun setupAdapter(){
+        listAdapter = ViewAdapter {
+            if(it is MediaDir){
+                viewModel.setCurrentDir(it)
+                expandMediaDir(it){
+                    withContext(Dispatchers.Main){
+                        listAdapter.setEntries(it)
+                    }
                 }
+            }else if(it is MediaFile){
+                viewModel.selectFile(it)
+                mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
+                playerVM.play(it)
             }
-
-            mediaDB.getSubject().scanInAll()
         }
     }
 
