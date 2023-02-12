@@ -1,5 +1,7 @@
 package apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist
 
+import android.os.Parcel
+import android.os.Parcelable
 import androidx.room.*
 import apps.chocolatecakecodes.bluebeats.database.*
 import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
@@ -112,6 +114,55 @@ internal class IncludeRule private constructor(
             .flatMap(this::expandDirRecursive)
             .plus(dir.getFiles())
             .toSet()
+    }
+
+    override fun describeContents(): Int {
+        return 0
+    }
+
+    override fun writeToParcel(dest: Parcel, flags: Int) {
+        if(isOriginal)
+            throw IllegalStateException("only copies my be serialized (there must only be one original)")
+
+        dest.writeLong(entityId)
+        share.writeToParcel(dest, flags)
+
+        dest.writeInt(dirs.size)
+        dirs.forEach {
+            dest.writeLong(it.key.entity.id)
+            Utils.parcelWriteBoolean(dest, it.value)
+        }
+
+        dest.writeInt(files.size)
+        files.forEach {
+            dest.writeLong(it.entity.id)
+        }
+    }
+
+    companion object CREATOR : Parcelable.Creator<IncludeRule> {
+
+        override fun createFromParcel(parcel: Parcel): IncludeRule {
+            return IncludeRule(
+                parcel.readLong(),
+                false,
+                initialShare = Rule.Share.CREATOR.createFromParcel(parcel)
+            ).apply {
+                for(i in 0 until parcel.readInt()) {
+                    dirs.put(
+                        RoomDB.DB_INSTANCE.mediaDirDao().getForId(parcel.readLong()),
+                        Utils.parcelReadBoolean(parcel)
+                    )
+                }
+
+                for(i in 0 until parcel.readInt()) {
+                    files.add(RoomDB.DB_INSTANCE.mediaFileDao().getForId(parcel.readLong()))
+                }
+            }
+        }
+
+        override fun newArray(size: Int): Array<IncludeRule?> {
+            return arrayOfNulls(size)
+        }
     }
 
     @Dao

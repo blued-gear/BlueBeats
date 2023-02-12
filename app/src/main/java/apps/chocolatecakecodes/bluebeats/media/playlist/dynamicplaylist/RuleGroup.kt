@@ -1,11 +1,16 @@
 package apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist
 
+import android.os.Parcel
+import android.os.Parcelable
 import androidx.room.*
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.util.Utils
+import apps.chocolatecakecodes.bluebeats.util.castTo
+import apps.chocolatecakecodes.bluebeats.util.removeIfSingle
 import apps.chocolatecakecodes.bluebeats.util.takeOrAll
 import java.util.*
+import kotlin.collections.ArrayList
 
 internal class RuleGroup private constructor(
     private val entityId: Long,
@@ -194,6 +199,60 @@ internal class RuleGroup private constructor(
 
     override fun hashCode(): Int {
         return Objects.hash(this.javaClass.canonicalName, getRules())
+    }
+
+    /**
+     * replace the rule of this group with a copy (this instance must not be an original)
+     */
+    private fun takeoverRule(rule: GenericRule) {
+        if(isOriginal)
+            throw IllegalStateException("can not takeover rule from original")
+
+        this.rules.removeIfSingle { it.first == rule }?.let {
+            addRule(it.first.copy() as GenericRule, it.second)
+        } ?: throw IllegalArgumentException("rule was not in this group")
+    }
+
+    override fun describeContents(): Int {
+        return 0
+    }
+
+    override fun writeToParcel(dest: Parcel, flags: Int) {
+        if(isOriginal)
+            throw IllegalStateException("only copies my be serialized (there must only be one original)")
+
+        dest.writeLong(entityId)
+        share.writeToParcel(dest, flags)
+        Utils.parcelWriteBoolean(dest, combineWithAnd)
+
+        dest.writeInt(rules.size)
+        rules.forEach {
+            dest.writeParcelable(it.first, flags)
+            Utils.parcelWriteBoolean(dest, it.second)
+        }
+    }
+
+    companion object CREATOR : Parcelable.Creator<RuleGroup> {
+
+        override fun createFromParcel(parcel: Parcel): RuleGroup {
+            return RuleGroup(
+                parcel.readLong(),
+                false,
+                Rule.Share.CREATOR.createFromParcel(parcel),
+                Utils.parcelReadBoolean(parcel)
+            ).apply {
+                for(i in 0 until parcel.readInt()) {
+                    rules.add(Pair(
+                        parcel.readParcelable(Rule::class.java.classLoader)!!,
+                        Utils.parcelReadBoolean(parcel)
+                    ))
+                }
+            }
+        }
+
+        override fun newArray(size: Int): Array<RuleGroup?> {
+            return arrayOfNulls(size)
+        }
     }
 
     @Suppress("NAME_SHADOWING")

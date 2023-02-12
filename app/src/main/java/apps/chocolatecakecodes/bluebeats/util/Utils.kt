@@ -1,7 +1,9 @@
 package apps.chocolatecakecodes.bluebeats.util
 
 import android.content.Context
+import android.os.Build
 import android.os.Looper
+import android.os.Parcel
 import android.view.*
 import android.widget.PopupWindow
 import androidx.documentfile.provider.DocumentFile
@@ -143,6 +145,19 @@ object Utils {
             old.intersect(new)
         )
     }
+
+    fun parcelWriteBoolean(dest: Parcel, bool: Boolean) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+            dest.writeBoolean(bool)
+        else
+            dest.writeInt(if(bool) 1 else 0)
+    }
+    fun parcelReadBoolean(src: Parcel): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+            src.readBoolean()
+        else
+            src.readInt() != 0
+    }
 }
 
 inline fun <T : IVLCObject<E>, E : AbstractVLCEvent?> T.using(retain: Boolean = true, block: (T) -> Unit){
@@ -162,6 +177,23 @@ fun <T, I : Iterable<T>> I.takeOrAll(amount: Int): List<T> {
         this.toList()
     else
         this.take(amount)
+}
+
+/**
+ * removes the first element which satisfies the filter
+ * @return the removed element or null if none matched the filter
+ */
+fun <T, I : MutableIterable<T>> I.removeIfSingle(filter: (T) -> Boolean): T? {
+    val iter = this.iterator()
+    while (iter.hasNext()) {
+        val el = iter.next()
+        if (filter(el)) {
+            iter.remove()
+            return el
+        }
+    }
+
+    return null
 }
 
 inline fun <reified T> Any.castTo(): T {

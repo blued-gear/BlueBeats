@@ -1,11 +1,14 @@
 package apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist
 
+import android.os.Parcel
+import android.os.Parcelable
 import androidx.room.*
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import apps.chocolatecakecodes.bluebeats.util.takeOrAll
 import java.util.*
+import kotlin.collections.ArrayList
 import kotlin.collections.HashSet
 
 internal class UsertagsRule private constructor(
@@ -81,6 +84,41 @@ internal class UsertagsRule private constructor(
     private fun combineOr(results: Map<MediaFile, List<String>>): Set<MediaFile> {
         // already combined by getFilesForTags()
         return results.keys
+    }
+
+    override fun describeContents(): Int {
+        return 0
+    }
+
+    override fun writeToParcel(dest: Parcel, flags: Int) {
+        if(isOriginal)
+            throw IllegalStateException("only copies my be serialized (there must only be one original)")
+
+        share.writeToParcel(dest, flags)
+        Utils.parcelWriteBoolean(dest, combineWithAnd)
+        dest.writeLong(entityId)
+        dest.writeStringList(tags.toList())
+    }
+
+    companion object CREATOR : Parcelable.Creator<UsertagsRule> {
+
+        override fun createFromParcel(parcel: Parcel): UsertagsRule {
+            return UsertagsRule(
+                Rule.Share.CREATOR.createFromParcel(parcel),
+                Utils.parcelReadBoolean(parcel),
+                false,
+                parcel.readLong()
+            ).apply {
+                ArrayList<String>().let {
+                    parcel.readStringList(it)
+                    tags.addAll(it)
+                }
+            }
+        }
+
+        override fun newArray(size: Int): Array<UsertagsRule?> {
+            return arrayOfNulls(size)
+        }
     }
 
     @Dao
