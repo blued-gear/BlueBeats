@@ -10,12 +10,15 @@ import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylist
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGroup
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.Rulelike
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import com.mikepenz.fastadapter.adapters.GenericFastItemAdapter
 import com.mikepenz.fastadapter.expandable.getExpandableExtension
 import kotlinx.coroutines.*
 
 private const val STATE_PLAYLIST_ID = "key:plId"
+private const val STATE_MODIFIED = "key:mod"
 
 internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dyneditor_fragment) {
 
@@ -30,6 +33,8 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
 
     private var adapter: GenericFastItemAdapter by OnceSettable()
 
+    private var modified: Boolean = false
+
     constructor(playlist: DynamicPlaylist) : this() {
         this.playlist = playlist
     }
@@ -38,6 +43,7 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
         super.onCreate(savedInstanceState)
 
         if(savedInstanceState !== null){
+            modified = savedInstanceState.getBoolean(STATE_MODIFIED)
             val plId = savedInstanceState.getLong(STATE_PLAYLIST_ID)
             CoroutineScope(Dispatchers.IO).launch {
                 playlist = playlistDao.load(plId)
@@ -54,6 +60,7 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
 
+        outState.putBoolean(STATE_MODIFIED, modified)
         runBlocking {
             withContext(Dispatchers.IO) {
                 outState.putLong(STATE_PLAYLIST_ID, playlistManager.getPlaylistId(playlist.name))
@@ -79,10 +86,21 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
         showData()
     }
 
+    override fun onStop() {
+        super.onStop()
+
+        if(modified) {
+            CoroutineScope(Dispatchers.IO).launch {
+                RoomDB.DB_INSTANCE.dynamicPlaylistDao().save(playlist)
+                modified = false
+            }
+        }
+    }
+
     private fun setupAdapter() {
         adapter = GenericFastItemAdapter()
         adapter.getExpandableExtension()
-        adapter.add(createEditor(playlist.rootRuleGroup))
+        adapter.add(createEditor(playlist.rootRuleGroup, this::onRuleEdited))
     }
 
     private fun setupRecyclerView() {
@@ -93,5 +111,24 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
     private fun showData() {
         plName.text = playlist.name
         plBufferSize.setText(playlist.iterationSize.toString())
+    }
+
+    private fun onRuleEdited(rule: Rulelike) {
+        modified = true
+
+        if(rule is RuleGroup) {
+            // need to re-expand item or else the new entry would not be shown
+            val item = adapter.adapterItems.indexOfFirst {
+                if(it is DynplaylistGroupEditor)
+                    it.group === rule
+                else
+                    false
+            }
+            assert(item != -1)
+            adapter.getExpandableExtension().let {
+                it.collapse(item)
+                it.expand(item)
+            }
+        }
     }
 }

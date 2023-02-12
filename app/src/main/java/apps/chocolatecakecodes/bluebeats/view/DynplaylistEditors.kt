@@ -6,14 +6,14 @@ import android.graphics.Color
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageButton
-import android.widget.LinearLayout
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
+import androidx.appcompat.app.AlertDialog
 import apps.chocolatecakecodes.bluebeats.R
+import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.ExcludeRule
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.IncludeRule
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.Rule
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGroup
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.Rulelike
 import apps.chocolatecakecodes.bluebeats.view.specialitems.NestedExpandableItem
@@ -22,18 +22,27 @@ import com.mikepenz.fastadapter.IParentItem
 import com.mikepenz.fastadapter.ISubItem
 import com.mikepenz.fastadapter.expandable.items.AbstractExpandableItem
 import com.mikepenz.fastadapter.items.AbstractItem
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-internal fun createEditor(item: Rulelike): AbstractExpandableItem<*> {
+internal typealias ChangedCallback = (Rulelike) -> Unit
+
+internal fun createEditor(item: Rulelike, cb: ChangedCallback): AbstractExpandableItem<*> {
     return when(item) {
-        is RuleGroup -> DynplaylistGroupEditor(item)
-        is ExcludeRule -> DynplaylistExcludeEditor(item)
-        is IncludeRule -> DynplaylistIncludeEditor(item)
+        is RuleGroup -> DynplaylistGroupEditor(item, cb)
+        is ExcludeRule -> DynplaylistExcludeEditor(item, cb)
+        is IncludeRule -> DynplaylistIncludeEditor(item, cb)
         else -> throw IllegalArgumentException("unsupported rule")
     }
 }
 
 //region editors
-internal class DynplaylistGroupEditor(val group: RuleGroup) : NestedExpandableItem<DynplaylistGroupEditor.ViewHolder>(withBorder = true) {
+internal class DynplaylistGroupEditor(
+    val group: RuleGroup,
+    private val changedCallback: ChangedCallback
+) : NestedExpandableItem<DynplaylistGroupEditor.ViewHolder>(withBorder = true) {
 
     override val type: Int = RuleGroup::class.hashCode()
     override val layoutRes: Int = -1
@@ -46,15 +55,9 @@ internal class DynplaylistGroupEditor(val group: RuleGroup) : NestedExpandableIt
         listRules()
     }
 
-    override var isExpanded: Boolean
-        get() = super.isExpanded
-        set(value) {
-            super.isExpanded = value
-        }
-
     private fun listRules() {
-        addSubItems(group.getExcludes().map(::createEditor))
-        addSubItems(group.getRules().map(::createEditor))
+        addSubItems(group.getExcludes().map { createEditor(it, changedCallback) })
+        addSubItems(group.getRules().map { createEditor(it, changedCallback) })
     }
 
     override fun createView(ctx: Context, parent: ViewGroup?): View {
@@ -69,7 +72,23 @@ internal class DynplaylistGroupEditor(val group: RuleGroup) : NestedExpandableIt
 
     internal class ViewHolder(view: View) : FastAdapter.ViewHolder<DynplaylistGroupEditor>(view) {
 
+        private val ruleGenerators = mapOf(
+            view.context.getString(R.string.dynpl_type_group) to {
+                RoomDB.DB_INSTANCE.dplRuleGroupDao().createNew(Rule.Share(1f, true))
+            },
+            view.context.getString(R.string.dynpl_type_exclude) to {
+                RoomDB.DB_INSTANCE.dplExcludeRuleDao().createNew()
+            },
+            view.context.getString(R.string.dynpl_type_include) to {
+                RoomDB.DB_INSTANCE.dplIncludeRuleDao().createNew(Rule.Share(1f, true))
+            }
+        )
+
+        private var item: DynplaylistGroupEditor? = null
+
         override fun bindView(item: DynplaylistGroupEditor, payloads: List<Any>) {
+            this.item = item
+
             val view = this.itemView as SimpleAddableRuleContentView
             view.title.text = "Group"//TODO rules should have names
             view.addBtn.setOnClickListener {
@@ -78,18 +97,47 @@ internal class DynplaylistGroupEditor(val group: RuleGroup) : NestedExpandableIt
         }
 
         override fun unbindView(item: DynplaylistGroupEditor) {
+            this.item = null
+
             val view = this.itemView as SimpleAddableRuleContentView
             view.addBtn.setOnContextClickListener(null)
         }
 
         private fun onAddRule() {
-            //TODO show dlg with spinner
-            Toast.makeText(this.itemView.context, "DynplaylistGroupEditor::add clicked", Toast.LENGTH_SHORT).show()
+            val spinner = Spinner(this.itemView.context).apply {
+                this.adapter = ArrayAdapter(context, android.R.layout.simple_spinner_item, ruleGenerators.keys.toTypedArray())
+            }
+
+            AlertDialog.Builder(this.itemView.context)
+                .setTitle(R.string.dynpl_edit_select_rule_type)
+                .setView(spinner)
+                .setNegativeButton(R.string.misc_cancel) { dlg, _ ->
+                    dlg.cancel()
+                }
+                .setPositiveButton(R.string.misc_add) {dlg, _ ->
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val rule = ruleGenerators[spinner.selectedItem]!!()
+                        item!!.group.addRule(rule)
+
+                        withContext(Dispatchers.Main) {
+                            dlg.dismiss()
+
+                            item!!.let {
+                                it.addSubItem(createEditor(rule, it.changedCallback))
+                                it.changedCallback(it.group)
+                            }
+                        }
+                    }
+                }
+                .show()
         }
     }
 }
 
-internal class DynplaylistExcludeEditor(val rule: ExcludeRule) : NestedExpandableItem<DynplaylistExcludeEditor.ViewHolder>(withBorder = true) {
+internal class DynplaylistExcludeEditor(
+    val rule: ExcludeRule,
+    private val changedCallback: ChangedCallback
+) : NestedExpandableItem<DynplaylistExcludeEditor.ViewHolder>(withBorder = true) {
 
     override val type: Int = ExcludeRule::class.hashCode()
     override val layoutRes: Int = -1
@@ -139,7 +187,10 @@ internal class DynplaylistExcludeEditor(val rule: ExcludeRule) : NestedExpandabl
     }
 }
 
-internal class DynplaylistIncludeEditor(val rule: IncludeRule) : NestedExpandableItem<DynplaylistIncludeEditor.ViewHolder>(withBorder = true) {
+internal class DynplaylistIncludeEditor(
+    val rule: IncludeRule,
+    private val changedCallback: ChangedCallback
+) : NestedExpandableItem<DynplaylistIncludeEditor.ViewHolder>(withBorder = true) {
 
     override val type: Int = IncludeRule::class.hashCode()
     override val layoutRes: Int = -1

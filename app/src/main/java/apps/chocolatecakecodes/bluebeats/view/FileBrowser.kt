@@ -398,7 +398,7 @@ class FileBrowser : Fragment() {
                     .setNegativeButton(R.string.misc_cancel) { dlg, _ ->
                         dlg.cancel()
                     }
-                    .setPositiveButton("OK") { dlg, _ ->
+                    .setPositiveButton(R.string.misc_ok) { dlg, _ ->
                         CoroutineScope(Dispatchers.IO).launch {
                             val plName = plSelect.text
                             val dao = RoomDB.DB_INSTANCE.staticPlaylistDao()

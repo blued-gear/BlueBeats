@@ -17,4 +17,10 @@
     <string name="player_show_playlist">Current Playlist</string>
     <string name="dynpl_buffersize">Item-count before regeneration:</string>
     <string name="playlists_add_dyn">Create Dynamic Playlist</string>
+    <string name="misc_ok">OK</string>
+    <string name="dynpl_type_group">Rule Group</string>
+    <string name="dynpl_type_include">Include-Rule</string>
+    <string name="dynpl_type_exclude">Exclude-Rule</string>
+    <string name="dynpl_edit_select_rule_type">Select Rule Type</string>
+    <string name="misc_add">Add</string>
 </resources>
