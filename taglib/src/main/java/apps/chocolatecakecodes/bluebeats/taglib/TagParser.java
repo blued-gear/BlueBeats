@@ -49,7 +49,7 @@ public class TagParser{
 
     public List<Chapter> getChapters(){
         if(unmodifiableChapters == null)
-            unmodifiableChapters = Collections.unmodifiableList(chapters);
+            unmodifiableChapters = chapters != null ? Collections.unmodifiableList(chapters) : Collections.emptyList();// chapters can be null if no ID3v2 tag is present
         return unmodifiableChapters;
     }
 
