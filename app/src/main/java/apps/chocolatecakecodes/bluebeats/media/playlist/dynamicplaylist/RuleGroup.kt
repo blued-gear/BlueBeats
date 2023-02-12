@@ -194,6 +194,10 @@ internal class RuleGroup private constructor(
             deleteEntity(group.entityId)
         }
 
+        fun getEntityId(group: RuleGroup): Long {
+            return group.entityId
+        }
+
         //endregion
 
         //region sql

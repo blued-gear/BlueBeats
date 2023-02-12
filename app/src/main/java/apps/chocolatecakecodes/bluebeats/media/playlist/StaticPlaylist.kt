@@ -75,7 +75,7 @@ internal class StaticPlaylist private constructor(
         }
 
         fun load(id: Long): StaticPlaylist {
-            return cache.get(id){
+            return cache.get(id) {
                 val name = playlistsManager.getPlaylistName(id)
 
                 val entries = getEntriesForPlaylist(id).sortedBy {
