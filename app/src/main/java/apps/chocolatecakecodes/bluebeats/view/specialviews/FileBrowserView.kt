@@ -1,18 +1,12 @@
 package apps.chocolatecakecodes.bluebeats.view.specialviews
 
 import android.content.Context
-import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
 import android.widget.FrameLayout
-import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
-import apps.chocolatecakecodes.bluebeats.util.RequireNotNull
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaDirItem
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
 import com.mikepenz.fastadapter.GenericItem
@@ -25,9 +19,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-internal fun mediaNodeToItem(node: MediaNode): AbstractItem<*>? = when(node) {
+internal fun mediaNodeToItem(node: MediaNode, showThumb: Boolean = false): AbstractItem<*>? = when(node) {
     is MediaDir -> MediaDirItem(node)
-    is MediaFile -> MediaFileItem(node)
+    is MediaFile -> MediaFileItem(node, showThumb = showThumb)
     else -> null
 }
 
@@ -43,6 +37,8 @@ internal class FileBrowserView(context: Context): FrameLayout(context){
     var openDirs: Boolean = true
     /** if true items can be selected with a simple click */
     var startSelectionWithClick: Boolean = false
+    /** if true all files will get a thumbnail or a placeholder if none could be generated */
+    var showThumb: Boolean = true
 
     var currentDir: MediaDir? = null
         set(value) {
@@ -193,7 +189,9 @@ internal class FileBrowserView(context: Context): FrameLayout(context){
                 }.let { sortedFiles ->
                     sortedDirs + sortedFiles
                 }
-            }.mapNotNull(::mediaNodeToItem).let {
+            }.mapNotNull {
+                mediaNodeToItem(it, showThumb)
+            }.let {
                 withContext(Dispatchers.Main) {
                     listAdapter.setNewList(it)
                 }

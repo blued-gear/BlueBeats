@@ -400,7 +400,7 @@ private class GroupItem(
 private class MediaFileSubItem(
     file: MediaFile,
     useTitle: Boolean
-) : MediaFileItem(file, false, useTitle), ISubItem<MediaFileItem.ViewHolder> {
+) : MediaFileItem(file, false, useTitle, true), ISubItem<MediaFileItem.ViewHolder> {
     override var parent: IParentItem<*>? = null
 }
 //endregion
