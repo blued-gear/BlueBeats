@@ -4,6 +4,7 @@ package apps.chocolatecakecodes.bluebeats.view
 
 import android.content.Context
 import android.os.Bundle
+import android.view.Menu
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
@@ -42,6 +43,7 @@ internal class Search : Fragment(R.layout.search_fragment) {
     private val searchText = RequireNotNull<EditText>()
     private val subgroupsSpinner = RequireNotNull<Spinner>()
     private val itemListView = RequireNotNull<RecyclerView>()
+    private var menu: Menu? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -76,14 +78,14 @@ internal class Search : Fragment(R.layout.search_fragment) {
 
     override fun onResume() {
         super.onResume()
+
+        setupMenu()
     }
 
     override fun onPause() {
         super.onPause()
-    }
 
-    override fun onStop() {
-        super.onStop()
+        menu = null
     }
 
     override fun onDestroyView() {
@@ -111,6 +113,25 @@ internal class Search : Fragment(R.layout.search_fragment) {
             adapter = itemListAdapter
         }
     }
+
+    //region menu
+    private fun setupMenu() {
+        mainVM.menuProvider.value = { menu, menuInflater ->
+            menuInflater.inflate(R.menu.search_menu, menu)
+
+            this.menu = menu
+
+            menu.findItem(R.id.search_mnu_exp).setOnMenuItemClickListener {
+                itemListAdapter.getExpandableExtension().expand()
+                true
+            }
+            menu.findItem(R.id.search_mnu_colp).setOnMenuItemClickListener {
+                itemListAdapter.getExpandableExtension().collapse()
+                true
+            }
+        }
+    }
+    //endregion
 
     //region action handlers
     private fun wireActionHandlers() {

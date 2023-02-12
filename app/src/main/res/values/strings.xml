@@ -46,4 +46,6 @@
     <string name="search_cat_title">Title</string>
     <string name="search_cat_id3">ID3 Tag</string>
     <string name="search_cat_usertag">User-Tags</string>
+    <string name="search_mnu_expand_all">Expand all</string>
+    <string name="search_mnu_collapse_all">Collapse all</string>
 </resources>

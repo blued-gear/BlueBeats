@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+            android:title="@string/search_mnu_expand_all"
+            android:id="@+id/search_mnu_exp" />
+    <item
+            android:title="@string/search_mnu_collapse_all"
+            android:id="@+id/search_mnu_colp" />
+</menu>
