@@ -86,12 +86,12 @@ class FileBrowser : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         // setup views
-        listView = view.findViewById(R.id.fb_entrylist)
+        val listView: RecyclerView = view.findViewById(R.id.fb_entrylist)
+        listView.layoutManager = LinearLayoutManager(this.requireContext())
+        setupAdapter(listView)
+
+        this.listView = listView
         progressBar = view.findViewById(R.id.fb_progress)
-
-        setupAdapter(listView!!)
-
-        listView!!.layoutManager = LinearLayoutManager(this.requireContext())
 
         wireObservers()
         wireScanListeners()
@@ -136,20 +136,7 @@ class FileBrowser : Fragment() {
     private fun wireObservers(){
         // add handler for back button (to get one dir up)
         mainVM.addBackPressListener(this.viewLifecycleOwner){
-            if(mainVM.currentDialog.value == MainActivityViewModel.Dialogs.FILE_DETAILS){// close dialog
-                this.parentFragmentManager.beginTransaction()
-                    .remove(this.parentFragmentManager.findFragmentByTag(FILE_DETAILS_DLG_TAG)!!)
-                    .commit()
-
-                Utils.trySetValueImmediately(mainVM.currentDialog, MainActivityViewModel.Dialogs.NONE)
-                updateMenuItems()
-            }else{// go one dir up
-                // check if we can go up by one dir
-                val parentDir = viewModel.currentDir.value!!.parent
-                if (parentDir !== null) {
-                    viewModel.setCurrentDir(parentDir)
-                }
-            }
+            onBackPressed()
         }
 
         viewModel.currentDir.observe(this.viewLifecycleOwner){
@@ -175,27 +162,7 @@ class FileBrowser : Fragment() {
 
         listAdapter.getSelectExtension().selectionListener = object : ISelectionListener<GenericItem> {
             override fun onSelectionChanged(item: GenericItem, selected: Boolean) {
-                if(selected) {
-                    if(item is FileItem){
-                        viewModel.selectFile(item.file)
-                    } else {
-                        viewModel.selectFile(null)
-                    }
-                } else {
-                    val selectedItems = listAdapter.getSelectExtension().selectedItems.toList()
-                    if(selectedItems.size == 1) {
-                        // if only one selection is left (and it is a file) use it as selected file
-                        val selectedItem = selectedItems[0]
-                        if(selectedItem is FileItem)
-                            viewModel.selectFile(selectedItem.file)
-                    } else {
-                        viewModel.selectFile(null)
-                    }
-                }
-
-                updateMenuItems()
-
-                inSelection = listAdapter.getSelectExtension().selectedItems.isNotEmpty()
+                onItemSelectionChanged(item, selected)
             }
         }
     }
@@ -310,6 +277,63 @@ class FileBrowser : Fragment() {
         }
     }
 
+    private fun updateMenuItems(){
+        val fileInfoItem = mainMenu.findItem(R.id.filebrowser_menu_details)
+        val dialogOpen = mainVM.currentDialog.value == MainActivityViewModel.Dialogs.FILE_DETAILS
+        fileInfoItem.isEnabled = viewModel.selectedFile.value !== null
+                && !dialogOpen
+
+        val addToPlItem = mainMenu.findItem(R.id.filebrowser_menu_atp)
+        val selectedItems = listAdapter.getSelectExtension().selectedItems
+        val onlyFilesSelected = selectedItems.filterIsInstance<FileItem>()
+            .size == listAdapter.getSelectExtension().selectedItems.size
+        addToPlItem.isEnabled = selectedItems.isNotEmpty() && onlyFilesSelected
+    }
+
+    //region action-handlers
+    private fun onBackPressed() {
+        if(mainVM.currentDialog.value == MainActivityViewModel.Dialogs.FILE_DETAILS){// close dialog
+            this.parentFragmentManager.beginTransaction()
+                .remove(this.parentFragmentManager.findFragmentByTag(FILE_DETAILS_DLG_TAG)!!)
+                .commit()
+
+            Utils.trySetValueImmediately(mainVM.currentDialog, MainActivityViewModel.Dialogs.NONE)
+            updateMenuItems()
+        }else if(inSelection){// clear selection
+            listAdapter.getSelectExtension().deselect()
+        } else {// go one dir up
+            // check if we can go up by one dir
+            val parentDir = viewModel.currentDir.value!!.parent
+            if (parentDir !== null) {
+                viewModel.setCurrentDir(parentDir)
+            }
+        }
+    }
+
+    private fun onItemSelectionChanged(item: GenericItem, selected: Boolean) {
+        if(selected) {
+            if(item is FileItem){
+                viewModel.selectFile(item.file)
+            } else {
+                viewModel.selectFile(null)
+            }
+        } else {
+            val selectedItems = listAdapter.getSelectExtension().selectedItems.toList()
+            if(selectedItems.size == 1) {
+                // if only one selection is left (and it is a file) use it as selected file
+                val selectedItem = selectedItems[0]
+                if(selectedItem is FileItem)
+                    viewModel.selectFile(selectedItem.file)
+            } else {
+                viewModel.selectFile(null)
+            }
+        }
+
+        updateMenuItems()
+
+        inSelection = listAdapter.getSelectExtension().selectedItems.isNotEmpty()
+    }
+
     private fun onItemClick(item: GenericItem, pos: Int): Boolean {
         if(inSelection){
             listAdapter.getSelectExtension().toggleSelection(pos)
@@ -341,19 +365,6 @@ class FileBrowser : Fragment() {
                 false
             }
         }
-    }
-
-    private fun updateMenuItems(){
-        val fileInfoItem = mainMenu.findItem(R.id.filebrowser_menu_details)
-        val dialogOpen = mainVM.currentDialog.value == MainActivityViewModel.Dialogs.FILE_DETAILS
-        fileInfoItem.isEnabled = viewModel.selectedFile.value !== null
-                && !dialogOpen
-
-        val addToPlItem = mainMenu.findItem(R.id.filebrowser_menu_atp)
-        val selectedItems = listAdapter.getSelectExtension().selectedItems
-        val onlyFilesSelected = selectedItems.filterIsInstance<FileItem>()
-            .size == listAdapter.getSelectExtension().selectedItems.size
-        addToPlItem.isEnabled = selectedItems.isNotEmpty() && onlyFilesSelected
     }
 
     private fun onFileDetailsClicked(){
@@ -431,6 +442,7 @@ class FileBrowser : Fragment() {
             }
         }
     }
+    //endregion
 }
 
 //region RecycleView-Items
