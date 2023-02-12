@@ -24,6 +24,18 @@ internal interface PlaylistIterator {
     val currentPosition: Int
 
     /**
+     * if true the iterator will automatically reset at the end of its list
+     * (nextMedia() will always be successful)
+     */
+    var repeat: Boolean
+
+    /**
+     * if true the items will be shuffled every time the iterator is reset
+     * (additionally it will shuffle whenever this value is set to true)
+     */
+    var shuffle: Boolean
+
+    /**
      * returns the next media to play and advances currentPosition by one
      * @throws NoSuchElementException if the iterator is at its end
      */
@@ -45,4 +57,11 @@ internal interface PlaylistIterator {
      * returns true if no more media is available
      */
     fun isAtEnd(): Boolean
+
+    /**
+     * Returns the list of all items in this iterator.
+     * If shuffle is true then this method will return the shuffled items.
+     * (In case of a dynamic playlist the result is the current collection before the next items will be generated.)
+     */
+    fun getItems(): List<MediaFile>
 }

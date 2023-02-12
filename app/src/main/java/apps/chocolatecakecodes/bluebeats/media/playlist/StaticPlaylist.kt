@@ -34,17 +34,17 @@ internal class StaticPlaylist private constructor(
         return StaticPlaylistIterator(media, repeat, shuffle)
     }
 
-    fun addMedia(toAdd: MediaFile){
-        if(media.contains(toAdd))
+    fun addMedia(toAdd: MediaFile) {
+        if (media.contains(toAdd))
             return
         media.add(toAdd)
     }
 
-    fun removeMedia(index: Int){
+    fun removeMedia(index: Int) {
         media.removeAt(index)
     }
 
-    fun moveMedia(from: Int, newIndex: Int){
+    fun moveMedia(from: Int, newIndex: Int) {
         val item = media.removeAt(from)
         media.add(newIndex, item)
     }
@@ -167,15 +167,24 @@ internal data class StaticPlaylistEntry(
 
 private class StaticPlaylistIterator(
     media: List<MediaFile>,
-    private val repeat: Boolean,
-    private val shuffle: Boolean
+    override var repeat: Boolean,
+    shuffle: Boolean
     ) : PlaylistIterator {
 
     private val items = ArrayList(media)
+    private val itemsRO = Collections.unmodifiableList(items)
 
     override val totalItems: Int = items.size
     override var currentPosition: Int = -1
         private set
+
+    override var shuffle: Boolean = shuffle
+        set(value) {
+            field = value
+
+            if(value)
+                items.shuffle()
+        }
 
     init {
         if(shuffle)
@@ -209,5 +218,9 @@ private class StaticPlaylistIterator(
 
     override fun isAtEnd(): Boolean {
         return !repeat && currentPosition == (totalItems - 1)
+    }
+
+    override fun getItems(): List<MediaFile> {
+        return itemsRO
     }
 }
