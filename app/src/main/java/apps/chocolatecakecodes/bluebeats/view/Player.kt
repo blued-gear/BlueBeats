@@ -1,11 +1,13 @@
 package apps.chocolatecakecodes.bluebeats.view
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.res.ColorStateList
 import android.os.Bundle
 import android.util.Log
 import android.view.*
 import android.widget.*
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.core.view.GestureDetectorCompat
 import androidx.fragment.app.Fragment
@@ -18,6 +20,7 @@ import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.taglib.Chapter
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
+import apps.chocolatecakecodes.bluebeats.util.SmartBackPressedCallback
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
 import apps.chocolatecakecodes.bluebeats.view.specialviews.SegmentedSeekBar
@@ -134,14 +137,6 @@ class Player : Fragment() {
             onFullscreenClick()
         }
 
-        // fullscreen close on back
-        mainVM.addBackPressListener(this.viewLifecycleOwner){
-            // check fullscreen is active
-            if(mainVM.fullScreenContent.value !== null){
-                viewModel.setFullscreenMode(false)
-            }
-        }
-
         // seek-bar
         seekBar.seekListener = seekHandler
 
@@ -152,6 +147,9 @@ class Player : Fragment() {
 
         // player-event-listener
         player.setEventListener(PlayerEventHandler())
+
+        // back-pressed
+        this.requireActivity().onBackPressedDispatcher.addCallback(SmartBackPressedCallback(this.lifecycle, this::onBackPressed))
     }
 
     private fun setupControlPaneGestures(controlsPane: View) {
@@ -176,6 +174,13 @@ class Player : Fragment() {
 
     private fun onFullscreenClick() {
         viewModel.setFullscreenMode(!(viewModel.isFullscreen.value ?: false))
+    }
+
+    private fun onBackPressed() {
+        // check fullscreen is active
+        if(mainVM.fullScreenContent.value !== null){
+            viewModel.setFullscreenMode(false)
+        }
     }
     //endregion
 

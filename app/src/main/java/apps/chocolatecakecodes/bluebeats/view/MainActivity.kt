@@ -74,10 +74,6 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-    override fun onBackPressed() {
-        viewModel.onBackPressed()
-    }
-
     private fun getAppPermissions(){
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(

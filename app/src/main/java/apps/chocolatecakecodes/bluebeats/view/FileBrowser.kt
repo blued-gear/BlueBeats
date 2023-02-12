@@ -1,5 +1,6 @@
 package apps.chocolatecakecodes.bluebeats.view
 
+import android.content.Context
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -11,6 +12,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ProgressBar
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
@@ -22,6 +24,7 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
+import apps.chocolatecakecodes.bluebeats.util.SmartBackPressedCallback
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import apps.chocolatecakecodes.bluebeats.view.specialviews.FileBrowserView
 import apps.chocolatecakecodes.bluebeats.view.specialviews.SpinnerTextbox
@@ -69,6 +72,8 @@ class FileBrowser : Fragment() {
         browser = FileBrowserView(this.requireContext())
         view.findViewById<FrameLayout>(R.id.fb_entrylist).addView(browser)
         progressBar = view.findViewById(R.id.fb_progress)
+
+        this.requireActivity().onBackPressedDispatcher.addCallback(SmartBackPressedCallback(this.lifecycle, this::onBackPressed))
 
         setupBrowser()
         wireObservers()
@@ -121,11 +126,6 @@ class FileBrowser : Fragment() {
     }
 
     private fun wireObservers(){
-        // add handler for back button (to get one dir up)
-        mainVM.addBackPressListener(this.viewLifecycleOwner){
-            onBackPressed()
-        }
-
         viewModel.currentDir.observe(this.viewLifecycleOwner){
             if(it !== null){
                 browser.currentDir = it

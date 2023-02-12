@@ -1,5 +1,6 @@
 package apps.chocolatecakecodes.bluebeats.view
 
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.view.*
@@ -7,6 +8,7 @@ import android.widget.Button
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
@@ -19,10 +21,7 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
 import apps.chocolatecakecodes.bluebeats.media.playlist.StaticPlaylist
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylist
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylistIterator
-import apps.chocolatecakecodes.bluebeats.util.OnceSettable
-import apps.chocolatecakecodes.bluebeats.util.RequireNotNull
-import apps.chocolatecakecodes.bluebeats.util.Utils
-import apps.chocolatecakecodes.bluebeats.util.castTo
+import apps.chocolatecakecodes.bluebeats.util.*
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
 import apps.chocolatecakecodes.bluebeats.view.specialitems.SelectableItem
 import apps.chocolatecakecodes.bluebeats.view.specialviews.SpinnerTextbox
@@ -192,7 +191,7 @@ internal class Playlists : Fragment() {
         wireItemsClickListener()
         wireUpBtn()
 
-        mainVM.addBackPressListener(this.viewLifecycleOwner, this::onBackPressed)
+        this.requireActivity().onBackPressedDispatcher.addCallback(SmartBackPressedCallback(this.lifecycle, this::onBackPressed))
 
         itemsAdapter.getSelectExtension().selectionListener = object : ISelectionListener<GenericItem> {
             override fun onSelectionChanged(item: GenericItem, selected: Boolean) {
