@@ -132,10 +132,8 @@ internal class SearchViewModel : ViewModel() {
         allItems = RoomDB.DB_INSTANCE.mediaFileDao().getAllFiles().groupBy {
             textGroupingChar(it.name)
         }.mapValues {
-            it.value.sortedBy {
-                it.name
-            }
-        }.toSortedMap()
+            it.value.sorted()
+        }.toSortedMap { a, b -> Utils.compareStringNaturally(a, b)}
 
         loadLazyFileAttributes(allItems.values)
     }
@@ -144,12 +142,12 @@ internal class SearchViewModel : ViewModel() {
         allItems = RoomDB.DB_INSTANCE.id3TagDao().getFilesWithAnyTag("title").groupBy {
             textGroupingChar(it.second)
         }.mapValues {
-            it.value.sortedBy {
-                it.second
+            it.value.sortedWith { a, b ->
+                Utils.compareStringNaturally(a.second, b.second)
             }.map {
                 it.first
             }
-        }.toSortedMap()
+        }.toSortedMap { a, b -> Utils.compareStringNaturally(a, b)}
 
         loadLazyFileAttributes(allItems.values)
     }
@@ -158,10 +156,10 @@ internal class SearchViewModel : ViewModel() {
         allItems = RoomDB.DB_INSTANCE.mediaFileDao().getAllFiles().groupBy {
             fileTypeStr(it.type, contextProvider())
         }.mapValues {
-            it.value.sortedBy {
-                it.title
+            it.value.sortedWith { a, b ->
+                Utils.compareStringNaturally(a.title, b.title)
             }
-        }.toSortedMap()
+        }.toSortedMap { a, b -> Utils.compareStringNaturally(a, b)}
 
         loadLazyFileAttributes(allItems.values)
     }
@@ -170,12 +168,12 @@ internal class SearchViewModel : ViewModel() {
         allItems = RoomDB.DB_INSTANCE.id3TagDao().getFilesWithAnyTag(type).groupBy {
             it.second
         }.mapValues {
-            it.value.sortedBy {
-                it.second
-            }.map {
+            it.value.map {
                 it.first
+            }.sortedWith { a, b ->
+                Utils.compareStringNaturally(a.title, b.title)
             }
-        }.toSortedMap()
+        }.toSortedMap { a, b -> Utils.compareStringNaturally(a, b)}
 
         loadLazyFileAttributes(allItems.values)
     }
@@ -185,11 +183,11 @@ internal class SearchViewModel : ViewModel() {
             dao.getAllUserTags().associateWith {
                 dao.getFilesForTags(listOf(it)).map {
                     it.key
-                }.sortedBy {
-                    it.name
+                }.sortedWith { a, b ->
+                    Utils.compareStringNaturally(a.title, b.title)
                 }
             }
-        }.toSortedMap()
+        }.toSortedMap { a, b -> Utils.compareStringNaturally(a, b)}
 
         loadLazyFileAttributes(allItems.values)
     }

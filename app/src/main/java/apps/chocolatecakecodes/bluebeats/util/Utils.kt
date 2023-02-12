@@ -159,6 +159,20 @@ object Utils {
         else
             src.readInt() != 0
     }
+
+    /**
+     * compares the strings as lowercase and if they are equal in their original case
+     */
+    fun compareStringNaturally(o1: String, o2: String): Int {
+        if(o1 === o2)
+            return 0
+
+        val lcCmp = o1.lowercase().compareTo(o2.lowercase())
+        if(lcCmp != 0)
+            return lcCmp
+
+        return o1.compareTo(o2)
+    }
 }
 
 inline fun <T : IVLCObject<E>, E : AbstractVLCEvent?> T.using(retain: Boolean = true, block: (T) -> Unit){

@@ -1,9 +1,6 @@
 package apps.chocolatecakecodes.bluebeats.media.model
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import apps.chocolatecakecodes.bluebeats.util.Utils
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -45,17 +42,6 @@ internal abstract class MediaNode : Comparable<MediaNode> {
         if(this !is MediaDir && other is MediaDir)
             return 1
 
-        return compareStringNaturally(this.name, other.name)
-    }
-
-    private fun compareStringNaturally(o1: String, o2: String): Int {
-        if(o1 === o2)
-            return 0
-
-        val lcCmp = o1.lowercase().compareTo(o2.lowercase())
-        if(lcCmp != 0)
-            return lcCmp
-
-        return o1.compareTo(o2)
+        return Utils.compareStringNaturally(this.name, other.name)
     }
 }
