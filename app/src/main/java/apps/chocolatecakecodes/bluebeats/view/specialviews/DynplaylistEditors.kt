@@ -6,10 +6,18 @@ import android.graphics.Color
 import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
+import androidx.core.view.setPadding
+import androidx.fragment.app.FragmentActivity
+import androidx.fragment.app.FragmentContainerView
+import androidx.fragment.app.FragmentManager
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
+import apps.chocolatecakecodes.bluebeats.media.VlcManagers
+import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
+import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.ExcludeRule
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.IncludeRule
@@ -17,7 +25,6 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.Rule
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGroup
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.Rulelike
 import kotlinx.coroutines.*
-import net.cachapa.expandablelayout.ExpandableLayout
 
 internal typealias ChangedCallback = (Rulelike) -> Unit
 
@@ -115,6 +122,7 @@ internal class DynplaylistExcludeEditor(
 
     private val header: SimpleAddableRuleHeaderView
     private val contentList: LinearLayout
+    private var lastDir: MediaDir = VlcManagers.getMediaDB().getSubject().getMediaTreeRoot()
 
     init {
         header = SimpleAddableRuleHeaderView(context).apply {
@@ -135,6 +143,8 @@ internal class DynplaylistExcludeEditor(
     }
 
     private fun listItems() {
+        contentList.removeAllViews()
+
         val lp = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
         rule.getDirs().map {
             MediaNodeView(it.first, this.context)
@@ -149,7 +159,34 @@ internal class DynplaylistExcludeEditor(
     }
 
     private fun onAddEntry() {
+        var popup: PopupWindow? = null
+        val popupContent = MediaNodeSelectPopup(context, lastDir, true) {
+            popup!!.dismiss()
 
+            if(it.isNotEmpty()) {
+                // set lastDir to parent of selection
+                it[0].let {
+                    lastDir = when (it) {
+                        is MediaFile -> it.parent
+                        is MediaDir -> it.parent ?: it
+                        else -> throw AssertionError()
+                    }
+                }
+
+                it.filterIsInstance<MediaDir>().forEach{ rule.addDir(it, false) }
+                it.filterIsInstance<MediaFile>().forEach { rule.addFile(it) }
+
+                listItems()
+
+                changedCallback(rule)
+            }
+        }
+        popup = PopupWindow(popupContent,
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
+            true
+        )
+
+        popup.showAtLocation(this, Gravity.CENTER, 0, 0)
     }
 }
 
@@ -161,6 +198,7 @@ internal class DynplaylistIncludeEditor(
 
     private val header: SimpleAddableRuleHeaderView
     private val contentList: LinearLayout
+    private var lastDir: MediaDir = VlcManagers.getMediaDB().getSubject().getMediaTreeRoot()
 
     init {
         header = SimpleAddableRuleHeaderView(context).apply {
@@ -181,6 +219,8 @@ internal class DynplaylistIncludeEditor(
     }
 
     private fun listItems() {
+        contentList.removeAllViews()
+
         val lp = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
         rule.getDirs().map {
             MediaNodeView(it.first, this.context)
@@ -195,8 +235,34 @@ internal class DynplaylistIncludeEditor(
     }
 
     private fun onAddEntry() {
-        //TODO show file_browser-dlg
-        Toast.makeText(this.context, "DynplaylistIncludeEditor::add clicked", Toast.LENGTH_SHORT).show()
+        var popup: PopupWindow? = null
+        val popupContent = MediaNodeSelectPopup(context, lastDir, true) {
+            popup!!.dismiss()
+
+            if(it.isNotEmpty()) {
+                // set lastDir to parent of selection
+                it[0].let {
+                    lastDir = when (it) {
+                        is MediaFile -> it.parent
+                        is MediaDir -> it.parent ?: it
+                        else -> throw AssertionError()
+                    }
+                }
+
+                it.filterIsInstance<MediaDir>().forEach{ rule.addDir(it, false) }
+                it.filterIsInstance<MediaFile>().forEach { rule.addFile(it) }
+
+                listItems()
+
+                changedCallback(rule)
+            }
+        }
+        popup = PopupWindow(popupContent,
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
+            true
+        )
+
+        popup.showAtLocation(this, Gravity.CENTER, 0, 0)
     }
 }
 //endregion
@@ -226,7 +292,7 @@ private class SimpleAddableRuleHeaderView(ctx: Context) : LinearLayout(ctx) {
 
 private class MediaNodeView(val path: MediaNode, context: Context) : LinearLayout(context) {
 
-    //TODO extend visible information; add button for remove; ...
+    //TODO extend visible information; add button for remove; checkbox for deep (opt.); ...
 
     private val text = TextView(context).apply {
         ellipsize = TextUtils.TruncateAt.MIDDLE
@@ -237,6 +303,73 @@ private class MediaNodeView(val path: MediaNode, context: Context) : LinearLayou
         orientation = HORIZONTAL
 
         addView(text)
+    }
+}
+
+private class MediaNodeSelectPopup(
+    ctx: Context,
+    private val initialDir: MediaDir,
+    private val allowDirs: Boolean,
+    private val onResult: (List<MediaNode>) -> Unit
+) : LinearLayout(ctx) {
+
+    private val browser = FileBrowserView(ctx)
+
+    init {
+        this.setBackgroundColor(Color.WHITE)
+        this.setPadding(24)
+
+        setupContent()
+
+        browser.apply {
+            setSelectable(true, allowDirs, true)
+            startSelectionWithClick = true
+            currentDir = initialDir
+        }
+    }
+
+    private fun setupContent() {
+        this.orientation = VERTICAL
+
+        this.addView(browser, LayoutParams(LayoutParams.MATCH_PARENT, 0, 10f))
+
+        // bottom bar
+        LinearLayout(context).apply {
+            orientation = HORIZONTAL
+
+            Button(context).apply {
+                text = context.getString(R.string.misc_ok)
+                setOnClickListener {
+                    onResult(browser.selectedItems)
+                }
+            }.let {
+                this.addView(it, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
+            }
+
+            this.addView(View(context), LayoutParams(LayoutParams.MATCH_PARENT, 0, 5f))
+
+            Button(context).apply {
+                text = "/\\"
+                setOnClickListener {
+                    browser.goDirUp()
+                }
+            }.let {
+                this.addView(it, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
+            }
+
+            this.addView(View(context), LayoutParams(LayoutParams.MATCH_PARENT, 0, 5f))
+
+            Button(context).apply {
+                text = context.getString(R.string.misc_cancel)
+                setOnClickListener {
+                    onResult(emptyList())
+                }
+            }.let {
+                this.addView(it, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
+            }
+        }.let {
+            this.addView(it, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        }
     }
 }
 //endregion
