@@ -80,6 +80,12 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
         eventHandler.onScanStarted()
         eventHandler.onNewNodeFound(mediaTree)// publish root
 
+        checkForDeletedScanRoots().forEach {
+            mediaTree.removeDir(it)
+            mediaDirDao.delete(it)
+            eventHandler.onNodeRemoved(it)
+        }
+
         for(scanRoot in scanRoots){
             try {
                 var currentParent: MediaDir = mediaTree
@@ -99,15 +105,6 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
                 updateDirDeep(currentParent)
             }catch (e: Exception){
                 eventHandler.onScanException(e)
-            }
-        }
-
-        // check for deleted roots
-        mediaTree.getDirs().map { it.name }.toHashSet().let { dirNames ->
-            mediaTree.getDirs().filter { !dirNames.contains(it.name) }.forEach {
-                mediaTree.removeDir(it)
-                mediaDirDao.delete(it)
-                eventHandler.onNodeRemoved(it)
             }
         }
 
@@ -460,6 +457,48 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
         }
 
         return Bitmap.createScaledBitmap(src, sWidth, sHeight, true)
+    }
+
+    private fun checkForDeletedScanRoots(): List<MediaDir> {
+        val rootParts = scanRoots.map {
+            listOf("/") + it.split('/').filter {
+                it.isNotEmpty()
+            }
+        }
+
+        fun nextParts(parts: List<List<String>>): Pair<Set<String>, List<List<String>>> {
+            parts.filter {
+                it.isNotEmpty()
+            }.let {
+                val first = it.filter {
+                    it.isNotEmpty()
+                }.fold(emptySet<String>()) { acc, list ->
+                    acc + list.first()
+                }
+                val reminder = it.map {
+                    it.subList(1, it.size)
+                }.filter {
+                    it.isNotEmpty()
+                }
+                return Pair(first, reminder)
+            }
+        }
+
+        fun checkDir(dir: MediaDir, deleted: List<MediaDir>, pathParts: Pair<Set<String>, List<List<String>>>): List<MediaDir> {
+            if(!pathParts.first.contains(dir.name))
+                return deleted + dir
+
+            if(pathParts.second.isNotEmpty()) {
+                val nextParts = nextParts(pathParts.second)
+                return dir.getDirs().fold(deleted) { acc, subDir ->
+                    checkDir(subDir, acc, nextParts)
+                }
+            }
+
+            return deleted
+        }
+
+        return checkDir(getMediaTreeRoot(), emptyList(), nextParts(rootParts))
     }
     //endregion
 

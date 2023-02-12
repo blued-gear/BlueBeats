@@ -30,7 +30,7 @@ abstract class MediaNode {
     init {
         // trigger caching of hashCode (else it might happen that a DB-query in the UI-Thread gets executed)
         CoroutineScope(Dispatchers.IO).launch {
-            delay(10)
+            delay(50)
             this@MediaNode.hashCode()
         }
     }
