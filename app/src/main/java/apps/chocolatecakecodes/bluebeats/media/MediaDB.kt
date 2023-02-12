@@ -256,50 +256,53 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
         val discoveredSubdirNames = contents.first.map { it.uri.lastPathSegment!! }.toSet()
         val existingSubdirsWithName = mapOf(*dir.getDirs().map { Pair(it.name, it) }.toTypedArray())
 
-        // add new subdirs
-        discoveredSubdirNames.minus(existingSubdirsWithName.keys).forEach {
-            wasChanged = true
-            val newSubdir = mediaDirDao.newDir(it, dir.entityId)
-            dir.addDir(newSubdir)
-            eventHandler.onNewNodeFound(newSubdir)
-        }
+        Utils.diffChanges(existingSubdirsWithName.keys, discoveredSubdirNames).let { (addedDirs, deletedDirs, _) ->
+            // add new subdirs
+            addedDirs.forEach {
+                wasChanged = true
+                val newSubdir = mediaDirDao.newDir(it, dir.entityId)
+                dir.addDir(newSubdir)
+                eventHandler.onNewNodeFound(newSubdir)
+            }
 
-        // delete old subdirs
-        existingSubdirsWithName.keys.minus(discoveredSubdirNames).forEach{
-            wasChanged = true
-            val child = existingSubdirsWithName[it]!!
-            mediaDirDao.delete(child)
-            dir.removeDir(child)
-            eventHandler.onNodeRemoved(child)
+            // delete old subdirs
+            deletedDirs.forEach{
+                wasChanged = true
+                val child = existingSubdirsWithName[it]!!
+                mediaDirDao.delete(child)
+                dir.removeDir(child)
+                eventHandler.onNodeRemoved(child)
+            }
         }
 
         // check files
         val discoveredFilesWithName = mapOf(*contents.second.map { Pair(it.uri.lastPathSegment!!, it) }.toTypedArray())
         val existingFilesWithName = mapOf(*dir.getFiles().map{ Pair(it.name, it) }.toTypedArray())
 
-        // add new files
-        val newDiscoveredFiles = discoveredFilesWithName.keys.minus(existingFilesWithName.keys)
-        newDiscoveredFiles.forEach {
-            wasChanged = true
-            val fileMedia = discoveredFilesWithName[it]!!
-            val newFile = mediaFileDao.newFile(parseFile(fileMedia, dir))
-            dir.addFile(newFile)
-            eventHandler.onNewNodeFound(newFile)
-        }
+        Utils.diffChanges(existingFilesWithName.keys, discoveredFilesWithName.keys).let { (addedFiles, deletedFiles, existingFiles) ->
+            // add new files
+            addedFiles.forEach {
+                wasChanged = true
+                val fileMedia = discoveredFilesWithName[it]!!
+                val newFile = mediaFileDao.newFile(parseFile(fileMedia, dir))
+                dir.addFile(newFile)
+                eventHandler.onNewNodeFound(newFile)
+            }
 
-        // remove old files
-        existingFilesWithName.keys.minus(discoveredFilesWithName.keys).forEach {
-            wasChanged = true
-            val child = existingFilesWithName[it]!!
-            dir.removeFile(child)
-            mediaFileDao.delete(child)
-            eventHandler.onNodeRemoved(child)
-        }
+            // remove old files
+            deletedFiles.forEach {
+                wasChanged = true
+                val child = existingFilesWithName[it]!!
+                dir.removeFile(child)
+                mediaFileDao.delete(child)
+                eventHandler.onNodeRemoved(child)
+            }
 
-        // update files (do not re-check added files as they were just parsed)
-        existingFilesWithName.keys.minus(newDiscoveredFiles).forEach {
-            val child = existingFilesWithName[it]!!
-            updateFile(child)
+            // update files (do not re-check added files as they were just parsed)
+            existingFiles.forEach {
+                val child = existingFilesWithName[it]!!
+                updateFile(child)
+            }
         }
 
         if(wasChanged)
