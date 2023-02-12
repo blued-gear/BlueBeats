@@ -4,10 +4,8 @@ import android.annotation.SuppressLint
 import android.os.Bundle
 import android.util.Log
 import android.view.*
-import android.widget.FrameLayout
-import android.widget.ImageButton
-import android.widget.SeekBar
-import android.widget.TextView
+import android.widget.*
+import androidx.appcompat.app.AlertDialog
 import androidx.core.view.GestureDetectorCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
@@ -140,6 +138,12 @@ class Player : Fragment() {
         // toggle viewModel.timeTextAsRemaining on click at timeTextView
         timeTextView.setOnClickListener {
             viewModel.setTimeTextAsRemaining(!viewModel.timeTextAsRemaining.value!!)
+        }
+
+        // menu
+        val menuButton = view.findViewById<ImageButton>(R.id.player_controls_menu)
+        menuButton.setOnClickListener{
+            showMenu(menuButton)
         }
 
         // player-event-listener
@@ -346,6 +350,43 @@ class Player : Fragment() {
                 }
             }
         }
+    }
+
+    private fun showMenu(menuButton: View){
+        val menu = PopupMenu(this.requireContext(), menuButton)
+        menu.inflate(R.menu.player_menu)
+
+        // configure items
+        val chaptersItem = menu.menu.findItem(R.id.player_menu_chapters)
+        val chapters = viewModel.chapters.value
+        if(chapters === null || chapters.isEmpty())
+            chaptersItem.isEnabled = false
+        chaptersItem.setOnMenuItemClickListener {
+            showChapterMenu()
+            return@setOnMenuItemClickListener true
+        }
+
+        menu.show()
+    }
+
+    private fun showChapterMenu(){
+        val dlgBuilder = AlertDialog.Builder(this.requireContext())
+
+        // generate chapter items
+        val chapters = viewModel.chapters.value!!
+        val itemTexts = chapters.map {
+            val start = Utils.formatTime(it.timeOffset)
+            val end = Utils.formatTime(it.timeOffset + it.duration)
+            return@map "${it.name} ($start - $end)"
+        }.toTypedArray()
+
+        dlgBuilder.setItems(itemTexts){ dlg, itemIdx ->
+            // jump to chapter
+            val chapter = chapters[itemIdx]
+            viewModel.updatePlayPosition(chapter.timeOffset)
+        }
+
+        dlgBuilder.create().show()
     }
 
     private fun formatPlayTime(time: Long, len: Long, remaining: Boolean): String{
