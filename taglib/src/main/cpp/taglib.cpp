@@ -112,6 +112,7 @@ Java_apps_chocolatecakecodes_bluebeats_taglib_TagParser_parseMp3(
 
 //region private methods
 void BlueBeats::throwParseException(const JavaIDs& jid, const char* msg) {
+    if(jid.jni->ExceptionCheck() == JNI_TRUE) return;// an exception is already being thrown
     jid.jni->ThrowNew(jid.c_ParseException, msg);
 }
 
