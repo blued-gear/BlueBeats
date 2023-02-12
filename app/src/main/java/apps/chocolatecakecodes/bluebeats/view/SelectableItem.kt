@@ -1,11 +1,13 @@
 package apps.chocolatecakecodes.bluebeats.view
 
+import android.util.Log
 import android.view.View
 import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.util.SimpleObservable
 import com.mikepenz.fastadapter.FastAdapter
 import com.mikepenz.fastadapter.items.AbstractItem
+import java.lang.ref.WeakReference
 import java.util.*
 
 internal abstract class SelectableItem<Holder : RecyclerView.ViewHolder> : AbstractItem<Holder>() {
@@ -21,11 +23,16 @@ internal abstract class SelectableItem<Holder : RecyclerView.ViewHolder> : Abstr
     abstract class ViewHolder<Item : SelectableItem<*>>(view: View) : FastAdapter.ViewHolder<Item>(view) {
 
         private var selectedObserver: Observer? = null
+        private var currentItem: WeakReference<Item>? = null
 
         // must be called from subclasses
         override fun bindView(item: Item, payloads: List<Any>) {
-            assert(selectedObserver === null) { "Holder was not unbound correctly" }
+            if(selectedObserver !== null){
+                Log.w("SelectableItem", "Holder was not unbound correctly")
+                currentItem!!.get()?.selectedObservable?.deleteObserver(selectedObserver)
+            }
 
+            currentItem = WeakReference(item)
             selectedObserver = item.selectedObservable.addObserverCallback { _, selected ->
                 setSelected(selected)
             }
@@ -35,8 +42,13 @@ internal abstract class SelectableItem<Holder : RecyclerView.ViewHolder> : Abstr
 
         // must be called from subclasses
         override fun unbindView(item: Item) {
-            item.selectedObservable.deleteObserver(selectedObserver)
-            selectedObserver = null
+            if(currentItem === null || currentItem!!.get() !== item) {
+                Log.w("SelectableItem", "Holder::unbindView was called for wrong item")
+            } else {
+                currentItem!!.get()?.selectedObservable?.deleteObserver(selectedObserver)
+                selectedObserver = null
+                currentItem = null
+            }
 
             setSelected(false)
         }
