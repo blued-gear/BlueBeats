@@ -140,7 +140,7 @@ internal class StaticPlaylist private constructor(
 
 @Entity
 internal data class StaticPlaylistEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long
+    @PrimaryKey(autoGenerate = false) val id: Long
 )
 
 @Entity(
@@ -153,12 +153,12 @@ internal data class StaticPlaylistEntity(
         ForeignKey(
             entity = MediaFileEntity::class,
             parentColumns = ["id"], childColumns = ["media"],
-            onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE//TODO maybe remap to _DELETE_ITEM_ entry
+            onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE//TODO maybe remap to _DELETED_ITEM_ entry
         )
     ]
 )
 internal data class StaticPlaylistEntry(
-    @PrimaryKey(autoGenerate = false) val id: Long,
+    @PrimaryKey(autoGenerate = true) val id: Long,
     @ColumnInfo(name = "playlist", index = true) val playlist: Long,
     @ColumnInfo(name = "media") val media: Long,
     @ColumnInfo(name = "pos") val pos: Int
