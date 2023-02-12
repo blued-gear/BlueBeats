@@ -183,12 +183,12 @@ private class StaticPlaylistIterator(
             field = value
 
             if(value)
-                items.shuffle()
+                shuffle()
         }
 
     init {
         if(shuffle)
-            items.shuffle()
+            shuffle()
     }
 
     override fun nextMedia(): MediaFile {
@@ -221,7 +221,7 @@ private class StaticPlaylistIterator(
             currentPosition = 0
 
             if(shuffle)
-                items.shuffle()
+                shuffle()
         } else if(newPos >= 0 && newPos < totalItems) {
             currentPosition = newPos
         } else {
@@ -235,5 +235,16 @@ private class StaticPlaylistIterator(
 
     override fun getItems(): List<MediaFile> {
         return itemsRO
+    }
+
+    private fun shuffle() {
+        // current media must stay at same index
+        if(currentPosition == -1) {
+            items.shuffle()
+        } else {
+            val media = items.removeAt(currentPosition)
+            items.shuffle()
+            items.add(currentPosition, media)
+        }
     }
 }
