@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.*
 import android.widget.FrameLayout
+import android.widget.SeekBar
 import androidx.core.view.GestureDetectorCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
@@ -16,10 +17,12 @@ import kotlinx.coroutines.*
 import org.videolan.libvlc.MediaPlayer
 import org.videolan.libvlc.interfaces.IMedia
 import org.videolan.libvlc.util.VLCVideoLayout
+import kotlin.math.abs
 
 private const val CONTROLS_FADE_IN_TIME = 200L
 private const val CONTROLS_FADE_OUT_TIME = 100L
 private const val CONTROLS_FADE_OUT_DELAY = 2000L
+private const val SEEK_STEP = 1000.0
 
 class Player : Fragment() {
 
@@ -35,9 +38,11 @@ class Player : Fragment() {
     private var player: MediaPlayer by OnceSettable()
     private var playerView: VLCVideoLayout by OnceSettable()
     private var playerContainer: ViewGroup by OnceSettable()
+    private var seekBar: SeekBar by OnceSettable()
     private var currentMedia: IMedia? = null
     private var controlsVisible: Boolean = true
     private var controlsHideCoroutine: Job? = null
+    private val seekHandler = SeekHandler()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,7 +71,9 @@ class Player : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        playerContainer = view.findViewById<View>(R.id.player_player_container) as ViewGroup
+        playerContainer = view.findViewById(R.id.player_player_container)
+        seekBar = view.findViewById(R.id.player_controls_seek)
+        seekBar.max = SEEK_STEP.toInt()
 
         // setup player-view
         playerView = VLCVideoLayout(this.requireContext())
@@ -120,6 +127,11 @@ class Player : Fragment() {
                 viewModel.setFullscreenMode(false)
             }
         }
+
+        // seek-bar
+        seekBar.setOnSeekBarChangeListener(seekHandler)
+
+        player.setEventListener(PlayerEventHandler())
     }
 
     private fun wireObservers(){
@@ -154,8 +166,13 @@ class Player : Fragment() {
         }
 
         viewModel.playPos.observe(this.viewLifecycleOwner){
-            if(it !== null){
-                player.time = it
+            if((it !== null)){
+                if(abs(it - player.time) > 5)// threshold of 5ms to prevent cyclic calls from this and PlayerEventHandler
+                    player.time = it
+
+                if(!seekHandler.isSeeking) {
+                    seekBar.progress = ((it / player.length.toDouble()) * SEEK_STEP).toInt().coerceAtLeast(1)
+                }
             }
         }
 
@@ -308,6 +325,35 @@ class Player : Fragment() {
             }
 
             return false
+        }
+    }
+
+    private inner class SeekHandler : SeekBar.OnSeekBarChangeListener{
+
+        var isSeeking = false
+
+        override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {}
+
+        override fun onStartTrackingTouch(seekBar: SeekBar?) {
+            isSeeking = true
+        }
+
+        override fun onStopTrackingTouch(seekBar: SeekBar?) {
+            isSeeking = false
+            viewModel.updatePlayPosition((player.length * (this@Player.seekBar.progress / SEEK_STEP)).toLong())
+        }
+    }
+
+    private inner class PlayerEventHandler : MediaPlayer.EventListener{
+
+        override fun onEvent(event: MediaPlayer.Event?) {
+            if(event === null) return
+
+            when(event.type){
+                MediaPlayer.Event.TimeChanged -> {
+                    viewModel.updatePlayPosition(player.time)
+                }
+            }
         }
     }
 }
