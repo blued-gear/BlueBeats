@@ -26,7 +26,7 @@ android {
         minSdkVersion 25
         targetSdkVersion 31
         versionCode 1
-        versionName "Alpha-0.1.0"
+        versionName "Alpha-0.2.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         multiDexEnabled true
@@ -56,6 +56,8 @@ android {
 
 dependencies {
     def room_version = "2.4.+"
+
+    implementation project(':taglib')
 
     implementation fileTree(dir: "${project.buildFile.parent}/libs/", include: '**/*.aar')
 
