@@ -30,53 +30,20 @@ class MediaFile internal constructor(internal val entity: MediaFileEntity): Medi
         RoomDB.DB_INSTANCE.id3TagDao().getTagsOfFile(entity.id)
     }
 
-    private var loadedChapters: List<Chapter>? = null
-    private var chaptersLoaded = false
-    var chapters: List<Chapter>?
-        get(){
-            synchronized(this){
-                if(!chaptersLoaded){
-                    if(entity.chaptersJson.isNullOrEmpty())
-                        loadedChapters = null
-                    else
-                        loadedChapters = TagParser.Serializer.GSON.fromJson(entity.chaptersJson,
-                            Utils.captureType<List<Chapter>>())
+    var chapters: List<Chapter>? by LazyVar<MediaFile, List<Chapter>?> {
+        if(entity.chaptersJson.isNullOrEmpty())
+            null
+        else
+            TagParser.Serializer.GSON.fromJson(entity.chaptersJson,
+                Utils.captureType<List<Chapter>>())
+    }
 
-                    chaptersLoaded = true
-                }
-
-                return loadedChapters
-            }
-        }
-        internal set(value) {
-            synchronized(this){
-                loadedChapters = value
-                chaptersLoaded = true
-
-                entity.chaptersJson = if(value === null) null else TagParser.Serializer.GSON.toJson(value)
-            }
-        }
-
-    private var loadedUserTags: List<String>? = null
-    var userTags: List<String>
-        get(){
-            synchronized(this){
-                if(loadedUserTags === null){
-                    if(entity.id == MediaNode.UNALLOCATED_NODE_ID){// can not load tags from db if this file is not saved
-                        return emptyList()
-                    }
-
-                    loadedUserTags = RoomDB.DB_INSTANCE.userTagDao().getUserTagsForFile(this)
-                }
-
-                return loadedUserTags!!
-            }
-        }
-        internal set(value){
-            synchronized(this) {
-                loadedUserTags = value
-            }
-        }
+    var userTags: List<String> by LazyVar<MediaFile, List<String>> {
+        if(entity.id == MediaNode.UNALLOCATED_NODE_ID)// can not load tags from db if this file is not saved
+            emptyList()
+        else
+            RoomDB.DB_INSTANCE.userTagDao().getUserTagsForFile(this)
+    }
 
     internal fun createCopy(): MediaFile{
         val copy =  MediaFile(entity.copy(id = MediaNode.UNALLOCATED_NODE_ID))
