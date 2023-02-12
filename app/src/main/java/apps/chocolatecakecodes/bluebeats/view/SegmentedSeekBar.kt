@@ -111,9 +111,9 @@ class SegmentedSeekBar : FrameLayout {
         markers = Array(segments.size){
             val segment = segments[it]
 
-            // add at right position (TODO adjust for seekBar margin)
-            val relPos = segment.start.toDouble() / max
-            val markerX = (relPos * this.width).toInt()
+            // add at right position
+            val pos = (segment.start.toFloat() / max) * (seekBar.width - 4 * seekBar.thumbOffset.toFloat())
+            val markerX = (seekBar.x + pos).toInt()
             val marker = createMarker(markerX)
 
             markerContainer.addView(marker)
