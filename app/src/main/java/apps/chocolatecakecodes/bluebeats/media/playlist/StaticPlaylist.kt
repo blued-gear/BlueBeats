@@ -7,6 +7,7 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
 import java.util.*
+import kotlin.NoSuchElementException
 import kotlin.collections.ArrayList
 
 /**
@@ -174,6 +175,7 @@ private class StaticPlaylistIterator(
 
     override val totalItems: Int = items.size
     override var currentPosition: Int = -1
+        private set
 
     init {
         if(shuffle)
@@ -182,7 +184,7 @@ private class StaticPlaylistIterator(
 
     override fun nextMedia(): MediaFile {
         if(isAtEnd())
-            throw IllegalStateException("end reached")
+            throw NoSuchElementException("end reached")
 
         currentPosition++
         if(currentPosition == totalItems) {// not checking for repeat because it is done in isAtEnd()
@@ -192,6 +194,17 @@ private class StaticPlaylistIterator(
         }
 
         return items[currentPosition]
+    }
+
+    override fun currentMedia(): MediaFile {
+        return items[currentPosition.coerceAtLeast(0)]
+    }
+
+    override fun seek(amount: Int) {
+        val newPos = currentPosition + amount
+        if(newPos < 0 || newPos >= totalItems)
+            throw IllegalArgumentException("seeking by $amount would result in an out-of-bounds position")
+        currentPosition = newPos
     }
 
     override fun isAtEnd(): Boolean {
