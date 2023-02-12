@@ -1,0 +1,69 @@
+org.jetbrains.kotlin:kotlin-stdlib:1.7.10
+    Kotlin Stdlib
+    https://kotlinlang.org/
+    Apache 2
+androidx.core:core-ktx:1.9.0
+    Core Kotlin Extensions
+    Apache 2
+androidx.appcompat:appcompat:1.5.1
+    Android AppCompat Library
+    Apache 2
+com.google.android.material:material:1.6.1
+    Material Components For Android
+    Apache 2
+androidx.constraintlayout:constraintlayout:2.1.4
+    Android ConstraintLayout
+    Apache 2
+androidx.lifecycle:lifecycle-livedata-ktx:2.5.1
+    LiveData Kotlin Extensions
+    Apache 2
+androidx.lifecycle:lifecycle-viewmodel-ktx:2.5.1
+    Android Lifecycle ViewModel Kotlin Extensions
+    Apache 2
+androidx.recyclerview:recyclerview-selection:1.1.0
+    Android RecyclerView Selection
+    Apache 2
+com.anggrayudi:storage:0.14.0
+    SimpleStorage
+    https://github.com/anggrayudi/SimpleStorage
+    Apache 2
+androidx.room:room-runtime:2.4.3
+    Android Room Runtime
+    Apache 2
+androidx.room:room-compiler:2.4.3
+    Android Room Compiler
+    Apache 2
+com.google.guava:guava:31.0.1-android
+    Guava: Google Core Libraries For Java
+    Apache 2
+androidx.media2:media2-common:1.2.1
+    AndroidX Media2 Common Library
+    Apache 2
+androidx.media2:media2-session:1.2.1
+    AndroidX Media2 Session Library
+    Apache 2
+com.mikepenz:fastadapter:5.6.0
+    + extensions
+    FastAdapter
+    https://github.com/mikepenz/FastAdapter
+    Apache 2
+com.github.cachapa:ExpandableLayout:2.9.2
+    ExpandableLayout
+    https://github.com/cachapa/ExpandableLayout
+    Apache 2
+io.noties.markwon:core:4.6.2
+    Markwon
+    https://github.com/noties/Markwon
+    Apache 2
+org.videolan.android:libvlc-all:3.5.1
+    LibVLC Android
+    https://code.videolan.org/videolan/vlc-android/
+    LGPL 2.1
+
+com.google.code.gson:gson:2.9.1
+    Gson
+    Apache 2
+taglib
+    https://taglib.org/
+    LGPL 2.1 + MPL 1.1
+
