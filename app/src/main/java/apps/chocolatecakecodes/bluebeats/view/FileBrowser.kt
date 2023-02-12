@@ -335,8 +335,10 @@ class FileBrowser : Fragment() {
                 && !dialogOpen
 
         val addToPlItem = mainMenu.findItem(R.id.filebrowser_menu_atp)
-        addToPlItem.isEnabled = viewModel.selectedFile.value !== null
-                || listAdapter.getSelectExtension().selectedItems.isNotEmpty()
+        val selectedItems = listAdapter.getSelectExtension().selectedItems
+        val onlyFilesSelected = selectedItems.filterIsInstance<FileItem>()
+            .size == listAdapter.getSelectExtension().selectedItems.size
+        addToPlItem.isEnabled = selectedItems.isNotEmpty() && onlyFilesSelected
     }
 
     private fun onFileDetailsClicked(){
