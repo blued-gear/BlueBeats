@@ -21,6 +21,7 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
+import apps.chocolatecakecodes.bluebeats.taglib.BuildConfig
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.SmartBackPressedCallback
 import apps.chocolatecakecodes.bluebeats.util.Utils
@@ -174,26 +175,34 @@ class FileBrowser : Fragment() {
         }
         viewModel.mediaDB.addSubscriber(scanListener)
 
-        viewModel.mediaDB.addSubscriber(object : MediaDB.ScanEventHandler(){// debug listener
-        override fun handleScanStarted() {
-            Log.d("FileBrowser", "scan started")
+        if(BuildConfig.DEBUG) {
+            viewModel.mediaDB.addSubscriber(object : MediaDB.ScanEventHandler() {
+                // debug listener
+                override fun handleScanStarted() {
+                    Log.d("FileBrowser", "scan started")
+                }
+
+                override fun handleScanFinished() {
+                    Log.d("FileBrowser", "scan finished")
+                }
+
+                override fun handleNewNodeFound(node: MediaNode) {
+                    Log.d("FileBrowser", "new node found: ${node.path}")
+                }
+
+                override fun handleNodeRemoved(node: MediaNode) {
+                    Log.d("FileBrowser", "node removed: ${node.path}")
+                }
+
+                override fun handleNodeUpdated(node: MediaNode, oldVersion: MediaNode) {
+                    Log.d("FileBrowser", "node changed: ${node.path}")
+                }
+
+                override fun handleScanException(e: Exception) {
+                    Log.e("FileBrowser", "exception in scan", e)
+                }
+            })
         }
-            override fun handleScanFinished() {
-                Log.d("FileBrowser", "scan finished")
-            }
-            override fun handleNewNodeFound(node: MediaNode) {
-                Log.d("FileBrowser", "new node found: ${node.path}")
-            }
-            override fun handleNodeRemoved(node: MediaNode) {
-                Log.d("FileBrowser", "node removed: ${node.path}")
-            }
-            override fun handleNodeUpdated(node: MediaNode, oldVersion: MediaNode) {
-                Log.d("FileBrowser", "node changed: ${node.path}")
-            }
-            override fun handleScanException(e: Exception) {
-                Log.e("FileBrowser", "exception in scan", e)
-            }
-        })
     }
 
     private fun loadMediaRoot(){
