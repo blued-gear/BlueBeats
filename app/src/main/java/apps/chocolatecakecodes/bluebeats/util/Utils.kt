@@ -6,6 +6,7 @@ import android.os.Looper
 import android.os.Parcel
 import android.view.*
 import android.widget.PopupWindow
+import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.MutableLiveData
 import com.google.gson.reflect.TypeToken
@@ -107,7 +108,7 @@ object Utils {
                   contentLayout: Int,
                   closeOnClick: Boolean,
                   initContent: ((View) -> Unit)): PopupWindow {
-        val inflater = LayoutInflater.from(context)
+        val inflater = ContextCompat.getSystemService(context, LayoutInflater::class.java)!!
         val content = inflater.inflate(contentLayout, null)
 
         val popup = PopupWindow(

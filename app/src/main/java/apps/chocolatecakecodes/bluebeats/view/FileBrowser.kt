@@ -120,6 +120,14 @@ class FileBrowser : Fragment() {
                 true
             }
 
+            menu.add("About").apply {
+                setOnMenuItemClickListener {
+                    AboutPopup.show(this@FileBrowser.requireContext(), this@FileBrowser.view as ViewGroup,
+                        this@FileBrowser.requireActivity().onBackPressedDispatcher)
+                    true
+                }
+            }
+
             updateMenuItems()
         }
     }
