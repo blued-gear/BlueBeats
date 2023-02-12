@@ -60,7 +60,6 @@ internal class Playlists : Fragment() {
     private var upBtn = RequireNotNull<ImageButton>()
     private var menu: Menu? = null
     private var inSelection = false
-    private var dynplEditor = RequireNotNull<DynplaylistEditorFragment>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -299,9 +298,9 @@ internal class Playlists : Fragment() {
     }
 
     private fun onEditDynamicPlaylist(playlist: DynamicPlaylist) {
-        dynplEditor.set(DynplaylistEditorFragment(playlist))
+        val editor = DynplaylistEditorFragment(playlist)
         this.parentFragmentManager.beginTransaction()
-            .add(R.id.main_content, dynplEditor.get(), MainActivityViewModel.Dialogs.DYNPLAYLIST_EDITOR.tag)
+            .add(R.id.main_content, editor, MainActivityViewModel.Dialogs.DYNPLAYLIST_EDITOR.tag)
             .commit()
 
         Utils.trySetValueImmediately(mainVM.currentDialog, MainActivityViewModel.Dialogs.DYNPLAYLIST_EDITOR)
@@ -311,13 +310,13 @@ internal class Playlists : Fragment() {
 
     private fun onCloseEditDynplDlg() {
         CoroutineScope(Dispatchers.Unconfined).launch {
-            if(dynplEditor.get().saveChanges()){
+            val editor = this@Playlists.parentFragmentManager.findFragmentByTag(MainActivityViewModel.Dialogs.DYNPLAYLIST_EDITOR.tag) as DynplaylistEditorFragment
+            if(editor.saveChanges()){
                 withContext(Dispatchers.Main) {
                     this@Playlists.parentFragmentManager.beginTransaction()
                         .remove(this@Playlists.parentFragmentManager.findFragmentByTag(MainActivityViewModel.Dialogs.DYNPLAYLIST_EDITOR.tag)!!)
                         .commit()
 
-                    dynplEditor.set(null)
                     Utils.trySetValueImmediately(mainVM.currentDialog, MainActivityViewModel.Dialogs.NONE)
 
                     updateMenu()
