@@ -474,7 +474,7 @@ class Player : Fragment() {
     //region inner classes
     private inner class ControlsGestureHandler(private val view: View) : GestureDetector.SimpleOnGestureListener(){
 
-        override fun onSingleTapConfirmed(e: MotionEvent?): Boolean {
+        override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
             view.performClick()
 
             runControlsTransition(!controlsVisible)
@@ -482,8 +482,7 @@ class Player : Fragment() {
             return true
         }
 
-        override fun onDoubleTapEvent(e: MotionEvent?): Boolean {
-            if(e === null) return false
+        override fun onDoubleTapEvent(e: MotionEvent): Boolean {
             if(e.actionMasked != MotionEvent.ACTION_UP) return false
             if(viewModel.currentMedia.value === null) return false
 
