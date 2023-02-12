@@ -96,6 +96,8 @@ class Player : Fragment() {
     }
 
     private fun playMedia(mediaFile: MediaFile){
+        player.stop()
+
         val newMedia = VlcManagers.getMediaDB().getSubject().fileToVlcMedia(mediaFile.path)
         if(newMedia === null)
             throw IllegalArgumentException("can not create media from file")
@@ -104,6 +106,10 @@ class Player : Fragment() {
             currentMedia!!.release()
 
         this.currentMedia = newMedia
+
+        if(!player.vlcVout.areViewsAttached())//XXX if audio is played vlc will detach teh playerView
+            player.attachViews(playerView, null, false, false)
+
         player.play(newMedia)
     }
 }
