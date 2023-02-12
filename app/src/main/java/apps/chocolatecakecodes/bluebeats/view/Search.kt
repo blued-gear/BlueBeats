@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.EditText
 import android.widget.Spinner
+import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.RecyclerView
@@ -64,15 +65,35 @@ internal class Search : Fragment(R.layout.search_fragment) {
         super.onStop()
     }
 
+    override fun onDestroyView() {
+        super.onDestroyView()
+
+        tabs.set(null)
+        searchText.set(null)
+        subgroupsSpinner.set(null)
+        itemView.set(null)
+    }
+
+    //region action handlers
     private fun wireActionHandlers() {
+        setupTabSelectionListener()
+
+        searchText.get().doAfterTextChanged {
+            viewModel.setSearchText(it.toString())
+        }
+    }
+
+    private fun setupTabSelectionListener() {
         tabs.get().addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
-                viewModel.grouping.value = when(tab.position){
+                when(tab.position){
                     0 -> SearchViewModel.Grouping.FILENAME
                     1 -> SearchViewModel.Grouping.TITLE
                     2 -> SearchViewModel.Grouping.ID3_TAG
                     3 -> SearchViewModel.Grouping.USER_TAG
                     else -> throw AssertionError()
+                }.let {
+                    viewModel.setGrouping(it)
                 }
             }
             override fun onTabUnselected(tab: TabLayout.Tab) {}
@@ -81,12 +102,19 @@ internal class Search : Fragment(R.layout.search_fragment) {
             }
         })
     }
+    //endregion
 
+    //region vm handlers
     private fun wireObservers() {
         viewModel.grouping.observe(this.viewLifecycleOwner) {
             it?.let {
                 applyTabSelection(it)
-                loadItems(it)
+            }
+        }
+
+        viewModel.searchText.observe(this.viewLifecycleOwner) {
+            it?.let {
+                applySearchText(it)
             }
         }
     }
@@ -107,7 +135,11 @@ internal class Search : Fragment(R.layout.search_fragment) {
         }
     }
 
-    private fun loadItems(grouping: SearchViewModel.Grouping) {
-        //TODO
+    private fun applySearchText(text: String) {
+        searchText.get().let {
+            it.text.clear()
+            it.text.append(text)
+        }
     }
+    //endregion
 }

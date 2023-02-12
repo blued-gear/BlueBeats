@@ -138,7 +138,7 @@ object Utils {
     /**
      * @return (added, deleted, same)
      */
-    fun <T>diffChanges(old: Set<T>, new: Set<T>): Triple<Set<T>, Set<T>, Set<T>> {
+    fun <T> diffChanges(old: Set<T>, new: Set<T>): Triple<Set<T>, Set<T>, Set<T>> {
         return Triple(
             new.minus(old),
             old.minus(new),
