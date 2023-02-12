@@ -401,7 +401,9 @@ private class MediaNodeSelectPopup(
             Button(context).apply {
                 text = context.getString(R.string.misc_ok)
                 setOnClickListener {
-                    onResult(browser.selectedItems)
+                    // if nothing is selected use the current dir
+                    val selected = if(browser.inSelection) browser.selectedItems else listOf(browser.currentDir!!)
+                    onResult(selected)
                 }
             }.let {
                 this.addView(it, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
