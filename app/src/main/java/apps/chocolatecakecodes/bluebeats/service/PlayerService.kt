@@ -1,10 +1,12 @@
 package apps.chocolatecakecodes.bluebeats.service
 
 import android.annotation.SuppressLint
+import android.app.Notification
 import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.os.Build
 import android.support.v4.media.session.PlaybackStateCompat
@@ -17,7 +19,6 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.media.app.NotificationCompat.MediaStyle
 import androidx.media2.common.MediaMetadata
-import androidx.media2.common.SessionPlayer
 import androidx.media2.session.MediaSession
 import androidx.media2.session.MediaSessionService
 import apps.chocolatecakecodes.bluebeats.R
@@ -43,7 +44,8 @@ internal class PlayerService : MediaSessionService(){
 
     private lateinit var player: VlcPlayer
     private var session: MediaSession by OnceSettable()
-    private var notificationProvider: NotificationProvider by OnceSettable()
+    private var notificationHandlerFix: MediaNotificationHandlerFix by OnceSettable()
+    private var initialized = false
 
     override fun onCreate() {
         super.onCreate()
@@ -60,8 +62,9 @@ internal class PlayerService : MediaSessionService(){
         player = VlcPlayer(VlcManagers.getLibVlc())
         setupSession()
 
-        notificationProvider = NotificationProvider(this, session)
+        notificationHandlerFix = MediaNotificationHandlerFix(this, session)
 
+        initialized = true
         instance = this
     }
 
@@ -79,9 +82,13 @@ internal class PlayerService : MediaSessionService(){
     }
 
     override fun onUpdateNotification(session: MediaSession): MediaNotification? {
-        if(player.playerState == SessionPlayer.PLAYER_STATE_IDLE)
-            return null
-        return notificationProvider.createNotification()
+        if(session !== this.session)
+            throw IllegalArgumentException("PlayerService will only handle its own session")
+
+        if(initialized)
+            notificationHandlerFix.updateNotification()
+
+        return null
     }
 
     private fun setupSession() {
@@ -238,5 +245,81 @@ private class NotificationProvider(
             keyCode, intent,
             PendingIntent.FLAG_IMMUTABLE
         )
+    }
+}
+
+// XXX reimplement logic of MediaNotificationHandler::onPlayerStateChanged() because the official one is buggy
+//   (does not call the new .startForeground() method which crashes the app when in background;
+//   also stops service when not playing which leads to bug in Android which is ignoring the FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK flag
+//     -> keep service alive as long as app is open)
+private class MediaNotificationHandlerFix(
+    private val service: PlayerService,
+    private val session: MediaSession
+) {
+
+    private val notificationProvider = NotificationProvider(service, session)
+    //private val selfStartIntent = Intent(service, service.javaClass)
+    //private val notificationManagerCompat = NotificationManagerCompat.from(service)
+
+    @SuppressLint("RestrictedApi")
+    fun updateNotification() {
+        val mediaNotification = notificationProvider.createNotification()
+        val notification = mediaNotification.notification
+        val notificationId = mediaNotification.notificationId
+
+        // Call Notification.MediaStyle#setMediaSession() indirectly.
+        val fwkToken =
+            session.sessionCompat.sessionToken.token as android.media.session.MediaSession.Token
+        notification.extras.putParcelable(Notification.EXTRA_MEDIA_SESSION, fwkToken)
+
+        /*
+        if(isPlaybackStopped(session.player.playerState)) {
+            stopForegroundServiceIfNeeded()
+            normalNotification(notificationId, notification)
+        } else {
+            foregroundNotification(notificationId, notification)
+        }
+         */
+
+        foregroundNotification(notificationId, notification)
+    }
+
+    /*
+    fun isPlaybackStopped(state: Int): Boolean {
+        return state == SessionPlayer.PLAYER_STATE_PAUSED
+                || state == SessionPlayer.PLAYER_STATE_IDLE
+                || state == SessionPlayer.PLAYER_STATE_ERROR
+    }
+
+    private fun stopForegroundServiceIfNeeded() {
+        val sessions: List<MediaSession> = service.sessions
+        for (i in sessions.indices) {
+            if (!isPlaybackStopped(sessions[i].player.playerState)) {
+                return
+            }
+        }
+
+        service.stopForeground(Service.STOP_FOREGROUND_DETACH)
+    }
+
+    private fun normalNotification(notificationId: Int, notification: Notification) {
+        if(ActivityCompat.checkSelfPermission(service, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED) {
+            Log.w("PlayerService/Notification", "post of notification denied")
+        } else {
+            notificationManagerCompat.notify(notificationId, notification)
+        }
+    }
+     */
+
+    private fun foregroundNotification(notificationId: Int, notification: Notification) {
+        //ContextCompat.startForegroundService(service, selfStartIntent)
+
+        if(Build.VERSION.SDK_INT >= 29) {
+            service.startForeground(notificationId, notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+        } else {
+            service.startForeground(notificationId, notification)
+        }
     }
 }
