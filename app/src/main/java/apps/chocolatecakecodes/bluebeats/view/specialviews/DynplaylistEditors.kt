@@ -74,6 +74,7 @@ private class DynplaylistGroupEditor(
             setOnClickListener {
                 group.combineWithAnd = !group.combineWithAnd
                 setLogicMode(group.combineWithAnd)
+                changedCallback(group)
             }
             setLogicMode(group.combineWithAnd)
         }
@@ -133,6 +134,7 @@ private class DynplaylistGroupEditor(
             SimpleAddableRuleHeaderView.CommonVisuals.negateCheckbox(context).apply {
                 setOnCheckedChangeListener { _, checked ->
                     group.setRuleNegated(ruleItem.first, checked)
+                    changedCallback(group)
                     this@editorView.header.shareBtn.visibility = if(checked) View.GONE else View.VISIBLE
                 }
                 this.isChecked = ruleItem.second
@@ -358,6 +360,7 @@ private class DynplaylistUsertagsEditor(
 
     private fun onToggleLogicMode() {
         rule.combineWithAnd = !rule.combineWithAnd
+        changedCallback(rule)
         logicBtn.setLogicMode(rule.combineWithAnd)
     }
 }
