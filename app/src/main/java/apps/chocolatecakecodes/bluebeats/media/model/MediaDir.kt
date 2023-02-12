@@ -32,7 +32,7 @@ class MediaDir internal constructor(internal val entity: MediaDirEntity): MediaN
     override val name: String by entity::name
 
     internal fun addDir(dir: MediaDir){
-        if(!this.shallowEquals(dir.parent))
+        if(this.entity != dir.parent?.entity)
             throw IllegalArgumentException("dir is not sub-item of this dir")
         dirs.add(dir)
     }
@@ -44,7 +44,7 @@ class MediaDir internal constructor(internal val entity: MediaDirEntity): MediaN
     }
 
     internal fun addFile(file: MediaFile){
-        if(!this.shallowEquals(file.parent))
+        if(this.entity != file.parent?.entity)
             throw IllegalArgumentException("file is not sub-item of this dir")
         files.add(file)
     }
@@ -67,10 +67,19 @@ class MediaDir internal constructor(internal val entity: MediaDirEntity): MediaN
         return copy
     }
 
+    /** only compares if <code>other</code> is a MediaDir an its entity is equals */
     override fun equals(other: Any?): Boolean {
         if(other !is MediaDir)
             return false
-        if(!shallowEquals(other))
+
+        return this.entity == other.entity
+    }
+
+    /**
+     * like <code>equals(other)</code>, with the difference all properties and children are compared (might result in recursive execution)
+     */
+    fun contentEquals(other: MediaDir?): Boolean{
+        if(other === null)
             return false
 
         val thisChildren = this.getDirs()
@@ -91,15 +100,6 @@ class MediaDir internal constructor(internal val entity: MediaDirEntity): MediaN
         }
 
         return true
-    }
-
-    /**
-     * like <code>equals(other)</code>, with the difference that just the path is compared
-     */
-    fun shallowEquals(other: MediaDir?): Boolean{
-        if(other === null)
-            return false
-        return this.path == other.path
     }
 }
 
