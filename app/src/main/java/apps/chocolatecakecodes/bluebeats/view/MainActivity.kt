@@ -2,7 +2,6 @@ package apps.chocolatecakecodes.bluebeats.view
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -13,9 +12,7 @@ import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
-import apps.chocolatecakecodes.bluebeats.media.MediaDB
-import apps.chocolatecakecodes.bluebeats.media.VlcPlayerManager
-import apps.chocolatecakecodes.bluebeats.util.MediaDBEventRelay
+import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 
@@ -26,9 +23,6 @@ class MainActivity : AppCompatActivity() {
         Manifest.permission.READ_EXTERNAL_STORAGE,
         Manifest.permission.WRITE_EXTERNAL_STORAGE
     )
-    private lateinit var vlcMng: VlcPlayerManager
-    private lateinit var mediaMng: MediaDB
-    private lateinit var mediaMngEventRelay: MediaDBEventRelay
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,10 +32,7 @@ class MainActivity : AppCompatActivity() {
 
         RoomDB.init(this)
 
-        vlcMng = VlcPlayerManager(this)
-        mediaMngEventRelay = MediaDBEventRelay()
-        mediaMng = MediaDB(vlcMng.libVlc, mediaMngEventRelay)
-        mediaMngEventRelay.setSubject(mediaMng)
+        VlcManagers.init(this)
 
         listMediaRoots()
         setupTabs()
@@ -71,7 +62,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun listMediaRoots(){
-        mediaMng.addScanRoot("/storage/3EB0-1BF2/")
+        VlcManagers.getMediaDB().getSubject().addScanRoot("/storage/3EB0-1BF2/")
         //TODO list all available roots
     }
 
@@ -81,7 +72,7 @@ class MainActivity : AppCompatActivity() {
 
         init{
             tabs = listOf(
-                Pair("Media", {FileBrowser.newInstance(mediaMngEventRelay)})
+                Pair("Media", {FileBrowser.newInstance()})
             )
         }
 

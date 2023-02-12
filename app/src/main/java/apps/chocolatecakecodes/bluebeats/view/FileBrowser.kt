@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.MediaDB
+import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.util.MediaDBEventRelay
@@ -37,8 +38,8 @@ class FileBrowser(private val mediaDB: MediaDBEventRelay) : Fragment() {
          * @return A new instance of fragment FileBrowser.
          */
         @JvmStatic
-        fun newInstance(mediaDB: MediaDBEventRelay) =
-            FileBrowser(mediaDB).apply {
+        fun newInstance() =
+            FileBrowser(VlcManagers.getMediaDB()).apply {
                 arguments = Bundle().apply {
                     // put args
                 }

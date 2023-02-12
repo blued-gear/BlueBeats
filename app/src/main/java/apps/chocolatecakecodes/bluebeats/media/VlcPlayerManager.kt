@@ -17,18 +17,14 @@ import java.lang.IllegalStateException
 /**
  * manages a player
  */
-class VlcPlayerManager(context: Context) {
-
-    val libVlc: ILibVLC
+class VlcPlayerManager(context: Context, private val mediaDB: MediaDB) {
 
     private val player: MediaPlayer
     private val playerView: VLCVideoLayout
     private var currentPlayerViewHolder: FrameLayout? = null;
 
     init{
-        val libVlcFactory = FactoryManager.getFactory(ILibVLCFactory.factoryId) as ILibVLCFactory
-        libVlc = libVlcFactory.getFromContext(context)
-        player = MediaPlayer(libVlc)
+        player = MediaPlayer(VlcManagers.getLibVlc())
         playerView = VLCVideoLayout(context)
 
         player.attachViews(playerView, null, false, false)//TODO in future version subtitle option should be settable
