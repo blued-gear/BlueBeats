@@ -364,6 +364,12 @@ class Player : Fragment() {
                 MediaPlayer.Event.TimeChanged -> {
                     viewModel.updatePlayPosition(player.time)
                 }
+                MediaPlayer.Event.EndReached -> {
+                    // reset player, or else seek will break
+                    player.play(currentMedia!!)
+                    viewModel.updatePlayPosition(0)
+                    viewModel.pause()
+                }
             }
         }
     }
