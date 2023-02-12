@@ -2,6 +2,6 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
-            android:title="Chapters"
+            android:title="@string/player_chapters"
             android:id="@+id/player_menu_chapters" />
 </menu>
