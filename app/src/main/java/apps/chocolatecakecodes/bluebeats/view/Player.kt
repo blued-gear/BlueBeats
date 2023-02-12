@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.os.Bundle
 import android.util.Log
 import android.view.*
-import android.widget.Button
 import android.widget.FrameLayout
 import androidx.core.view.GestureDetectorCompat
 import androidx.fragment.app.Fragment
@@ -12,6 +11,7 @@ import androidx.lifecycle.ViewModelProvider
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import kotlinx.coroutines.*
 import org.videolan.libvlc.MediaPlayer
 import org.videolan.libvlc.interfaces.IMedia
@@ -30,10 +30,11 @@ class Player : Fragment() {
         private const val SEEK_AMOUNT = 5000L// in ms TODO make changeable by user
     }
 
-    private lateinit var viewModel: PlayerViewModel
-    private lateinit var mainVM: MainActivityViewModel
-    private lateinit var player: MediaPlayer
-    private lateinit var playerView: VLCVideoLayout
+    private var viewModel: PlayerViewModel by OnceSettable()
+    private var mainVM: MainActivityViewModel by OnceSettable()
+    private var player: MediaPlayer by OnceSettable()
+    private var playerView: VLCVideoLayout by OnceSettable()
+    private var playerContainer: ViewGroup by OnceSettable()
     private var currentMedia: IMedia? = null
     private var controlsVisible: Boolean = true
     private var controlsHideCoroutine: Job? = null
@@ -64,6 +65,8 @@ class Player : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        playerContainer = view.findViewById<View>(R.id.player_player_container) as ViewGroup
 
         // setup player-view
         playerView = VLCVideoLayout(this.requireContext())
@@ -98,7 +101,7 @@ class Player : Fragment() {
         }
 
         // play/pause button
-        view.findViewById<Button>(R.id.player_controls_play).setOnClickListener {
+        view.findViewById<View>(R.id.player_controls_play).setOnClickListener {
             if(viewModel.isPlaying.value == true)
                 viewModel.pause()
             else if(viewModel.currentMedia.value !== null)
@@ -106,8 +109,8 @@ class Player : Fragment() {
         }
 
         // fullscreen button
-        view.findViewById<Button>(R.id.player_controls_fullscreen).setOnClickListener {
-            viewModel.setFullscreenMode(true)
+        view.findViewById<View>(R.id.player_controls_fullscreen).setOnClickListener {
+            viewModel.setFullscreenMode(!(viewModel.isFullscreen.value ?: false))
         }
 
         // fullscreen close on back
@@ -142,6 +145,8 @@ class Player : Fragment() {
                             if (viewModel.isPlaying.value == true) {// only re-hide if playing
                                 runControlsTransition(false)
                             }
+
+                            controlsHideCoroutine = null
                         }
                     }
                 }
@@ -170,10 +175,14 @@ class Player : Fragment() {
     private fun runControlsTransition(fadeIn: Boolean){
         if(!(fadeIn xor controlsVisible))// do nothing if the desired state is already set
             return
+        if(this.view === null) return// can be null if view got re-attached (fullscreen) or rebuild
+
+        val rootView = playerContainer
+        val controlsPane = rootView.findViewById<ViewGroup>(R.id.player_controls_overlay)
+        if(controlsPane === null) return// can be null if view got re-attached (fullscreen) or rebuild
 
         controlsVisible = fadeIn
 
-        val controlsPane = this.requireView().findViewById<ViewGroup>(R.id.player_controls_overlay)
         controlsPane.animate()
             .setDuration(if(fadeIn) CONTROLS_FADE_IN_TIME else CONTROLS_FADE_OUT_TIME)
             .alpha(if(fadeIn) 1.0f else 0.0f)
@@ -186,6 +195,8 @@ class Player : Fragment() {
                             if(viewModel.isPlaying.value == true){// only re-hide if playing
                                 runControlsTransition(false)
                             }
+
+                            controlsHideCoroutine = null
                         }
                     }
                 }
@@ -222,15 +233,16 @@ class Player : Fragment() {
 
     private fun showFullscreen(fullscreen: Boolean){
         if(fullscreen){
-            this.requireView().findViewById<FrameLayout>(R.id.player_playerholder).removeView(playerView)
-            mainVM.fullScreenContent.postValue(playerView)
+            val parent = playerContainer.parent as ViewGroup
+            parent.removeView(playerContainer)
+            mainVM.fullScreenContent.postValue(playerContainer)
 
             // wait until view is attached to re-attach player
             CoroutineScope(Dispatchers.Main).launch {
                 var success = false
                 for(i in 0..10){
                     delay(10)
-                    if(playerView.parent !== null){
+                    if(playerContainer.parent !== null){
                         success = true
                         break
                     }
@@ -249,13 +261,14 @@ class Player : Fragment() {
                 var success = false
                 for(i in 0..10){
                     delay(10)
-                    if(playerView.parent === null){
+                    if(playerContainer.parent === null){
                         success = true
                         break
                     }
                 }
                 if(success){
-                    this@Player.requireView().findViewById<FrameLayout>(R.id.player_playerholder).addView(playerView)
+                    this@Player.requireView().findViewById<FrameLayout>(R.id.player_player_container_container)
+                        .addView(playerContainer, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                     attachPlayer()
                 }else{
                     Log.e("Player", "could not re-attach playerView: not released by parent")
