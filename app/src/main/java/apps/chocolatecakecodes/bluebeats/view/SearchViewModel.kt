@@ -72,8 +72,6 @@ internal class SearchViewModel : ViewModel() {
         if(text == searchText.value)
             return
 
-        Utils.trySetValueImmediately(searchTextRW, text)
-
         debounceSearch(text)
     }
 
@@ -166,6 +164,8 @@ internal class SearchViewModel : ViewModel() {
                     trySend(it)
                 }
             }.debounce(SEARCH_DEBOUNCE_TIMEOUT).collect {
+                Utils.trySetValueImmediately(searchTextRW, it)
+
                 withContext(Dispatchers.IO) {
                     search(it)
                 }
