@@ -411,6 +411,8 @@ internal abstract class ID3TagDAO {
             ret.put("title", tags.title)
         if(!tags.artist.isNullOrEmpty())
             ret.put("artist", tags.artist)
+        if(!tags.genre.isNullOrEmpty())
+            ret.put("genre", tags.genre)
         if(tags.length > 0)
             ret.put("length", tags.length.toString())
 
@@ -422,6 +424,7 @@ internal abstract class ID3TagDAO {
 
         tags["title"]?.let { ret.title = it }
         tags["artist"]?.let { ret.artist = it }
+        tags["genre"]?.let { ret.genre = it }
         tags["length"]?.let { ret.length = it.toLong() }
 
         return ret
