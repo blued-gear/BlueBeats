@@ -2,7 +2,9 @@ package apps.chocolatecakecodes.bluebeats.database
 
 import androidx.room.*
 import androidx.room.OnConflictStrategy.IGNORE
-import apps.chocolatecakecodes.bluebeats.media.model.*
+import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
+import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.taglib.TagFields
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
@@ -235,13 +237,19 @@ internal abstract class UserTagsDAO{
     //endregion
 
     //region db actions
-    @Query("SELECT tag.id, tag.name FROM MediaFileEntity AS file INNER JOIN UserTagRelation AS rel ON file.id = rel.file INNER JOIN UserTagEntity AS tag ON tag.id = rel.tag WHERE file.id = :fileId ORDER BY pos;")
+    @Query("SELECT tag.id, tag.name FROM MediaFileEntity AS file " +
+            "INNER JOIN UserTagRelation AS rel ON file.id = rel.file " +
+            "INNER JOIN UserTagEntity AS tag ON tag.id = rel.tag " +
+            "WHERE file.id = :fileId ORDER BY pos;")
     protected abstract fun getUserTags(fileId: Long): List<UserTagEntity>
 
     @Query("SELECT * FROM UserTagEntity")
     protected abstract fun getAllUserTagEntities(): List<UserTagEntity>
 
-    @Query("SELECT file.id FROM MediaFileEntity AS file INNER JOIN UserTagRelation AS rel ON file.id = rel.file INNER JOIN UserTagEntity AS tag ON tag.id = rel.tag WHERE tag.name IN (:tags);")
+    @Query("SELECT file.id FROM MediaFileEntity AS file " +
+            "INNER JOIN UserTagRelation AS rel ON file.id = rel.file " +
+            "INNER JOIN UserTagEntity AS tag ON tag.id = rel.tag " +
+            "WHERE tag.name IN (:tags);")
     protected abstract fun getFileIdsWithTags(tags: List<String>): List<Long>
 
     @Query("SELECT * FROM UserTagEntity WHERE name IN (:names);")

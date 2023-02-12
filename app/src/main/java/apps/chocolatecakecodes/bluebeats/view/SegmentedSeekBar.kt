@@ -2,10 +2,14 @@ package apps.chocolatecakecodes.bluebeats.view
 
 import android.content.Context
 import android.content.res.TypedArray
-import android.graphics.*
+import android.graphics.Color
 import android.util.AttributeSet
-import android.view.*
-import android.widget.*
+import android.view.LayoutInflater
+import android.view.View
+import android.widget.AbsoluteLayout
+import android.widget.FrameLayout
+import android.widget.SeekBar
+import android.widget.TextView
 import androidx.appcompat.widget.AppCompatSeekBar
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable

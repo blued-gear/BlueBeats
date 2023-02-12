@@ -5,7 +5,9 @@ import android.util.Log
 import apps.chocolatecakecodes.bluebeats.database.MediaDirEntity
 import apps.chocolatecakecodes.bluebeats.database.MediaFileEntity
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
-import apps.chocolatecakecodes.bluebeats.media.model.*
+import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
+import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.taglib.TagFields
 import apps.chocolatecakecodes.bluebeats.taglib.TagParser
 import apps.chocolatecakecodes.bluebeats.util.Utils
@@ -242,6 +244,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
         // check dirs
         val discoveredSubdirNames = contents.first.map { it.uri.lastPathSegment!! }.toSet()
         val existingSubdirsWithName = mapOf(*dir.getDirs().map { Pair(it.name, it) }.toTypedArray())
+
         // add new subdirs
         discoveredSubdirNames.minus(existingSubdirsWithName.keys).forEach {
             wasChanged = true
@@ -249,6 +252,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
             dir.addDir(newSubdir)
             eventHandler.onNewNodeFound(newSubdir)
         }
+
         // delete old subdirs
         existingSubdirsWithName.keys.minus(discoveredSubdirNames).forEach{
             wasChanged = true
@@ -261,6 +265,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
         // check files
         val discoveredFilesWithName = mapOf(*contents.second.map { Pair(it.uri.lastPathSegment!!, it) }.toTypedArray())
         val existingFilesWithName = mapOf(*dir.getFiles().map{ Pair(it.name, it) }.toTypedArray())
+
         // add new files
         val newDiscoveredFiles = discoveredFilesWithName.keys.minus(existingFilesWithName.keys)
         newDiscoveredFiles.forEach {
@@ -270,6 +275,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
             dir.addFile(newFile)
             eventHandler.onNewNodeFound(newFile)
         }
+
         // remove old files
         existingFilesWithName.keys.minus(discoveredFilesWithName.keys).forEach {
             wasChanged = true
@@ -278,6 +284,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val eventHandler:
             fileDao.delete(child)
             eventHandler.onNodeRemoved(child)
         }
+
         // update files (do not re-check added files as they were just parsed)
         existingFilesWithName.keys.minus(newDiscoveredFiles).forEach {
             val child = existingFilesWithName[it]!!

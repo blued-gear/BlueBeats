@@ -5,7 +5,9 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.taglib.TagFields
 
 @Entity(
-    foreignKeys = [ForeignKey(entity = MediaDirEntity::class, parentColumns = ["id"], childColumns = ["parent"], onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE)],
+    foreignKeys = [ForeignKey(entity = MediaDirEntity::class,
+        parentColumns = ["id"], childColumns = ["parent"],
+        onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE)],
     indices = [Index(value = ["name", "parent"], unique = true)]
 )
 internal data class MediaDirEntity(
@@ -15,7 +17,9 @@ internal data class MediaDirEntity(
 )
 
 @Entity(
-    foreignKeys = [ForeignKey(entity = MediaDirEntity::class, parentColumns = ["id"], childColumns = ["parent"], onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE)],
+    foreignKeys = [ForeignKey(entity = MediaDirEntity::class,
+        parentColumns = ["id"], childColumns = ["parent"],
+        onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE)],
     indices = [Index(value = ["name", "parent"], unique = true)]
 )
 internal data class MediaFileEntity(
@@ -40,8 +44,12 @@ internal data class UserTagEntity(
 
 @Entity(
     foreignKeys = [
-        ForeignKey(entity = UserTagEntity::class, parentColumns = ["id"], childColumns = ["tag"], onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE),
-        ForeignKey(entity = MediaFileEntity::class, parentColumns = ["id"], childColumns = ["file"], onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE)
+        ForeignKey(entity = UserTagEntity::class,
+            parentColumns = ["id"], childColumns = ["tag"],
+            onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE),
+        ForeignKey(entity = MediaFileEntity::class,
+            parentColumns = ["id"], childColumns = ["file"],
+            onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE)
     ],
     indices = [Index(value = ["tag", "file"], unique = true)]
 )

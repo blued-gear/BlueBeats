@@ -1,6 +1,5 @@
 package apps.chocolatecakecodes.bluebeats.media.model
 
-import androidx.room.*
 import apps.chocolatecakecodes.bluebeats.database.MediaFileEntity
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.taglib.Chapter
@@ -8,7 +7,6 @@ import apps.chocolatecakecodes.bluebeats.taglib.TagFields
 import apps.chocolatecakecodes.bluebeats.taglib.TagParser
 import apps.chocolatecakecodes.bluebeats.util.CachedReference
 import apps.chocolatecakecodes.bluebeats.util.Utils
-import java.util.*
 
 class MediaFile internal constructor(internal val entity: MediaFileEntity): MediaNode(){
 
