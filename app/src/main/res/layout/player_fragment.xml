@@ -97,7 +97,7 @@
                         <view
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
-                                class="apps.chocolatecakecodes.bluebeats.view.SegmentedSeekBar"
+                                class="apps.chocolatecakecodes.bluebeats.view.specialviews.SegmentedSeekBar"
                                 android:id="@+id/player_controls_seek"
                                 app:layout_constraintBottom_toTopOf="@+id/player_controls_time"
                                 app:layout_constraintStart_toStartOf="parent"

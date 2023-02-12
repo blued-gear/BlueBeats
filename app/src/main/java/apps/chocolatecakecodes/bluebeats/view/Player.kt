@@ -20,6 +20,7 @@ import apps.chocolatecakecodes.bluebeats.taglib.Chapter
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
+import apps.chocolatecakecodes.bluebeats.view.specialviews.SegmentedSeekBar
 import com.mikepenz.fastadapter.adapters.FastItemAdapter
 import com.mikepenz.fastadapter.select.getSelectExtension
 import kotlinx.coroutines.*

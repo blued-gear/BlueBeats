@@ -15,6 +15,7 @@ idea{
 repositories {
     google()
     mavenCentral()
+    maven { url 'https://jitpack.io' }
 }
 
 android {
@@ -87,6 +88,8 @@ dependencies {
     implementation "com.mikepenz:fastadapter-extensions-scroll:${fastadapter_version}"
     implementation "com.mikepenz:fastadapter-extensions-ui:${fastadapter_version}"
     implementation "com.mikepenz:fastadapter-extensions-utils:${fastadapter_version}"
+
+    implementation 'com.github.cachapa:ExpandableLayout:2.9.2'
 
     implementation files("${project.buildFile.parent}/../../libvlc/vlc-android/libvlcjni/libvlc/build/outputs/aar/libvlc-armv8-3.5.0-eap5.aar")
 

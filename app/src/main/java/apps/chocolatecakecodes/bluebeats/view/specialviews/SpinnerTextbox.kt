@@ -1,4 +1,4 @@
-package apps.chocolatecakecodes.bluebeats.view
+package apps.chocolatecakecodes.bluebeats.view.specialviews
 
 import android.content.Context
 import android.content.res.ColorStateList
