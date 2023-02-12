@@ -107,7 +107,7 @@ class MediaDB constructor(private val libVLC: ILibVLC, private val appCtx: Conte
         return mediaTree
     }
 
-    fun fileToMedia(path: String): MediaFile{
+    fun fileToMediaFile(path: String): MediaFile{
         val vlcMedia = fileToVlcMedia(path)
         if(vlcMedia === null)
             throw FileNotFoundException("file $path can not be converted to vlc-media")
