@@ -97,6 +97,7 @@ internal class DynamicPlaylist private constructor(
             val entity = getEntity(id)
             deleteEntity(entity)
             ruleGroupDao.delete(ruleGroupDao.load(entity.ruleRoot))
+            playlistsManager.deleteEntry(id)
         }
 
         fun changeName(playlist: DynamicPlaylist, newName: String) {
