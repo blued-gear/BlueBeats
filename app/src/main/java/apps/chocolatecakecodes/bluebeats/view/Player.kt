@@ -9,12 +9,16 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.view.GestureDetectorCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.taglib.Chapter
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.Utils
+import com.mikepenz.fastadapter.IAdapter
+import com.mikepenz.fastadapter.adapters.FastItemAdapter
 import kotlinx.coroutines.*
 import org.videolan.libvlc.MediaPlayer
 import org.videolan.libvlc.interfaces.IMedia
@@ -330,11 +334,7 @@ class Player : Fragment() {
     }
 
     private fun showPlaylistOverview() {
-        Utils.showPopup(this.requireContext(), this.requireView(),
-            R.layout.player_playlist_fragment,
-        true) {
-
-        }
+        PlaylistOverviewPopup().createAndShow()
     }
     //endregion
 
@@ -592,6 +592,68 @@ class Player : Fragment() {
             player.play(currentMedia!!)
             viewModel.updatePlayPosition(0)
             viewModel.pause()
+        }
+    }
+
+    private inner class PlaylistOverviewPopup {
+
+        private val listAdapter = setupListAdapter()
+        private lateinit var popup: PopupWindow
+
+        fun createAndShow() {
+            viewModel.currentPlaylist.value!!.let {
+                CoroutineScope(Dispatchers.IO).launch {
+                    listAdapter.setNewList(it.getItems().map { MediaItem(it, false) })
+
+                    withContext(Dispatchers.Main) {
+                        popup = Utils.showPopup(this@Player.requireContext(), this@Player.requireView(),
+                            R.layout.player_playlist_fragment,
+                            true,
+                            this@PlaylistOverviewPopup::initContent)
+                    }
+                }
+            }
+        }
+
+        private fun initContent(view: View) {
+            // prevent close when main-content is clicked
+            catchAllTouches(view.findViewById(R.id.player_plfrgm_content))
+            setupRecyclerView(view.findViewById(R.id.player_plfrgm_list))
+        }
+
+        private fun catchAllTouches(view: View) {
+            view.setOnTouchListener { v, event ->
+                if(event.actionMasked == MotionEvent.ACTION_UP)
+                    v.performClick()
+
+                true
+            }
+        }
+
+        private fun setupRecyclerView(view: RecyclerView) {
+            view.layoutManager = LinearLayoutManager(this@Player.requireContext(),
+                LinearLayoutManager.VERTICAL, false)
+            view.adapter = listAdapter
+        }
+
+        private fun setupListAdapter(): FastItemAdapter<MediaItem> {
+            val adapter = FastItemAdapter<MediaItem>()
+
+            adapter.onClickListener = { _, _, _, position ->
+                onItemClick(position)
+                true
+            }
+
+            return adapter
+        }
+
+        private fun onItemClick(position: Int) {
+            viewModel.currentPlaylist.value!!.let {
+                it.seek(position - it.currentPosition)
+                viewModel.play(it.currentMedia(), true)
+            }
+
+            popup.dismiss()
         }
     }
 }
