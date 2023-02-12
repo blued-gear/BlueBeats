@@ -61,11 +61,24 @@
 
                     <androidx.constraintlayout.widget.ConstraintLayout
                             android:layout_width="match_parent"
-                            android:layout_height="40dp"
+                            android:layout_height="60dp"
                             app:layout_constraintBottom_toBottomOf="parent"
                             app:layout_constraintEnd_toEndOf="parent"
                             app:layout_constraintStart_toStartOf="parent"
-                            android:background="#55ACACAC">
+                            android:background="#55ACACAC"
+                            android:id="@+id/constraintLayout">
+
+                        <TextView
+                                android:text="99:99:99 / 99:99:99"
+                                android:layout_width="140dp"
+                                android:layout_height="wrap_content"
+                                android:id="@+id/player_controls_time"
+                                android:textColor="#FFFFFF"
+                                android:includeFontPadding="false"
+                                app:layout_constraintBottom_toTopOf="@+id/player_controls_seek"
+                                app:layout_constraintStart_toStartOf="parent"
+                                android:layout_marginStart="8dp"
+                                android:layout_marginBottom="8dp" />
 
                         <ImageButton
                                 android:src="@drawable/ic_baseline_fullscreen"
@@ -80,19 +93,17 @@
 
                         <SeekBar
                                 android:layout_width="0dp"
-                                android:layout_height="match_parent"
+                                android:layout_height="wrap_content"
                                 android:id="@+id/player_controls_seek"
                                 app:layout_constraintEnd_toStartOf="@+id/player_controls_fullscreen"
-                                app:layout_constraintTop_toTopOf="parent"
                                 app:layout_constraintBottom_toBottomOf="parent"
-                                app:layout_constraintStart_toStartOf="parent"
-                                android:layout_marginStart="8dp"
                                 android:layout_marginEnd="8dp"
                                 android:layout_marginBottom="8dp"
-                                android:layout_marginTop="8dp"
                                 android:progress="1"
                                 android:max="1000"
-                                android:indeterminate="false" />
+                                android:indeterminate="false"
+                                app:layout_constraintStart_toStartOf="parent"
+                                android:layout_marginStart="8dp" />
 
                     </androidx.constraintlayout.widget.ConstraintLayout>
 

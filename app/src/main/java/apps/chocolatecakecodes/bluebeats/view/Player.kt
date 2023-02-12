@@ -7,6 +7,7 @@ import android.view.*
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.SeekBar
+import android.widget.TextView
 import androidx.core.view.GestureDetectorCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
@@ -40,6 +41,7 @@ class Player : Fragment() {
     private var playerView: VLCVideoLayout by OnceSettable()
     private var playerContainer: ViewGroup by OnceSettable()
     private var seekBar: SeekBar by OnceSettable()
+    private var timeTextView: TextView by OnceSettable()
     private var currentMedia: IMedia? = null
     private var controlsVisible: Boolean = true
     private var controlsHideCoroutine: Job? = null
@@ -75,6 +77,7 @@ class Player : Fragment() {
         playerContainer = view.findViewById(R.id.player_player_container)
         seekBar = view.findViewById(R.id.player_controls_seek)
         seekBar.max = SEEK_STEP.toInt()
+        timeTextView = view.findViewById(R.id.player_controls_time)
 
         // setup player-view
         playerView = VLCVideoLayout(this.requireContext())
@@ -132,6 +135,10 @@ class Player : Fragment() {
         // seek-bar
         seekBar.setOnSeekBarChangeListener(seekHandler)
 
+        timeTextView.setOnClickListener {
+            viewModel.setTimeTextAsRemaining(!viewModel.timeTextAsRemaining.value!!)
+        }
+
         player.setEventListener(PlayerEventHandler())
     }
 
@@ -179,6 +186,8 @@ class Player : Fragment() {
                 if(!seekHandler.isSeeking) {
                     seekBar.progress = ((it / player.length.toDouble()) * SEEK_STEP).toInt().coerceAtLeast(1)
                 }
+
+                timeTextView.text = formatPlayTime(it, player.length, viewModel.timeTextAsRemaining.value!!)
             }
         }
 
@@ -191,6 +200,10 @@ class Player : Fragment() {
                 else
                     playerContainer.findViewById<ImageButton>(R.id.player_controls_fullscreen).setImageResource(R.drawable.ic_baseline_fullscreen)
             }
+        }
+
+        viewModel.timeTextAsRemaining.observe(this.viewLifecycleOwner){
+            timeTextView.text = formatPlayTime(player.time, player.length, it!!)
         }
     }
 
@@ -303,6 +316,45 @@ class Player : Fragment() {
                 }
             }
         }
+    }
+
+    private fun formatPlayTime(time: Long, len: Long, remaining: Boolean): String{
+        fun formatTime(ms: Long, withHours: Boolean): String{// returns [hh:]mm:ss
+            var varMs = ms
+            var factor: Long = if(withHours) 60 * 60 * 1000 else 60 * 1000
+
+            val hours: Long
+            if(withHours){
+                hours = varMs / factor
+                varMs -= hours * factor
+                factor /= 60
+            }else{
+                hours = -1
+            }
+
+            val minutes = varMs / factor
+            varMs -= minutes * factor
+            factor /= 60
+
+            val seconds = varMs / factor
+
+            if(withHours)
+                return String.format("%02d:%02d:%02d", hours, minutes, seconds)
+            else
+                return String.format("%02d:%02d", minutes, seconds)
+        }
+
+        val timeCapped = time.coerceAtLeast(0)
+        val lenCapped = len.coerceAtLeast(0)
+
+        val withHours = (lenCapped / (60 * 60 * 1000)) > 0
+
+        val timeStr =
+            if(remaining) "-" + formatTime(lenCapped - timeCapped, withHours)
+            else formatTime(timeCapped, withHours)
+        val lenStr = formatTime(lenCapped, withHours)
+
+        return "$timeStr / $lenStr"
     }
 
     private inner class ControlsGestureHandler(private val view: View) : GestureDetector.SimpleOnGestureListener(){
