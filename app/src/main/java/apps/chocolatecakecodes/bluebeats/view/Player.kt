@@ -28,7 +28,7 @@ class Player : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        viewModel = ViewModelProvider(this).get(PlayerViewModel::class.java)
+        viewModel = ViewModelProvider(this.requireActivity()).get(PlayerViewModel::class.java)
         player = MediaPlayer(VlcManagers.getLibVlc())
     }
 

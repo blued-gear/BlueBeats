@@ -10,12 +10,14 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.MediaDB
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
+import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.util.MediaDBEventRelay
 import kotlinx.coroutines.*
@@ -24,6 +26,8 @@ import java.util.concurrent.atomic.AtomicReference
 
 class FileBrowser(private val mediaDB: MediaDBEventRelay) : Fragment() {
 
+    private lateinit var playerVM: PlayerViewModel
+    private lateinit var mainVM: MainActivityViewModel
     private val listAdapter: ViewAdapter
     private var listView: RecyclerView? = null
     private var progressBar: ProgressBar? = null
@@ -56,8 +60,9 @@ class FileBrowser(private val mediaDB: MediaDBEventRelay) : Fragment() {
                         adapterRef.get().setEntries(it)
                     }
                 }
-            }else{
-                Log.d("MediaBrowser", "clicked file ${it.path}")
+            }else if(it is MediaFile){
+                mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
+                playerVM.play(it)
             }
         }
         adapterRef.set(listAdapter)
@@ -68,6 +73,10 @@ class FileBrowser(private val mediaDB: MediaDBEventRelay) : Fragment() {
         this.arguments.let{
             // read args
         }
+
+        val vmProvider = ViewModelProvider(this.requireActivity())
+        playerVM = vmProvider.get(PlayerViewModel::class.java)
+        mainVM = vmProvider.get(MainActivityViewModel::class.java)
     }
 
     override fun onCreateView(
@@ -186,13 +195,13 @@ class FileBrowser(private val mediaDB: MediaDBEventRelay) : Fragment() {
         private val entries: MutableSet<MediaNode>
 
         init{
-            entries = TreeSet(kotlin.Comparator { a, b ->
+            entries = TreeSet { a, b ->
                 when {
                     (a is MediaDir && b !is MediaDir) -> -1
                     (b is MediaDir && a !is MediaDir) -> 1
                     else -> b.name.compareTo(a.name)
                 }
-            })
+            }
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MediaNodeViewHolder {

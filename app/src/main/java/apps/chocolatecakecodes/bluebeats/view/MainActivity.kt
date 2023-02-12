@@ -8,6 +8,7 @@ import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModelProvider
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import apps.chocolatecakecodes.bluebeats.R
@@ -24,9 +25,15 @@ class MainActivity : AppCompatActivity() {
         Manifest.permission.WRITE_EXTERNAL_STORAGE
     )
 
+    private lateinit var viewModel: MainActivityViewModel
+    private lateinit var mainTabContent: ViewPager2
+    private lateinit var mainTabAdapter: TabContentAdapter
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         this.setContentView(R.layout.activity_main)
+
+        viewModel = ViewModelProvider(this).get(MainActivityViewModel::class.java)
 
         getAppPermissions()
 
@@ -34,6 +41,7 @@ class MainActivity : AppCompatActivity() {
 
         VlcManagers.init(this)
 
+        wireObservers()
         listMediaRoots()
         setupTabs()
     }
@@ -50,15 +58,21 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupTabs(){
         val tabLayout: TabLayout = this.findViewById(R.id.main_tabs)
-        val tabContent: ViewPager2 = this.findViewById(R.id.main_pager)
-        val tabAdapter = TabContentAdapter(this.supportFragmentManager, this.lifecycle)
+        mainTabContent = this.findViewById(R.id.main_pager)
+        mainTabAdapter = TabContentAdapter(this.supportFragmentManager, this.lifecycle)
 
-        tabContent.adapter = tabAdapter
+        mainTabContent.adapter = mainTabAdapter
 
         tabLayout.tabGravity = TabLayout.GRAVITY_FILL
-        TabLayoutMediator(tabLayout, tabContent){ tab, pos ->
-            tab.text = tabAdapter.tabs[pos].first
+        TabLayoutMediator(tabLayout, mainTabContent){ tab, pos ->
+            tab.text = mainTabAdapter.tabs[pos].first
         }.attach()
+    }
+
+    private fun wireObservers(){
+        viewModel.currentTab.observe(this){
+            mainTabContent.currentItem = it.ordinal
+        }
     }
 
     private fun listMediaRoots(){
@@ -71,9 +85,12 @@ class MainActivity : AppCompatActivity() {
         val tabs: List<Pair<String, () -> Fragment>>
 
         init{
-            tabs = listOf(
-                Pair(getText(R.string.main_tab_media).toString(), {FileBrowser.newInstance()})
-            )
+            tabs = MainActivityViewModel.Tabs.values().map{
+                when(it){
+                    MainActivityViewModel.Tabs.MEDIA -> Pair(getText(R.string.main_tab_media).toString(), {FileBrowser.newInstance()})
+                    MainActivityViewModel.Tabs.PLAYER -> Pair(getText(R.string.main_tab_player).toString(), {Player.newInstance()})
+                }
+            }
         }
 
         override fun getItemCount(): Int {
