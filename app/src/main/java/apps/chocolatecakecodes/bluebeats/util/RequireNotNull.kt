@@ -1,7 +1,7 @@
 package apps.chocolatecakecodes.bluebeats.util
 
 /**
- * Used that a property can be set to null
+ * Used to indicate that a property can be set to null
  * but will not be null when the parent object is used properly
  */
 class RequireNotNull<V> constructor(){
