@@ -31,8 +31,9 @@ import java.time.Duration
 class MainActivity : AppCompatActivity() {
 
     companion object {
-        internal const val STORAGE_PERM_REQ_ID = 11
+        internal const val INTENT_OPTION_TAB = "open_optn-tab"
 
+        private const val STORAGE_PERM_REQ_ID = 11
         private val PERMISSIONS_STORAGE = arrayOf(
             Manifest.permission.READ_EXTERNAL_STORAGE,
             Manifest.permission.WRITE_EXTERNAL_STORAGE
@@ -66,6 +67,8 @@ class MainActivity : AppCompatActivity() {
         listMediaRoots()
 
         getAppPermissions()
+
+        showRequestedTab()
     }
 
     override fun onPause() {
@@ -134,7 +137,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun wireObservers(){
         viewModel.currentTab.observe(this){
-            //mainTabContent.currentItem = it.ordinal
             mainTabContent.setCurrentItem(it.ordinal, false)
         }
 
@@ -192,6 +194,16 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+        }
+    }
+
+    private fun showRequestedTab() {
+        if(this.intent.hasExtra(INTENT_OPTION_TAB)) {
+            val tabs = MainActivityViewModel.Tabs.values()
+            val idx = this.intent.getIntExtra(INTENT_OPTION_TAB, -1)
+                .coerceAtLeast(0)
+                .coerceAtMost(tabs.size)
+            viewModel.currentTab.postValue(tabs[idx])
         }
     }
 
