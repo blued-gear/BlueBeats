@@ -13,6 +13,8 @@ class PlayerViewModel : ViewModel() {
     public val isPlaying: LiveData<Boolean> = isPlayingRW// public read-only property
     private val playPosRW: MutableLiveData<Long> = MutableLiveData(0)
     public val playPos: LiveData<Long> = playPosRW// public read-only property
+    private val isFullscreenRW: MutableLiveData<Boolean> = MutableLiveData()
+    public val isFullscreen: LiveData<Boolean> = isFullscreenRW// public read-only property
 
     fun play(media: MediaFile){
         currentMediaRW.postValue(media)
@@ -30,5 +32,9 @@ class PlayerViewModel : ViewModel() {
 
     fun updatePlayPosition(time: Long){
         playPosRW.postValue(time)
+    }
+
+    fun setFullscreenMode(fullscreen: Boolean){
+        isFullscreenRW.postValue(fullscreen)
     }
 }

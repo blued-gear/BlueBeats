@@ -2,15 +2,18 @@ package apps.chocolatecakecodes.bluebeats.view
 
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.util.Log
 import android.view.*
 import android.widget.Button
 import android.widget.FrameLayout
+import androidx.activity.OnBackPressedCallback
 import androidx.core.view.GestureDetectorCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import kotlinx.coroutines.*
 import org.videolan.libvlc.MediaPlayer
 import org.videolan.libvlc.interfaces.IMedia
 import org.videolan.libvlc.util.VLCVideoLayout
@@ -25,13 +28,18 @@ class Player : Fragment() {
     }
 
     private lateinit var viewModel: PlayerViewModel
+    private lateinit var mainVM: MainActivityViewModel
     private lateinit var player: MediaPlayer
     private lateinit var playerView: VLCVideoLayout
     private var currentMedia: IMedia? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        viewModel = ViewModelProvider(this.requireActivity()).get(PlayerViewModel::class.java)
+
+        val vmProvider = ViewModelProvider(this.requireActivity())
+        viewModel = vmProvider.get(PlayerViewModel::class.java)
+        mainVM = vmProvider.get(MainActivityViewModel::class.java)
+
         player = MediaPlayer(VlcManagers.getLibVlc())
     }
 
@@ -54,8 +62,8 @@ class Player : Fragment() {
 
         // setup player-view
         playerView = VLCVideoLayout(this.requireContext())
-        player.attachViews(playerView, null, false, false)//TODO in future version subtitle option should be settable
         view.findViewById<FrameLayout>(R.id.player_playerholder).addView(playerView)
+        attachPlayer()
 
         wireObservers()
         wireActionHandlers(view)
@@ -77,6 +85,22 @@ class Player : Fragment() {
             gestureDetector.onTouchEvent(event)
             return@setOnTouchListener true
         }
+
+        // fullscreen button
+        view.findViewById<Button>(R.id.player_btn_fullscreen).setOnClickListener {
+            viewModel.setFullscreenMode(true)
+        }
+
+        // fullscreen close on back
+        //TODO this disables the default handler (which is good), but there should be a handler (which is always active) which closes the app on double-back-press
+        this.requireActivity().onBackPressedDispatcher.addCallback(this.viewLifecycleOwner, object : OnBackPressedCallback(true){
+            override fun handleOnBackPressed() {
+                // check fullscreen is active
+                if(mainVM.fullScreenContent.value !== null){
+                    viewModel.setFullscreenMode(false)
+                }
+            }
+        })
     }
 
     private fun wireObservers(){
@@ -100,6 +124,18 @@ class Player : Fragment() {
                 player.time = it
             }
         }
+
+        viewModel.isFullscreen.observe(this.viewLifecycleOwner){
+            if(it !== null){
+                showFullscreen(it)
+            }
+        }
+    }
+
+    private fun attachPlayer(){
+        if(!player.vlcVout.areViewsAttached()){
+            player.attachViews(playerView, null, false, false)//TODO in future version subtitle option should be settable
+        }
     }
 
     private fun playMedia(mediaFile: MediaFile){
@@ -118,6 +154,50 @@ class Player : Fragment() {
             player.attachViews(playerView, null, false, false)
 
         player.play(newMedia)
+    }
+
+    private fun showFullscreen(fullscreen: Boolean){
+        if(fullscreen){
+            this.requireView().findViewById<FrameLayout>(R.id.player_playerholder).removeView(playerView)
+            mainVM.fullScreenContent.postValue(playerView)
+
+            // wait until view is attached to re-attach player
+            CoroutineScope(Dispatchers.Main).launch {
+                var success = false
+                for(i in 0..10){
+                    delay(10)
+                    if(playerView.parent !== null){
+                        success = true
+                        break
+                    }
+                }
+                if(success){
+                    attachPlayer()
+                }else{
+                    Log.e("Player", "could not re-attach playerView: not released by parent")
+                }
+            }
+        }else{
+            mainVM.fullScreenContent.postValue(null)
+
+            // wait until view is attached to re-attach playerView
+            CoroutineScope(Dispatchers.Main).launch {
+                var success = false
+                for(i in 0..10){
+                    delay(10)
+                    if(playerView.parent === null){
+                        success = true
+                        break
+                    }
+                }
+                if(success){
+                    this@Player.requireView().findViewById<FrameLayout>(R.id.player_playerholder).addView(playerView)
+                    attachPlayer()
+                }else{
+                    Log.e("Player", "could not re-attach playerView: not released by parent")
+                }
+            }
+        }
     }
 
     private inner class PlayerGestureHandler : GestureDetector.SimpleOnGestureListener(){

@@ -32,7 +32,19 @@
                 android:layout_height="wrap_content"
                 android:id="@+id/player_brr_controls"
                 app:barrierDirection="top"
-                tools:layout_editor_absoluteY="675dp" />
+                tools:layout_editor_absoluteY="675dp"
+                app:constraint_referenced_ids="player_btn_fullscreen" />
+
+        <Button
+                android:text="@string/player_fullscreen"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/player_btn_fullscreen"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                android:layout_marginStart="8dp"
+                android:layout_marginBottom="8dp" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
+
 </FrameLayout>
