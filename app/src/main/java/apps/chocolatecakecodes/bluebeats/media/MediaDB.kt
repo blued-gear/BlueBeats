@@ -110,6 +110,8 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
         }
 
         eventHandler.onScanFinished()
+
+        runHousekeeping()
     }
 
     fun getMediaTreeRoot(): MediaDir{
@@ -513,6 +515,10 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
         }
 
         return checkDir(getMediaTreeRoot(), rootParts)
+    }
+
+    private fun runHousekeeping() {
+        RoomDB.DB_INSTANCE.userTagDao().removeOrphanUserTags()
     }
     //endregion
 

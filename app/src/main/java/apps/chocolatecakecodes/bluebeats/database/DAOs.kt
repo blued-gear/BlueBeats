@@ -551,13 +551,10 @@ internal abstract class UserTagsDAO{
         }.forEach {
             saveUserTagRelation(it)
         }
-
-        removeOrphanUserTags()
     }
 
     fun deleteUserTagsOfFile(file: MediaFile) {
         removeRelationsForFile(file.entityId)
-        removeOrphanUserTags()
     }
 
     /**
