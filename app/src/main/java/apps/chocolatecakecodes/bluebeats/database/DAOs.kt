@@ -2,6 +2,7 @@ package apps.chocolatecakecodes.bluebeats.database
 
 import androidx.room.*
 import androidx.room.OnConflictStrategy.Companion.IGNORE
+import androidx.room.OnConflictStrategy.Companion.REPLACE
 import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
@@ -526,12 +527,12 @@ internal abstract class UserTagsDAO{
     fun saveUserTagsOfFile(file: MediaFile, tags: List<String>){
         val tagsSet = tags.toHashSet()
         val existingTags = getUserTags(file.entityId).toHashSet()
-        val existingTagNames = existingTags.map{
+        val existingTagNames = existingTags.map {
             it.name
         }.toHashSet()
 
         // save all missing tags
-        tagsSet.minus(existingTagNames).forEach{
+        tagsSet.minus(existingTagNames).forEach {
             saveUserTag(UserTagEntity(MediaNode.UNALLOCATED_NODE_ID, it))
         }
 
@@ -541,9 +542,8 @@ internal abstract class UserTagsDAO{
         }.forEach {
             removeRelation(it.id, file.entityId)
         }
-        removeOrphanUserTags()
 
-        // save relations
+        // re-save relations (to update positions)
         tags.map {
             getUserTagEntityForNames(listOf(it)).first()
         }.mapIndexed { pos, entity ->
@@ -551,6 +551,8 @@ internal abstract class UserTagsDAO{
         }.forEach {
             saveUserTagRelation(it)
         }
+
+        removeOrphanUserTags()
     }
 
     fun deleteUserTagsOfFile(file: MediaFile) {
@@ -585,7 +587,7 @@ internal abstract class UserTagsDAO{
     @Query("SELECT * FROM UserTagEntity WHERE name IN (:names);")
     protected abstract fun getUserTagEntityForNames(names: List<String>): List<UserTagEntity>
 
-    @Insert(onConflict = IGNORE)
+    @Insert(onConflict = REPLACE)
     protected abstract fun saveUserTagRelation(tagRelation: UserTagRelation)
 
     @Insert(onConflict = IGNORE)
