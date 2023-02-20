@@ -754,9 +754,9 @@ private class ShareEditor(
             // bottom bar
             LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
-                this.addView(okBtn, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
-                this.addView(View(context), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 5f))
                 this.addView(cancelBtn, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+                this.addView(View(context), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 5f))
+                this.addView(okBtn, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
             }.let {
                 this.addView(it, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
             }
@@ -890,11 +890,9 @@ private class MediaNodeSelectPopup(
             orientation = HORIZONTAL
 
             Button(context).apply {
-                text = context.getString(R.string.misc_ok)
+                text = context.getString(R.string.misc_cancel)
                 setOnClickListener {
-                    // if nothing is selected use the current dir
-                    val selected = if(browser.inSelection) browser.selectedItems else listOf(browser.currentDir!!)
-                    onResult(selected)
+                    onResult(emptyList())
                 }
             }.let {
                 this.addView(it, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
@@ -914,9 +912,11 @@ private class MediaNodeSelectPopup(
             this.addView(View(context), LayoutParams(LayoutParams.MATCH_PARENT, 0, 5f))
 
             Button(context).apply {
-                text = context.getString(R.string.misc_cancel)
+                text = context.getString(R.string.misc_ok)
                 setOnClickListener {
-                    onResult(emptyList())
+                    // if nothing is selected use the current dir
+                    val selected = if(browser.inSelection) browser.selectedItems else listOf(browser.currentDir!!)
+                    onResult(selected)
                 }
             }.let {
                 this.addView(it, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
@@ -1009,9 +1009,9 @@ private class TextSelector(
             // bottom bar
             LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
-                this.addView(okBtn, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
-                this.addView(View(context), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 5f))
                 this.addView(cancelBtn, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+                this.addView(View(context), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 5f))
+                this.addView(okBtn, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
             }.let {
                 this.addView(it, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
             }
