@@ -370,6 +370,11 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
 
         parseTags(mf)
 
+        if(mf.mediaTags.length < 1) {
+            // parse may have failed; set by libvlc
+            mf.mediaTags.length = file.duration
+        }
+
         //TODO parse more attributes
 
         return mf
