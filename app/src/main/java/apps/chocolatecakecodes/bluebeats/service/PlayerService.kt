@@ -187,7 +187,7 @@ private class NotificationProvider(
             MediaStyle().also {
                 it.setMediaSession(mediaSession.sessionCompatToken)
                 it.setShowCancelButton(false)
-                it.setShowActionsInCompactView(0)
+                it.setShowActionsInCompactView(1)
             }.let {
                 this.setStyle(it)
             }
