@@ -99,17 +99,28 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
     fun getChapters(): List<Chapter> = Collections.unmodifiableList(chapters)
 
     fun seekPlaylist(by: Int): ListenableFuture<PlayerResult> {
-        return currentPlaylist?.let {
+        val ret = SettableFuture.create<PlayerResult>()
+        CoroutineScope(Dispatchers.IO).launch {
             try {
-                it.seek(by)
-            }catch (e: IllegalArgumentException) {
-                return Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_INVALID_STATE, null))
+                (currentPlaylist?.let {
+                    try {
+                        it.seek(by)
+                    }catch (e: IllegalArgumentException) {
+                        return@let Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_INVALID_STATE, null))
+                    }
+
+                    playMedia(it.currentMedia(), true)
+
+                    playerResultWithCurrentMedia(PlayerResult.RESULT_SUCCESS)
+                } ?: Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_INVALID_STATE, null))).let {
+                    ret.setFuture(it)
+                }
+            } catch (e: Exception) {
+                Log.e(LOG_TAG, "exception in seekPlaylist()", e)
+                ret.setException(e)
             }
-
-            playMedia(it.currentMedia(), true)
-
-            playerResultWithCurrentMedia(PlayerResult.RESULT_SUCCESS)
-        } ?: Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_INVALID_STATE, null))
+        }
+        return ret
     }
 
     //region interface methods
@@ -229,11 +240,35 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
     }
 
     override fun skipToPreviousPlaylistItem(): ListenableFuture<PlayerResult> {
-        return seekPlaylist(-1)
+        return currentPlaylist.let { playlist ->
+            if (playlist !== null) {
+                if (playlist.currentPosition > 0) {
+                    seekPlaylist(-1)
+                } else {
+                    // seek to start of media
+                    seekTo(0)
+                }
+            } else {
+                // seek to start of media
+                seekTo(0)
+            }
+        }
     }
 
     override fun skipToNextPlaylistItem(): ListenableFuture<PlayerResult> {
-        return seekPlaylist(1)
+        return currentPlaylist.let { playlist ->
+            if (playlist !== null) {
+                if (!playlist.isAtEnd()) {
+                    seekPlaylist(1)
+                } else {
+                    // seek to end of media
+                    seekTo(duration)
+                }
+            } else {
+                // seek to end of media
+                seekTo(duration)
+            }
+        }
     }
 
     override fun skipToPlaylistItem(index: Int): ListenableFuture<PlayerResult> {
@@ -271,18 +306,22 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
             return Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_NOT_SUPPORTED, null))
 
         return currentPlaylist?.let {
-            val oldMode = it.shuffle
-            it.shuffle = shuffleMode != SHUFFLE_MODE_NONE
+            val future = SettableFuture.create<PlayerResult>()
+            CoroutineScope(Dispatchers.IO).launch {
+                val oldMode = it.shuffle
+                it.shuffle = shuffleMode != SHUFFLE_MODE_NONE
 
-            if(oldMode != it.shuffle) {
-                callListeners {
-                    it.onShuffleModeChanged(this, shuffleMode)
+                if(oldMode != it.shuffle) {
+                    callListeners {
+                        it.onShuffleModeChanged(this@VlcPlayer, shuffleMode)
+                    }
+
+                    future.setFuture(playerResultWithCurrentMedia(PlayerResult.RESULT_SUCCESS))
+                } else {
+                    future.setFuture(playerResultWithCurrentMedia(PlayerResult.RESULT_INFO_SKIPPED))
                 }
-
-                playerResultWithCurrentMedia(PlayerResult.RESULT_SUCCESS)
-            } else {
-                playerResultWithCurrentMedia(PlayerResult.RESULT_INFO_SKIPPED)
             }
+            future
         } ?: Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_INVALID_STATE, null))
     }
 
