@@ -240,6 +240,11 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
     }
 
     override fun skipToPreviousPlaylistItem(): ListenableFuture<PlayerResult> {
+        if(currentPosition > 2000) {
+            // seek to start of media
+            return seekTo(0)
+        }
+
         return currentPlaylist.let { playlist ->
             if (playlist !== null) {
                 if (playlist.currentPosition > 0) {
