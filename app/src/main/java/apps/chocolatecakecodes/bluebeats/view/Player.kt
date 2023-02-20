@@ -457,12 +457,12 @@ class Player : Fragment() {
 
             if(x <= width * SEEK_AREA_WIDTH){
                 // seek back
-                player.seekTo(-SEEK_AMOUNT)
+                player.seekTo(player.currentPosition - SEEK_AMOUNT)
 
                 return true
             }else if(x >= width * (1.0f - SEEK_AREA_WIDTH)){
                 // seek forward
-                player.seekTo(SEEK_AMOUNT)
+                player.seekTo(player.currentPosition + SEEK_AMOUNT)
 
                 return true
             }
