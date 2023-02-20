@@ -176,14 +176,12 @@ private class NotificationProvider(
                 setLargeIcon(getThumbnail(player.getCurrentMedia()!!))
             }
 
-            if(player.getCurrentPlaylist() !== null)
-                addAction(skipBackAction)
+            addAction(skipBackAction)
             if(player.isPlaying())
                 addAction(pauseAction)
             else
                 addAction(playAction)
-            if(player.getCurrentPlaylist() !== null)
-                addAction(skipNextAction)
+            addAction(skipNextAction)
             setContentIntent(contentAction)
 
             MediaStyle().also {
