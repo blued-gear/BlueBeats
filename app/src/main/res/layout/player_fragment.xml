@@ -55,6 +55,24 @@
                         android:alpha="1"
                         android:background="#108C8C8C">
 
+                    <ImageView
+                            tools:ignore="PrivateResource"
+                            android:src="@drawable/media_session_service_notification_ic_skip_to_previous"
+                            android:layout_width="60dp"
+                            android:layout_height="60dp"
+                            android:id="@+id/player_controls_prev"
+                            app:layout_constraintTop_toTopOf="parent"
+                            app:layout_constraintBottom_toBottomOf="@+id/constraintLayout"
+                            android:layout_marginTop="8dp"
+                            android:layout_marginBottom="8dp"
+                            app:layout_constraintEnd_toStartOf="@+id/player_controls_play"
+                            app:layout_constraintStart_toStartOf="parent"
+                            android:layout_marginStart="8dp"
+                            android:layout_marginEnd="8dp"
+                            android:background="@drawable/background_control"
+                            android:backgroundTint="#77ACACAC"
+                            android:backgroundTintMode="src_over" />
+
                     <ImageButton
                             android:src="@drawable/ic_baseline_play"
                             android:layout_width="60dp"
@@ -68,6 +86,24 @@
                             android:layout_marginTop="8dp"
                             android:layout_marginEnd="8dp"
                             android:layout_marginBottom="8dp"
+                            android:background="@drawable/background_control"
+                            android:backgroundTint="#77ACACAC"
+                            android:backgroundTintMode="src_over" />
+
+                    <ImageView
+                            tools:ignore="PrivateResource"
+                            android:src="@drawable/media_session_service_notification_ic_skip_to_next"
+                            android:layout_width="60dp"
+                            android:layout_height="60dp"
+                            android:id="@+id/player_controls_next"
+                            app:layout_constraintBottom_toBottomOf="@+id/constraintLayout"
+                            app:layout_constraintTop_toTopOf="parent"
+                            android:layout_marginTop="8dp"
+                            android:layout_marginBottom="8dp"
+                            app:layout_constraintStart_toEndOf="@+id/player_controls_play"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            android:layout_marginEnd="8dp"
+                            android:layout_marginStart="8dp"
                             android:background="@drawable/background_control"
                             android:backgroundTint="#77ACACAC"
                             android:backgroundTintMode="src_over" />

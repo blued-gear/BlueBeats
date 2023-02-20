@@ -141,6 +141,14 @@ class Player : Fragment() {
             onPlayPauseClick()
         }
 
+        // prev and next buttons
+        view.findViewById<View>(R.id.player_controls_prev).setOnClickListener {
+            onPrevClick()
+        }
+        view.findViewById<View>(R.id.player_controls_next).setOnClickListener {
+            onNextClick()
+        }
+
         // fullscreen button
         view.findViewById<View>(R.id.player_controls_fullscreen).setOnClickListener {
             onFullscreenClick()
@@ -176,6 +184,14 @@ class Player : Fragment() {
             player.pause()
         else if(player.getCurrentMedia() !== null)
             player.play()
+    }
+
+    private fun onPrevClick() {
+        player.skipToPreviousPlaylistItem()
+    }
+
+    private fun onNextClick() {
+        player.skipToNextPlaylistItem()
     }
 
     private fun onFullscreenClick() {
