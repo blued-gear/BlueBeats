@@ -187,7 +187,7 @@ internal class DynamicPlaylistIterator(
                 generateItems(mediaBuffer, mediaBuffer.last())// retain last media and place at top
             }
 
-            currentPosition = 0
+            currentPosition = 1// current media is at idx 0 but we want the next one
         } else if(newPos >= 0 && newPos < mediaBuffer.size) {
             currentPosition = newPos
 
