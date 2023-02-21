@@ -14,6 +14,8 @@ import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.view.setPadding
+import androidx.core.widget.TextViewCompat
+import androidx.core.widget.addTextChangedListener
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
@@ -957,6 +959,7 @@ private class TextSelector(
 ): FrameLayout(ctx) {
 
     private lateinit var selects: List<CheckBox>
+    private lateinit var selectsContainer: ViewGroup
 
     private val okBtn = Button(context).apply {
         text = context.getString(R.string.misc_ok)
@@ -979,27 +982,33 @@ private class TextSelector(
     }
 
     init {
+        selects = tags.map {
+            CheckBox(context).apply {
+                text = it
+                isChecked = selectedTags.contains(it)
+            }
+        }
+
         setBackgroundColor(Color.WHITE)
 
         LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
 
-            selects = tags.map {
-                CheckBox(context).apply {
-                    text = it
-                    isChecked = selectedTags.contains(it)
-                }
+            setupSearch().let {
+                this.addView(it, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
             }
 
             // selection-list
             ScrollView(context).apply {
-                LinearLayout(context).apply {
+                setPadding(8)
+
+                selectsContainer = LinearLayout(context).apply {
                     orientation = LinearLayout.VERTICAL
 
                     selects.forEach {
                         addView(it)
                     }
-                }.let {
+                }.also {
                     addView(it, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
                 }
             }.let {
@@ -1017,6 +1026,28 @@ private class TextSelector(
             }
         }.let {
             this.addView(it)
+        }
+    }
+
+    private fun setupSearch(): View {
+        return EditText(context).apply {
+            setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, R.drawable.baseline_search_24, 0)
+            TextViewCompat.setCompoundDrawableTintList(this, ColorStateList.valueOf(Color.BLUE))
+
+            addTextChangedListener {
+                if (it != null)
+                    filter(it)
+            }
+        }
+    }
+
+    private fun filter(text: CharSequence) {
+        selectsContainer.removeAllViews()
+
+        selects.filter {
+            it.text.contains(text, true)
+        }.forEach {
+            selectsContainer.addView(it)
         }
     }
 }
