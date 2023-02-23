@@ -346,15 +346,15 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
 
         // parse type
         var type = MediaFile.Type.OTHER
-        for(i in 0 until file.trackCount) {
-            if (file.getTrack(i).type == IMedia.Track.Type.Video) {
+        for(i in 0 until file.tracks.size) {
+            if (file.tracks[i].type == IMedia.Track.Type.Video) {
                 type = MediaFile.Type.VIDEO
                 break
             }
         }
         if(type === MediaFile.Type.OTHER){
-            for (i in 0 until file.trackCount) {
-                if (file.getTrack(i).type == IMedia.Track.Type.Audio) {
+            for (i in 0 until file.tracks.size) {
+                if (file.tracks[i].type == IMedia.Track.Type.Audio) {
                     type = MediaFile.Type.AUDIO
                     break
                 }

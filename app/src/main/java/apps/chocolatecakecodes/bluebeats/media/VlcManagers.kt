@@ -30,7 +30,9 @@ internal object VlcManagers {
                 throw IllegalStateException("already initialized")
 
             val libVlcFactory = FactoryManager.getFactory(ILibVLCFactory.factoryId) as ILibVLCFactory
-            vlc.set(libVlcFactory.getFromContext(ctx))
+            vlc.set(libVlcFactory.getFromOptions(ctx, ArrayList(listOf(
+                //"-vvv"
+            ))))
 
             val mediaDB = MediaDBEventRelay()
             val mediaMng = MediaDB(getLibVlc(), mediaDB)

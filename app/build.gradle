@@ -108,7 +108,7 @@ dependencies {
 
     implementation 'com.github.cachapa:ExpandableLayout:2.9.2'
 
-    implementation 'org.videolan.android:libvlc-all:3.5.1'
+    implementation 'org.videolan.android:libvlc-all:4.0.0-eap8'
 
     testImplementation "junit:junit:$version_junit"
     androidTestImplementation "androidx.test.ext:junit:$version_android_junit"
