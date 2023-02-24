@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
+import android.os.Build
 import android.os.Handler
 import android.util.Log
 import apps.chocolatecakecodes.bluebeats.database.MediaDirDAO
@@ -428,7 +429,7 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
     }
 
     private fun tryLoadThumbnail(filePath: String): Bitmap? {
-        return MediaMetadataRetriever().use { retriever ->
+        return useMediaMetadataRetriever { retriever ->
             retriever.setDataSource(filePath)
             retriever.embeddedPicture?.let {
                 BitmapFactory.decodeByteArray(it, 0, it.size)
@@ -440,7 +441,7 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
         val timePercentage = 0.1
         val maxTime = 90000L
 
-        return MediaMetadataRetriever().use { retriever ->
+        return useMediaMetadataRetriever { retriever ->
             retriever.setDataSource(filePath)
 
             retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLong()?.let { totalTime ->
@@ -524,6 +525,23 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
 
     private fun runHousekeeping() {
         RoomDB.DB_INSTANCE.userTagDao().removeOrphanUserTags()
+    }
+
+    private inline fun <T> useMediaMetadataRetriever(run: (MediaMetadataRetriever) -> T): T {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            return MediaMetadataRetriever().use {
+                run(it)
+            }
+        } else {
+            var retriever: MediaMetadataRetriever? = null
+            try {
+                retriever = MediaMetadataRetriever()
+                return run(retriever)
+            } finally {
+                if(retriever !== null)
+                    retriever.close()
+            }
+        }
     }
     //endregion
 
