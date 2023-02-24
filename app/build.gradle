@@ -1,3 +1,5 @@
+import com.jaredsburrows.license.LicenseReportTask
+
 plugins {
     id 'com.android.application'
     id 'kotlin-android'
@@ -114,4 +116,8 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$version_android_junit"
     androidTestImplementation "androidx.test.espresso:espresso-core:$version_espresso"
     testImplementation "androidx.room:room-testing:$room_version"
+}
+
+tasks.withType(LicenseReportTask) {
+    notCompatibleWithConfigurationCache("")
 }
