@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.text.TextUtils
+import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.View.OnClickListener
@@ -23,6 +24,7 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.*
+import apps.chocolatecakecodes.bluebeats.util.Debouncer
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +33,8 @@ import kotlinx.coroutines.withContext
 import java.math.RoundingMode
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
+import java.util.Locale
+import java.util.regex.PatternSyntaxException
 import kotlin.math.truncate
 
 internal typealias ChangedCallback = (GenericRule) -> Unit
@@ -64,6 +68,9 @@ private class DynplaylistGroupEditor(
         },
         context.getString(R.string.dynpl_type_id3tag) to {
             RoomDB.DB_INSTANCE.dplID3TagsRuleDao().create(Rule.Share(1f, true))
+        },
+        context.getString(R.string.dynpl_regex_title) to {
+            RoomDB.DB_INSTANCE.dplRegexRuleDao().createNew(Rule.Share(1f, true))
         }
     )
 
@@ -517,6 +524,113 @@ private class DynplaylistID3TagsEditor(
         }
     }
 }
+
+private class DynplaylistRegexEditor(
+    val rule: RegexRule,
+    private val changedCallback: ChangedCallback,
+    ctx: Context
+) : AbstractDynplaylistEditorView(ctx) {
+
+    val typeSelect = Spinner(ctx)
+    val typeSelectAdapter = ArrayAdapter<String>(ctx, androidx.appcompat.R.layout.support_simple_spinner_dropdown_item)
+    val invalidRegexIndicator = TextView(ctx)
+
+    val regexTextDebouncer = Debouncer.create<String>(50) {
+        onRegexChanged(it)
+    }
+
+    init {
+        header.title.text = ctx.getString(R.string.dynpl_regex_title)
+
+        header.setupShareEdit(rule.share) {
+            rule.share = it
+            changedCallback(rule)
+        }
+
+        TextView(ctx).apply {
+            text = ctx.getText(R.string.dynpl_regex_attr)
+        }.let {
+            this.contentList.addView(it)
+        }
+
+        typeSelect.adapter = typeSelectAdapter
+        typeSelect.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
+                onTypeSelected(position)
+            }
+            override fun onNothingSelected(parent: AdapterView<*>) {
+                throw AssertionError()
+            }
+        }
+        this.contentList.addView(typeSelect)
+
+        loadTypeValues()
+        typeSelect.setSelection(rule.attribute.ordinal)
+
+        TextView(ctx).apply {
+            text = ctx.getText(R.string.dynpl_regex_regex)
+        }.let {
+            this.contentList.addView(it)
+        }
+
+        EditText(ctx).apply {
+            setSingleLine()
+            text.append(rule.regex)
+
+            addTextChangedListener {
+                if (it != null)
+                    regexTextDebouncer.debounce(it.toString())
+            }
+        }.let {
+            this.contentList.addView(it)
+        }
+
+        invalidRegexIndicator.apply {
+            setTextColor(Color.RED)
+            setTextSize(TypedValue.COMPLEX_UNIT_FRACTION_PARENT, 12f)
+            setPadding(32, 0, 0, 0)
+        }.let {
+            this.contentList.addView(it)
+        }
+    }
+
+    fun onTypeSelected(idx: Int) {
+        rule.attribute = RegexRule.Attribute.values()[idx]
+        changedCallback(rule)
+    }
+
+    fun onRegexChanged(regex: String) {
+        try {
+            Regex(regex)
+        } catch(ignored: PatternSyntaxException) {
+            CoroutineScope(Dispatchers.Main).launch {
+                invalidRegexIndicator.text = context.getText(R.string.dynpl_regex_regex_invalid)
+            }
+            return
+        }
+
+        rule.regex = regex
+        CoroutineScope(Dispatchers.Main).launch {
+            invalidRegexIndicator.text = ""
+            changedCallback(rule)
+        }
+    }
+
+    private fun loadTypeValues() {
+        RegexRule.Attribute.values().map {
+            it.name
+        }.map { // capitalize
+            it.lowercase().replaceFirstChar {
+                if (it.isLowerCase())
+                    it.titlecase(Locale.getDefault())
+                else
+                    it.toString()
+            }
+        }.let {
+            typeSelectAdapter.addAll(it)
+        }
+    }
+}
 //endregion
 
 //region private utils / vals
@@ -532,6 +646,7 @@ private fun createEditor(
         is IncludeRule -> DynplaylistIncludeEditor(item, cb, ctx)
         is UsertagsRule -> DynplaylistUsertagsEditor(item, cb, ctx)
         is ID3TagsRule -> DynplaylistID3TagsEditor(item, cb, ctx)
+        is RegexRule -> DynplaylistRegexEditor(item, cb, ctx)
         else -> throw IllegalArgumentException("unsupported rule")
     }
 }

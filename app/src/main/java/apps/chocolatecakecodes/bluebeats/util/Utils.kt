@@ -4,7 +4,11 @@ import android.content.Context
 import android.os.Build
 import android.os.Looper
 import android.os.Parcel
-import android.view.*
+import android.view.Gravity
+import android.view.LayoutInflater
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewGroup
 import android.widget.PopupWindow
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
@@ -190,6 +194,16 @@ inline fun <T : IVLCObject<E>, E : AbstractVLCEvent?> T.using(retain: Boolean = 
 fun <T, I : Iterable<T>> I.takeOrAll(amount: Int): List<T> {
     return if(amount == -1)
         this.toList()
+    else
+        this.take(amount)
+}
+
+/**
+ * returns n elements of this Iterable or all if amount == -1
+ */
+fun <T, I : Sequence<T>> I.takeOrAll(amount: Int): Sequence<T> {
+    return if(amount == -1)
+        this
     else
         this.take(amount)
 }

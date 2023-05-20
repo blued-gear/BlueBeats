@@ -8,11 +8,31 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
-import apps.chocolatecakecodes.bluebeats.media.playlist.*
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.*
+import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistName
+import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistsManager
+import apps.chocolatecakecodes.bluebeats.media.playlist.StaticPlaylist
+import apps.chocolatecakecodes.bluebeats.media.playlist.StaticPlaylistEntity
+import apps.chocolatecakecodes.bluebeats.media.playlist.StaticPlaylistEntry
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylist
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylistEntity
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.ID3TagsRule
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.ID3TagsRuleEntity
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.ID3TagsRuleEntry
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.IncludeRule
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.IncludeRuleDirEntry
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.IncludeRuleEntity
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.IncludeRuleFileEntry
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RegexRule
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RegexRuleEntity
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGroup
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGroupEntity
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGroupEntry
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.UsertagsRule
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.UsertagsRuleEntity
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.UsertagsRuleEntry
 import java.util.concurrent.atomic.AtomicReference
 
-@Database(version = 5, entities = [
+@Database(version = 6, entities = [
     MediaDirEntity::class, MediaFileEntity::class,
     ID3TagTypeEntity::class, ID3TagValueEntity::class, ID3TagReferenceEntity::class,
     UserTagEntity::class, UserTagRelation::class,
@@ -22,7 +42,8 @@ import java.util.concurrent.atomic.AtomicReference
     RuleGroupEntity::class, RuleGroupEntry::class,
     IncludeRuleEntity::class, IncludeRuleFileEntry::class, IncludeRuleDirEntry::class,
     UsertagsRuleEntity::class, UsertagsRuleEntry::class,
-    ID3TagsRuleEntity::class, ID3TagsRuleEntry::class
+    ID3TagsRuleEntity::class, ID3TagsRuleEntry::class,
+    RegexRuleEntity::class
 ])
 internal abstract class RoomDB : RoomDatabase() {
 
@@ -63,6 +84,7 @@ internal abstract class RoomDB : RoomDatabase() {
     internal abstract fun dplIncludeRuleDao(): IncludeRule.IncludeRuleDao
     internal abstract fun dplUsertagsRuleDao(): UsertagsRule.UsertagsRuleDao
     internal abstract fun dplID3TagsRuleDao(): ID3TagsRule.ID3TagsRuleDao
+    internal abstract fun dplRegexRuleDao(): RegexRule.RegexRuleDao
 }
 
 private class DBUpgradeCallback : RoomDatabase.Callback(){
