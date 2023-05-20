@@ -57,7 +57,7 @@ internal abstract class SelectableItem<Holder : RecyclerView.ViewHolder> : Abstr
             if(selected)
                 this.itemView.setBackgroundResource(R.color.selection_highlight)
             else
-                this.itemView.setBackgroundResource(R.color.design_default_color_background)
+                this.itemView.setBackgroundResource(com.google.android.material.R.color.design_default_color_background)
         }
     }
 }

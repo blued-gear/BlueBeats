@@ -36,7 +36,7 @@ internal class SpinnerTextbox : FrameLayout {
         }
 
         itemsAdapter = ArrayAdapter(ctx,
-            R.layout.support_simple_spinner_dropdown_item,
+            androidx.appcompat.R.layout.support_simple_spinner_dropdown_item,
             mutableListOf()
         )
 

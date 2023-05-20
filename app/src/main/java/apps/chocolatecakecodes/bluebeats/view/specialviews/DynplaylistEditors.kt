@@ -376,7 +376,7 @@ private class DynplaylistID3TagsEditor(
 
     val addBtn = SimpleAddableRuleHeaderView.CommonVisuals.addButton(context)
     val typeSelect = Spinner(ctx)
-    val typeSelectAdapter = ArrayAdapter<String>(ctx, R.layout.support_simple_spinner_dropdown_item)
+    val typeSelectAdapter = ArrayAdapter<String>(ctx, androidx.appcompat.R.layout.support_simple_spinner_dropdown_item)
     val valuesContainer: LinearLayout
     val availableValues = ArrayList<String>()
 
