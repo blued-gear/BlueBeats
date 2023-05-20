@@ -45,3 +45,32 @@ android {
 dependencies {
 
 }
+
+task("cleanIncludeDir", type: Delete) {
+    delete(file(project.projectDir.absolutePath + "/src/main/cpp/include/"))
+}
+tasks.findByName("clean").dependsOn("cleanIncludeDir")
+
+task("generateIncludeDir", type: Copy) {
+    from file(project.projectDir.absolutePath + "/src/main/cpp/")
+    into file(project.projectDir.absolutePath + "/src/main/cpp/include/")
+    include("**/*.h")
+    include("**/*.tcc")
+    exclude("include/**")
+
+    duplicatesStrategy = DuplicatesStrategy.WARN
+
+    // flatten
+    eachFile {
+        path = name
+    }
+    includeEmptyDirs = false
+}
+
+task("generateConfigHeader", type: Copy, dependsOn: ["generateIncludeDir"]) {
+    from file(project.projectDir.absolutePath + "/src/main/cpp/taglib/taglib_config.h.cmake")
+    into file(project.projectDir.absolutePath + "/src/main/cpp/taglib/")
+    rename { "taglib_config.h" }
+}
+
+task("generateInitialFiles", group: "build", dependsOn: ["generateConfigHeader"])

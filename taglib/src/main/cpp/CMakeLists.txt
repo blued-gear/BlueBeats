@@ -2,23 +2,9 @@
 # documentation: https://d.android.com/studio/projects/add-native-code.html
 
 # Sets the minimum version of CMake required to build the native library.
-
 cmake_minimum_required(VERSION 3.10.2)
 
-# list all header paths in the given dir and its subdirs
-MACRO(HEADER_DIRECTORIES return_list dir)
-    FILE(GLOB_RECURSE new_list "${dir}/*.h")
-    SET(dir_list "")
-    FOREACH(file_path ${new_list})
-        GET_FILENAME_COMPONENT(dir_path ${file_path} PATH)
-        SET(dir_list ${dir_list} ${dir_path})
-    ENDFOREACH()
-    LIST(REMOVE_DUPLICATES dir_list)
-    SET(${return_list} ${dir_list})
-ENDMACRO()
-
 # Declares and names the project.
-
 project("taglib")
 
 # determines build-type (https://stackoverflow.com/a/50690288/8288367)
@@ -28,12 +14,6 @@ if (CMAKE_CURRENT_BINARY_DIR MATCHES "Debug")
 else()
     set(build_type "release")
 endif()
-
-# include lib_taglib
-set(libtaglib_proj "../../../lib_taglib")
-get_filename_component(libtaglib_proj ${libtaglib_proj} ABSOLUTE)
-set(libtaglib_src "${libtaglib_proj}/src/main/cpp/")
-set(libtaglib_out "${libtaglib_proj}/build/intermediates/cmake/${build_type}/obj/${CMAKE_ANDROID_ARCH_ABI}")
 
 # Creates and names a library, sets it as either STATIC
 # or SHARED, and provides the relative paths to its source code.
@@ -47,12 +27,8 @@ add_library( # Sets the name of the library.
              SHARED
 
              # Provides a relative path to your source file(s).
-             taglib.cpp )
-
-add_library(libtaglib SHARED IMPORTED)
-set_target_properties(libtaglib PROPERTIES IMPORTED_LOCATION ${libtaglib_out}/libtag.so)
-HEADER_DIRECTORIES(libtaglib_include ${libtaglib_src})
-include_directories(${libtaglib_include})
+             taglib.cpp
+        )
 
 # Searches for a specified prebuilt library and stores the path as a
 # variable. Because CMake includes system libraries in the search path by
@@ -66,6 +42,16 @@ find_library( # Sets the name of the path variable.
               # Specifies the name of the NDK library that
               # you want CMake to locate.
               log)
+
+# include lib_taglib
+set(libtaglib_proj "../../../lib_taglib")
+get_filename_component(libtaglib_proj ${libtaglib_proj} ABSOLUTE)
+set(libtaglib_include "${libtaglib_proj}/src/main/cpp/include")
+set(libtaglib_out "${libtaglib_proj}/build/intermediates/stripped_native_libs/${build_type}/out/lib/${CMAKE_ANDROID_ARCH_ABI}")
+
+add_library(libtaglib SHARED IMPORTED)
+set_target_properties(libtaglib PROPERTIES IMPORTED_LOCATION ${libtaglib_out}/libtag.so)
+include_directories("${libtaglib_include}")
 
 # Specifies libraries CMake should link to your target library. You
 # can link multiple libraries, such as libraries you define in this
