@@ -5,7 +5,7 @@ plugins {
     id 'kotlin-android'
     id 'kotlin-kapt'
     id 'idea'
-    id 'com.jaredsburrows.license' version '0.9.0'
+    id 'com.jaredsburrows.license' version '0.9.2'
 }
 
 idea{
@@ -73,10 +73,10 @@ android {
 }
 
 dependencies {
-    def room_version = "2.5.0"
+    def room_version = "2.5.1"
     def fastadapter_version = '5.7.0'
     def media2_version = "1.2.1"
-    def lifecycle_version = "2.5.1"
+    def lifecycle_version = "2.6.1"
 
     implementation project(':taglib')
 
@@ -86,7 +86,7 @@ dependencies {
     implementation "androidx.core:core-ktx:$version_android_ktx"
 
     implementation "androidx.appcompat:appcompat:$version_appcompat"
-    implementation 'com.google.android.material:material:1.8.0'
+    implementation 'com.google.android.material:material:1.9.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation "androidx.lifecycle:lifecycle-livedata-ktx:$lifecycle_version"
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycle_version"
@@ -110,7 +110,7 @@ dependencies {
 
     implementation 'com.github.cachapa:ExpandableLayout:2.9.2'
 
-    implementation 'org.videolan.android:libvlc-all:4.0.0-eap8'
+    implementation 'org.videolan.android:libvlc-all:4.0.0-eap10'
 
     testImplementation "junit:junit:$version_junit"
     androidTestImplementation "androidx.test.ext:junit:$version_android_junit"
