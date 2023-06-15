@@ -96,7 +96,7 @@ dependencies {
     implementation 'com.anggrayudi:storage:1.5.4'
     implementation "androidx.room:room-runtime:$room_version"
     kapt "androidx.room:room-compiler:$room_version"
-    implementation 'com.google.guava:guava:31.1-android'
+    implementation 'com.google.guava:guava:32.0.1-android'
     implementation "androidx.media2:media2-session:$media2_version"
     implementation "androidx.media2:media2-common:$media2_version"
 
@@ -111,7 +111,7 @@ dependencies {
 
     implementation 'com.github.cachapa:ExpandableLayout:2.9.2'
 
-    implementation 'org.videolan.android:libvlc-all:4.0.0-eap10'
+    implementation 'org.videolan.android:libvlc-all:4.0.0-eap11'
 
     testImplementation "junit:junit:$version_junit"
     androidTestImplementation "androidx.test.ext:junit:$version_android_junit"
