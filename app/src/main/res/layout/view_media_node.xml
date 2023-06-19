@@ -3,7 +3,9 @@
         xmlns:app="http://schemas.android.com/apk/res-auto"
         xmlns:tools="http://schemas.android.com/tools"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:background="?android:attr/colorBackground"
+        android:backgroundTint="?android:attr/colorBackground">
 
     <TextView
             android:text="_UNSET_"
@@ -15,7 +17,8 @@
             android:layout_marginTop="8dp"
             android:layout_marginEnd="8dp"
             app:layout_constraintStart_toEndOf="@+id/v_mf_thumb"
-            android:layout_marginStart="8dp" />
+            android:layout_marginStart="8dp"
+            android:background="?android:attr/colorBackground" />
 
     <ImageView
             android:layout_width="wrap_content"
@@ -27,7 +30,8 @@
             app:tint="#A3A3A3"
             tools:visibility="visible"
             app:srcCompat="@drawable/ic_baseline_menu_24"
-            app:layout_constraintBottom_toBottomOf="parent" />
+            app:layout_constraintBottom_toBottomOf="parent"
+            android:background="?android:attr/colorBackground" />
 
     <ImageView
             android:layout_width="64dp"
@@ -39,5 +43,6 @@
             app:layout_constraintTop_toTopOf="parent"
             android:layout_marginStart="8dp"
             android:layout_marginTop="4dp"
-            android:visibility="gone" />
+            android:visibility="gone"
+            android:background="?android:attr/colorBackground" />
 </androidx.constraintlayout.widget.ConstraintLayout>
