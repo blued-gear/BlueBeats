@@ -5,7 +5,8 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         tools:context=".view.FileDetails"
-        android:background="#FFFFFF">
+        android:background="?android:attr/colorBackground"
+        android:backgroundTint="?android:attr/colorBackground">
 
     <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
@@ -14,7 +15,9 @@
             android:layout_marginStart="16dp"
             android:layout_marginEnd="16dp"
             android:layout_marginTop="16dp"
-            android:layout_marginBottom="16dp">
+            android:layout_marginBottom="16dp"
+            android:backgroundTint="?android:attr/colorBackground"
+            android:background="?android:attr/colorBackground">
 
         <ImageView
                 android:src="@drawable/background_control"
