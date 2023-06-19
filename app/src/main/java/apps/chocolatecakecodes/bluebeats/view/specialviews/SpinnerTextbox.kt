@@ -6,7 +6,11 @@ import android.graphics.Color
 import android.util.AttributeSet
 import android.view.Gravity
 import android.view.inputmethod.EditorInfo
-import android.widget.*
+import android.widget.ArrayAdapter
+import android.widget.AutoCompleteTextView
+import android.widget.FrameLayout
+import android.widget.ImageButton
+import android.widget.TextView
 import androidx.appcompat.widget.LinearLayoutCompat
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable

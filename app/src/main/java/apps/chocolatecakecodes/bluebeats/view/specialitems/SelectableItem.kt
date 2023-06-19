@@ -8,7 +8,7 @@ import apps.chocolatecakecodes.bluebeats.util.SimpleObservable
 import com.mikepenz.fastadapter.FastAdapter
 import com.mikepenz.fastadapter.items.AbstractItem
 import java.lang.ref.WeakReference
-import java.util.*
+import java.util.Observer
 
 internal abstract class SelectableItem<Holder : RecyclerView.ViewHolder> : AbstractItem<Holder>() {
 
