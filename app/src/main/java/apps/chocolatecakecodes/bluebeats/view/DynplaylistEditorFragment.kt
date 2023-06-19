@@ -128,7 +128,7 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
     }
 
     suspend fun saveChanges(): Boolean {
-        if(!checkRuleShares(editCopy)){
+        if(!checkRuleShares(editCopy)) {
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, R.string.dynpl_edit_rules_not_100, Toast.LENGTH_LONG).show()
             }
@@ -141,7 +141,7 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
         if(modified || plBufferSize.text.toString() != playlist.iterationSize.toString())
             saveSuccessful = saveSuccessful and savePlData()
 
-        if(saveSuccessful){
+        if(saveSuccessful) {
             withContext(Dispatchers.Main) {
                 mnuItemReset?.isEnabled = false
             }
@@ -199,17 +199,30 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
         }.map {
             it.first.share
         }.let { shares ->
-            if(!shares.any { it.modeEven() }) {
+            if(!shares.any { it.modeEven() }) {// check if all relative rules add up to 100%
                 shares.filter {
                     it.modeRelative()
                 }.let {
-                    if(it.isNotEmpty()){
+                    if(it.isNotEmpty()) {
                         val epsilon = 0.0001f
                         @Suppress("NAME_SHADOWING")
                         val shareSum = it.fold(0f) { acc, it ->
                             acc + it.value
                         }
                         if(abs(1f - shareSum) > epsilon)
+                            return false
+                    }
+                }
+            } else if(shares.any { it.modeEven() }) {// check if all relative rules add up to <= 100%
+                shares.filter {
+                    it.modeRelative()
+                }.let {
+                    if(it.isNotEmpty()) {
+                        @Suppress("NAME_SHADOWING")
+                        val shareSum = it.fold(0f) { acc, it ->
+                            acc + it.value
+                        }
+                        if(shareSum > 1.0)
                             return false
                     }
                 }
