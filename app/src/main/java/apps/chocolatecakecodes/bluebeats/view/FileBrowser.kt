@@ -247,7 +247,7 @@ class FileBrowser : Fragment() {
 
             viewModel.mediaScanned()// call before scanInAll to prevent calls to scanMedia() before scan was complete
 
-            mediaDB.scanInAll()
+            mediaDB.scanInAll(this@FileBrowser.requireContext())
         }
     }
 

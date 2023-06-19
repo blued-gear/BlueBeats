@@ -1,6 +1,7 @@
 package apps.chocolatecakecodes.bluebeats.media
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
@@ -10,11 +11,12 @@ import android.util.Log
 import apps.chocolatecakecodes.bluebeats.database.MediaDirDAO
 import apps.chocolatecakecodes.bluebeats.database.MediaFileDAO
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
+import apps.chocolatecakecodes.bluebeats.media.fileaccess.AndroidFs
+import apps.chocolatecakecodes.bluebeats.media.fileaccess.AndroidMediaStore
 import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.taglib.TagParser
-import apps.chocolatecakecodes.bluebeats.util.Utils
 import apps.chocolatecakecodes.bluebeats.util.using
 import org.videolan.libvlc.FactoryManager
 import org.videolan.libvlc.interfaces.ILibVLC
@@ -22,7 +24,6 @@ import org.videolan.libvlc.interfaces.IMedia
 import org.videolan.libvlc.interfaces.IMediaFactory
 import java.io.File
 import java.io.FileNotFoundException
-import java.io.IOException
 
 /**
  * first: subdirs, second: files
@@ -40,11 +41,15 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
 
         private const val LOG_TAG = "MediaDB"
         //TODO extend this list
-        private const val IGNORE_LIST_OPTION = ":ignore-filetypes=db,nfo,ini,jpg,jpeg,ljpg,gif,png,pgm,pgmyuv,pbm,pam,tga,bmp,pnm,xpm,xcf,pcx,tif,tiff,lbm,sfv,txt,sub,idx,srt,ssa,ass,smi,utf,utf-8,rt,aqt,txt,usf,jss,cdg,psb,mpsub,mpl2,pjs,dks,stl,vtt,ttml,pdf"
+        private val IGNORE_LIST = listOf(
+            "db", "nfo", "ini", "jpg", "jpeg", "ljpg", "gif", "png", "pgm", "pgmyuv", "pbm", "pam",
+            "tga", "bmp", "pnm", "xpm", "xcf", "pcx", "tif", "tiff", "lbm", "sfv", "txt", "sub",
+            "idx", "srt", "ssa", "ass", "smi", "utf", "utf-8", "rt", "aqt", "txt", "usf", "jss",
+            "cdg", "psb", "mpsub", "mpl2", "pjs", "dks", "stl", "vtt", "ttml", "pdf"
+        ).map { ".$it" }
     }
 
     private val mediaFactory: IMediaFactory
-    private val scanRoots: MutableSet<String>
     private var mediaTree: MediaDir = MediaNode.UNSPECIFIED_DIR
 
     private val mediaFileDao: MediaFileDAO by lazy {
@@ -56,21 +61,12 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
 
     constructor(libVLC: ILibVLC): this(libVLC, NOOP_EVENT_HANDLER){}
 
-    init{
+    init {
         mediaFactory = FactoryManager.getFactory(IMediaFactory.factoryId) as IMediaFactory
-        scanRoots = HashSet()
     }
 
     //region public methods
-
-    fun addScanRoot(path: String){
-        scanRoots.add(path)
-    }
-    fun removeScanRoot(path: String){
-        scanRoots.remove(path)
-    }
-
-    fun loadDB(){
+    fun loadDB() {
         if(mediaDirDao.doesSubdirExist("/", MediaNode.NULL_PARENT_ID)){
             mediaTree = mediaDirDao.getForNameAndParent("/", MediaNode.NULL_PARENT_ID)
         }else{
@@ -78,37 +74,73 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
         }
     }
 
-    fun scanInAll() {
+    fun scanInAll(ctx: Context) {
+        val fileWalker = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+            AndroidMediaStore()
+        else
+            AndroidFs()
+
         eventHandler.onScanStarted()
         eventHandler.onNewNodeFound(mediaTree)// publish root
 
-        checkForDeletedScanRoots().forEach {
-            mediaTree.removeDir(it)
-            mediaDirDao.delete(it)
-            eventHandler.onNodeRemoved(it)
-        }
+        val removedDirs = mediaDirDao.getAllDirs().filter {
+            it.parent != null// exclude root
+        }.associateBy {
+            it.path
+        }.toMutableMap()
+        val removedFiles = mediaFileDao.getAllFiles().associateBy {
+            it.path
+        }.toMutableMap()
 
-        for(scanRoot in scanRoots){
-            try {
-                var currentParent: MediaDir = mediaTree
-                val pathParts = scanRoot.split('/')
-                for(part in pathParts){
-                    // create dir-struct from root to scanRoot
-                    if(part == "") continue
-                    var nextParent = currentParent.findChild(part) as? MediaDir
-                    if(nextParent === null){
-                        nextParent = mediaDirDao.newDir(part, currentParent.entityId)
-                        currentParent.addDir(nextParent)
+        fileWalker.visitAllFiles(ctx) { path ->
+            processFile(path)?.let { f ->
+                removedFiles.remove(f.path)
+
+                // mark full dir-path as not removed
+                var subHit = false
+                var parent: MediaDir? = f.parent
+                while(parent != null) {
+                    val hit = removedDirs.remove(parent.path) != null
+
+                    // If the parent-path was already removed then skip further checking.
+                    //  As the paths are always checked from bottom to top, once a parent-path
+                    //  does not hit anymore, the parent should already be removed
+                    if(subHit) {
+                        if(!hit)
+                            break
+                    } else {
+                        if(hit)
+                            subHit = true
                     }
-                    currentParent = nextParent
-                    eventHandler.onNewNodeFound(currentParent)
-                }
 
-                updateDirDeep(currentParent)
-            }catch (e: Exception){
-                eventHandler.onScanException(e)
+                    parent = parent.parent
+                }
             }
         }
+
+        // remove all removed nodes
+        removedFiles.values.forEach {
+            eventHandler.onNodeRemoved(it)
+            it.parent.removeFile(it)
+            mediaFileDao.delete(it)
+        }
+        removedDirs.values.forEach {
+            eventHandler.onNodeRemoved(it)
+            it.parent!!.removeDir(it)
+            mediaDirDao.delete(it)
+        }
+
+        // save all dirs
+        fun saveDirRecursively(dir: MediaDir) {
+            mediaDirDao.save(dir)
+
+            dir.getDirs().forEach {
+                saveDirRecursively(it)
+            }
+
+            eventHandler.onNodeProcessed(dir)
+        }
+        saveDirRecursively(mediaTree)
 
         eventHandler.onScanFinished()
 
@@ -119,76 +151,45 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
         return mediaTree
     }
 
-    fun fileToMediaFile(path: String): MediaFile{
+    fun fileToMediaFile(path: String): MediaFile {
         val vlcMedia = fileToVlcMedia(path)
         if(vlcMedia === null)
             throw FileNotFoundException("file $path can not be converted to vlc-media")
 
-        vlcMedia.using(false){
-            return parseFile(vlcMedia, MediaNode.UNSPECIFIED_DIR)
+        return vlcMedia.using(false) {
+            parseFile(vlcMedia, MediaNode.UNSPECIFIED_DIR)
         }
-        throw AssertionError("unreachable")
     }
-    fun fileToVlcMedia(path: String): IMedia?{
+    fun fileToVlcMedia(path: String): IMedia? {
         return mediaFactory.getFromLocalPath(libVLC, path)
     }
 
-    fun pathToMedia(path: String, detached: Boolean = false): MediaNode{
-        if(detached){
-            val media = fileToVlcMedia(path)
-                ?: throw FileNotFoundException("path $path could not be converted to a vlc-media")
-            media.using(false){
-                media.parse(IMedia.Parse.ParseLocal or IMedia.Parse.DoInteract)
+    fun pathToMedia(path: String): MediaNode {
+        var currentParent = mediaTree
+        val pathParts = path.split('/')
+        pathParts.indices.forEach { i ->
+            val pathPart = pathParts[i]
+            if (pathPart == "") return@forEach// continue
 
-                if(media.type == IMedia.Type.Directory){
-                    val dir = MediaDir.new(
-                        MediaNode.UNSPECIFIED_DIR.entityId,
-                        media.uri.lastPathSegment!!,
-                        { null }
-                    )
-
-                    val contents = scanDir(media)
-                    for(subdir in contents.first){
-                        dir.addDir(MediaDir.new(
-                            MediaNode.UNSPECIFIED_DIR.entityId,
-                            subdir.uri.lastPathSegment!!,
-                            { mediaDirDao.getForId(dir.entityId) }
-                        ))
-                    }
-                    for(file in contents.second){
-                        dir.addFile(parseFile(file, dir))
-                    }
-
-                    return dir
-                }else if(media.type == IMedia.Type.File){
-                    return parseFile(media, MediaNode.UNSPECIFIED_DIR)
-                }else{
-                    throw IllegalArgumentException("path is not a file nor a directory")
-                }
-            }
-        }else{
-            var currentParent = mediaTree
-            val pathParts = path.split('/')
-            pathParts.indices.forEach { i ->
-                val pathPart = pathParts[i]
-                if (pathPart == "") return@forEach// continue
-
-                val child = currentParent.findChild(pathPart)
-                    ?: throw FileNotFoundException("path $path not found in media-tree (at $pathPart)")
-                if(child is MediaDir){
+            val child = currentParent.findChild(pathPart)
+                ?: throw FileNotFoundException("path $path not found in media-tree (at $pathPart)")
+            when (child) {
+                is MediaDir -> {
                     currentParent = child
-                }else if (child is MediaFile){
+                }
+
+                is MediaFile -> {
                     if (i != pathParts.size - 1)
                         throw FileNotFoundException("path could not be resolved, because a file was found where a dir was expected (path: $path , current-dir: $pathPart)")
                     return child
-                }else{
+                }
+
+                else -> {
                     throw AssertionError("there should be no more subclasses of MediaNode than dir and file")
                 }
             }
-            return currentParent
         }
-
-        throw AssertionError("unreachable")
+        return currentParent
     }
 
     @SuppressLint("Range")
@@ -213,131 +214,80 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
     //endregion
 
     //region private methods
+    private fun processFile(path: String): MediaFile? {
+        if(IGNORE_LIST.any { path.endsWith(it) })
+            return null
 
-    /**
-     * @param dir parsed dir which should be scanned
-     * @return parsed subdirs and files in the given dir
-     */
-    private fun scanDir(dir: IMedia): DirContents{
-        if(!Utils.vlcMediaToDocumentFile(dir).isDirectory)
-            throw IllegalArgumentException("path is not a directory")
+        val lastSlash = path.lastIndexOf('/')
+        if(lastSlash == -1 || lastSlash == path.lastIndex)
+            return null
+        val dirPath = path.substring(0, lastSlash)
+        val name = path.substring(lastSlash + 1)
 
-        val dirs = ArrayList<IMedia>()
-        val files = ArrayList<IMedia>()
+        val dir = mkDirs(dirPath)
 
-        dir.using {
-            if(!dir.isParsed) {
-                dir.addOption(IGNORE_LIST_OPTION)
-                dir.parse(IMedia.Parse.ParseLocal or IMedia.Parse.DoInteract)
+        val file = when(val existingFile = dir.findChild(name)) {
+            null -> {
+                fileToVlcMedia(path)!!.using(false) {
+                    val newFile = mediaFileDao.newFile(parseFile(it, dir))
+                    dir.addFile(newFile)
+
+                    eventHandler.onNewNodeFound(newFile)
+                    eventHandler.onNodeProcessed(newFile)
+
+                    newFile
+                }
             }
+            is MediaFile -> {
+                updateFile(existingFile)
 
-            dir.subItems().using(false) {
-                for(i in 0 until it.count){
-                    it.getMediaAt(i).using(false) { child ->
-                        child.addOption(IGNORE_LIST_OPTION)
-                        child.parse(IMedia.Parse.ParseLocal or IMedia.Parse.DoInteract)
+                eventHandler.onNodeProcessed(existingFile)
 
-                        when (child.type) {
-                            IMedia.Type.Directory -> {
-                                assert(Utils.vlcMediaToDocumentFile(child).isDirectory)
-                                dirs.add(child)
-                            }
-                            IMedia.Type.File -> {
-                                assert(Utils.vlcMediaToDocumentFile(child).isFile)
-                                files.add(child)
-                            }
-                            else -> {
-                                Log.d(LOG_TAG, "unknown media type encountered: ${child.type}  -  ${child.uri}")
-                            }
-                        }
-                    }
+                existingFile
+            }
+            else -> {
+                Log.w(LOG_TAG, "dir with name of exiting file found; removing dir; path: $path")
+                dir.removeDir(existingFile as MediaDir)
+
+                fileToVlcMedia(path)!!.using(false) {
+                    val newFile = mediaFileDao.newFile(parseFile(it, dir))
+                    dir.addFile(newFile)
+
+                    eventHandler.onNewNodeFound(newFile)
+                    eventHandler.onNodeProcessed(newFile)
+
+                    newFile
                 }
             }
         }
 
-        return Pair(dirs, files)
+        mediaFileDao.save(file)
+        return file
     }
 
-    private fun updateDirDeep(dir: MediaDir){
-        val vlcDir = fileToVlcMedia(dir.path) ?: throw IOException("unable to create media")
-        vlcDir.using(false) {
-            // scan top level
-            val dirContents = scanDir(vlcDir)
+    private fun mkDirs(path: String): MediaDir {
+        var parent = mediaTree
+        val parts = path.split('/').filter { it.isNotEmpty() }
 
-            // update top level
-            updateDir(dir, dirContents)
-
-            // process sub-dirs
-            for(subDir in dir.getDirs()){
-                updateDirDeep(subDir)
+        for(name in parts) {
+            var dir = parent.getDirs().firstOrNull {
+                it.name == name
             }
+
+            if(dir == null) {
+                dir = mediaDirDao.newDir(name, parent.entityId)
+                parent.addDir(dir)
+
+                eventHandler.onNewNodeFound(dir)
+            }
+
+            parent = dir
         }
+
+        return parent
     }
 
-    private fun updateDir(dir: MediaDir, contents: DirContents){//TODO should a onNodeUpdated be fired if the dir-content changes (new / removed files / dirs)?
-        var wasChanged = false
-
-        // check dirs
-        val discoveredSubdirNames = contents.first.map { it.uri.lastPathSegment!! }.toSet()
-        val existingSubdirsWithName = mapOf(*dir.getDirs().map { Pair(it.name, it) }.toTypedArray())
-
-        Utils.diffChanges(existingSubdirsWithName.keys, discoveredSubdirNames).let { (addedDirs, deletedDirs, _) ->
-            // add new subdirs
-            addedDirs.forEach {
-                wasChanged = true
-                val newSubdir = mediaDirDao.newDir(it, dir.entityId)
-                dir.addDir(newSubdir)
-                eventHandler.onNewNodeFound(newSubdir)
-            }
-
-            // delete old subdirs
-            deletedDirs.forEach{
-                wasChanged = true
-                val child = existingSubdirsWithName[it]!!
-                mediaDirDao.delete(child)
-                dir.removeDir(child)
-                eventHandler.onNodeRemoved(child)
-            }
-        }
-
-        // check files
-        val discoveredFilesWithName = mapOf(*contents.second.map { Pair(it.uri.lastPathSegment!!, it) }.toTypedArray())
-        val existingFilesWithName = mapOf(*dir.getFiles().map{ Pair(it.name, it) }.toTypedArray())
-
-        Utils.diffChanges(existingFilesWithName.keys, discoveredFilesWithName.keys).let { (addedFiles, deletedFiles, existingFiles) ->
-            // add new files
-            addedFiles.forEach {
-                wasChanged = true
-                val fileMedia = discoveredFilesWithName[it]!!
-                val newFile = mediaFileDao.newFile(parseFile(fileMedia, dir))
-                dir.addFile(newFile)
-                eventHandler.onNewNodeFound(newFile)
-                eventHandler.onNodeProcessed(newFile)
-            }
-
-            // remove old files
-            deletedFiles.forEach {
-                wasChanged = true
-                val child = existingFilesWithName[it]!!
-                dir.removeFile(child)
-                mediaFileDao.delete(child)
-                eventHandler.onNodeRemoved(child)
-            }
-
-            // update files (do not re-check added files as they were just parsed)
-            existingFiles.forEach {
-                val child = existingFilesWithName[it]!!
-                updateFile(child)
-                eventHandler.onNodeProcessed(child)
-            }
-        }
-
-        if(wasChanged)
-            mediaDirDao.save(dir)
-        eventHandler.onNodeProcessed(dir)
-    }
-
-    private fun parseFile(file: IMedia, parent: MediaDir): MediaFile{
+    private fun parseFile(file: IMedia, parent: MediaDir): MediaFile {
         assert(file.type == IMedia.Type.File)
 
         val name = file.uri.lastPathSegment ?: throw IllegalArgumentException("media has invalid path")
@@ -381,8 +331,8 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
         return mf
     }
 
-    private fun updateFile(file: MediaFile){
-        fileToVlcMedia(file.path)!!.using(false){
+    private fun updateFile(file: MediaFile) {
+        fileToVlcMedia(file.path)!!.using(false) {
             val fsVersion = parseFile(it, file.parent)
             val unchangedVersion = mediaFileDao.createCopy(file)
             var wasChanged = false
@@ -413,7 +363,7 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
         }
     }
 
-    private fun parseTags(file: MediaFile){
+    private fun parseTags(file: MediaFile) {
         if(file.type == MediaFile.Type.AUDIO) {
             try {
                 val parser = TagParser(file.path)
@@ -474,55 +424,6 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
         return Bitmap.createScaledBitmap(src, sWidth, sHeight, true)
     }
 
-    private fun checkForDeletedScanRoots(): Set<MediaDir> {
-        class PathPart(val part: String) {
-            val next = ArrayList<PathPart>()
-            var isTerminator = false
-
-            fun addSub(name: String): PathPart {
-                return next.find {
-                    it.part == name
-                } ?: run {
-                    PathPart(name).also {
-                        next.add(it)
-                    }
-                }
-            }
-        }
-
-        fun checkDir(dir: MediaDir, currentPathPart: PathPart): Set<MediaDir> {
-            if(currentPathPart.isTerminator) {
-                return if(dir.name == currentPathPart.part)
-                    emptySet()
-                else
-                    setOf(dir)
-            }
-
-            return dir.getDirs().fold(emptySet()) { acc, cur ->
-                acc + let {
-                    currentPathPart.next.find {
-                        it.part == cur.name
-                    }?.let {
-                        checkDir(cur, it)
-                    } ?: setOf(cur)
-                }
-            }
-        }
-
-        val rootParts = PathPart("/")
-        scanRoots.forEach {
-            it.split('/').filter {
-                it.isNotEmpty()
-            }.fold(rootParts) { acc, cur ->
-               acc.addSub(cur)
-            }.also {
-                it.isTerminator = true
-            }
-        }
-
-        return checkDir(getMediaTreeRoot(), rootParts)
-    }
-
     private fun runHousekeeping() {
         RoomDB.DB_INSTANCE.userTagDao().removeOrphanUserTags()
     }
@@ -547,7 +448,7 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
 
     //region classes
 
-    abstract class ScanEventHandler(private val dispatcher : Handler? = null){
+    abstract class ScanEventHandler(private val dispatcher : Handler? = null) {
 
         internal fun onScanStarted(){
             if(dispatcher !== null){

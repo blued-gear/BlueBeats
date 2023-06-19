@@ -74,6 +74,12 @@ internal abstract class MediaDirDAO{
         return getForId(getIdForNameAndParent(name, parent))
     }
 
+    fun getAllDirs(): List<MediaDir> {
+        return getAllIds().map {
+            getForId(it)
+        }
+    }
+
     @Transaction
     open fun save(dir: MediaDir){
         updateEntity(
@@ -114,6 +120,9 @@ internal abstract class MediaDirDAO{
 
     @Query("SELECT id FROM MediaDirEntity WHERE name = :name AND parent = :parent;")
     protected abstract fun getIdForNameAndParent(name: String, parent: Long): Long
+
+    @Query("SELECT id FROM MediaDirEntity;")
+    protected abstract fun getAllIds(): List<Long>
 
     @Insert
     protected abstract fun insertEntity(entity: MediaDirEntity): Long

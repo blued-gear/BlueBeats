@@ -36,10 +36,6 @@ class MainActivity : AppCompatActivity() {
         internal const val INTENT_OPTION_TAB = "open_optn-tab"
 
         private const val STORAGE_PERM_REQ_ID = 11
-        private val PERMISSIONS_STORAGE = arrayOf(
-            Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE
-        )
     }
 
     private lateinit var viewModel: MainActivityViewModel
@@ -66,7 +62,6 @@ class MainActivity : AppCompatActivity() {
         setupTabs()
         setupSystemBarsHider()
         wireObservers()
-        listMediaRoots()
 
         getAppPermissions()
 
@@ -90,11 +85,25 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-    private fun getAppPermissions(){
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+    private fun getAppPermissions() {
+        val permissions = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(
+                Manifest.permission.READ_MEDIA_AUDIO,
+                Manifest.permission.READ_MEDIA_VIDEO
+            )
+        } else {
+            arrayOf(
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            )
+        }
+
+        val requestPermissions = permissions.any {
+            ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (requestPermissions) {
             ActivityCompat.requestPermissions(
                 this,
-                PERMISSIONS_STORAGE,
+                permissions,
                 STORAGE_PERM_REQ_ID
             )
         }else{
@@ -242,34 +251,6 @@ class MainActivity : AppCompatActivity() {
             this.setContentView(mainContentView)
         }else{
             Log.e("MainActivity", "can not show main-content: still attached to a parent")
-        }
-    }
-
-    private fun listMediaRoots(){
-        // https://stackoverflow.com/a/70879069/8288367
-        fun getExternalStorageDirectoryPaths(context: Context): List<String> {
-            val externalPaths = ArrayList<String>()
-            val internalStoragePath = Environment.getExternalStorageDirectory().absolutePath
-
-            ContextCompat.getExternalFilesDirs(context, null).forEach {
-                if(it != null) {
-                    val nameSubPos = it.absolutePath.lastIndexOf("/Android/data")
-                    if(nameSubPos > 0) {
-                        val filesDirName = it.absolutePath.substring(0, nameSubPos)
-                        if(filesDirName != internalStoragePath) {
-                            externalPaths.add(filesDirName)
-                        }
-                    }
-                }
-            }
-
-            return externalPaths
-        }
-
-        val mediaDB = VlcManagers.getMediaDB().getSubject()
-        mediaDB.addScanRoot(Environment.getExternalStorageDirectory().absolutePath)
-        getExternalStorageDirectoryPaths(this).forEach {
-            mediaDB.addScanRoot(it)
         }
     }
 

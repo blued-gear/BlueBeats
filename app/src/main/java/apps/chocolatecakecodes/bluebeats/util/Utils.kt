@@ -179,11 +179,11 @@ object Utils {
     }
 }
 
-inline fun <T : IVLCObject<E>, E : AbstractVLCEvent?> T.using(retain: Boolean = true, block: (T) -> Unit){
+inline fun <T : IVLCObject<E>, E : AbstractVLCEvent?, R: Any?> T.using(retain: Boolean = true, block: (T) -> R): R {
     if(retain) this.retain()
-    try{
-        block(this)
-    }finally {
+    try {
+        return block(this)
+    } finally {
         this.release()
     }
 }
