@@ -17,6 +17,7 @@
             android:supportsRtl="true"
             android:theme="@style/Theme.BlueBeats"
             android:requestLegacyExternalStorage="true"
+            android:enableOnBackInvokedCallback="true"
     >
         <activity android:name="apps.chocolatecakecodes.bluebeats.view.MainActivity" android:exported="true">
             <intent-filter>
