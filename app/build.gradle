@@ -93,7 +93,6 @@ dependencies {
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycle_version"
     implementation 'androidx.recyclerview:recyclerview-selection:1.1.0'
 
-    implementation 'com.anggrayudi:storage:1.5.4'
     implementation "androidx.room:room-runtime:$room_version"
     kapt "androidx.room:room-compiler:$room_version"
     implementation 'com.google.guava:guava:32.0.1-android'
