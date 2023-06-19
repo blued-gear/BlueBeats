@@ -1,10 +1,15 @@
 package apps.chocolatecakecodes.bluebeats.view.specialitems
 
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
+import androidx.core.view.children
 import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.util.SimpleObservable
+import com.google.android.material.color.MaterialColors
 import com.mikepenz.fastadapter.FastAdapter
 import com.mikepenz.fastadapter.items.AbstractItem
 import java.lang.ref.WeakReference
@@ -54,10 +59,23 @@ internal abstract class SelectableItem<Holder : RecyclerView.ViewHolder> : Abstr
         }
 
         open fun setSelected(selected: Boolean) {
-            if(selected)
-                this.itemView.setBackgroundResource(R.color.selection_highlight)
+            val col = if(selected)
+                this.itemView.context.getColor(R.color.selection_highlight)
             else
-                this.itemView.setBackgroundResource(com.google.android.material.R.color.design_default_color_background)
+                MaterialColors.getColor(this.itemView, android.R.attr.colorBackground, Color.MAGENTA)
+
+            applyColorToViewTree(this.itemView, col)
+        }
+
+        private fun applyColorToViewTree(view: View, col: Int) {
+            view.setBackgroundColor(col)
+            view.backgroundTintList = ColorStateList.valueOf(col)
+
+            if(view is ViewGroup) {
+                view.children.forEach {
+                    applyColorToViewTree(it, col)
+                }
+            }
         }
     }
 }
