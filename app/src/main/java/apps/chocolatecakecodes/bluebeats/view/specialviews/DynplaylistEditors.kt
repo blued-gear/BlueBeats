@@ -26,6 +26,7 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.*
 import apps.chocolatecakecodes.bluebeats.util.Debouncer
 import apps.chocolatecakecodes.bluebeats.util.Utils
+import com.google.android.material.color.MaterialColors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -157,7 +158,8 @@ private class DynplaylistGroupEditor(
 
             ImageButton(context).apply {
                 setImageResource(R.drawable.ic_baseline_remove_24)
-                imageTintList = ColorStateList.valueOf(Color.BLACK)
+                imageTintList = ColorStateList.valueOf(MaterialColors.getColor(this,
+                    android.R.attr.colorForeground, Color.BLACK))
                 setBackgroundColor(Color.TRANSPARENT)
                 setOnClickListener {
                     group.removeRule(ruleItem.first)
@@ -677,8 +679,9 @@ private class SimpleAddableRuleHeaderView(ctx: Context) : LinearLayout(ctx) {
 
         fun addButton(ctx: Context) = AppCompatImageButton(ctx).apply {
             setImageResource(R.drawable.ic_baseline_add_24)
-            imageTintList = ColorStateList.valueOf(Color.BLACK)
             setBackgroundColor(Color.TRANSPARENT)
+            imageTintList = ColorStateList.valueOf(MaterialColors.getColor(this,
+                android.R.attr.colorForeground, Color.BLACK))
         }
 
         fun negateCheckbox(ctx: Context) = CheckBox(ctx).apply {
@@ -688,6 +691,12 @@ private class SimpleAddableRuleHeaderView(ctx: Context) : LinearLayout(ctx) {
         fun logicButton(ctx: Context) = LogicButton(ctx)
 
         class LogicButton(ctx: Context) : AppCompatImageButton(ctx) {
+
+            init {
+                imageTintList = ColorStateList.valueOf(MaterialColors.getColor(this,
+                    android.R.attr.colorForeground, Color.BLACK))
+            }
+
             fun setLogicMode(and: Boolean) {
                 if(and)
                     this.setImageResource(R.drawable.ic_intersect)
@@ -788,7 +797,8 @@ private class ShareEditor(
     private val cancelBtn: Button
 
     init {
-        setBackgroundColor(Color.WHITE)
+        setBackgroundColor(MaterialColors.getColor(this,
+            android.R.attr.colorBackground, Color.MAGENTA))
 
         LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
@@ -956,7 +966,8 @@ private class MediaNodeView(val path: MediaNode, context: Context, showDeepCB: B
     }
     val removeBtn = ImageButton(context).apply {
         setImageResource(R.drawable.ic_baseline_remove_24)
-        imageTintList = ColorStateList.valueOf(Color.BLACK)
+        imageTintList = ColorStateList.valueOf(MaterialColors.getColor(this,
+            android.R.attr.colorForeground, Color.BLACK))
         setBackgroundColor(Color.TRANSPARENT)
         gravity = Gravity.END
     }
@@ -967,6 +978,8 @@ private class MediaNodeView(val path: MediaNode, context: Context, showDeepCB: B
 
     init {
         orientation = HORIZONTAL
+        setBackgroundColor(MaterialColors.getColor(this,
+            android.R.attr.colorBackground, Color.MAGENTA))
 
         addView(text, LayoutParams(0, LayoutParams.MATCH_PARENT, 10f))
         if(showDeepCB && path is MediaDir)
@@ -985,7 +998,8 @@ private class MediaNodeSelectPopup(
     private val browser = FileBrowserView(ctx)
 
     init {
-        this.setBackgroundColor(Color.WHITE)
+        setBackgroundColor(MaterialColors.getColor(this,
+            android.R.attr.colorBackground, Color.MAGENTA))
         this.setPadding(24)
 
         setupContent()
@@ -1049,7 +1063,8 @@ private class TextElement(val tag: String, ctx: Context): LinearLayout(ctx) {
     val removeBtn = ImageButton(context).apply {
         gravity = Gravity.END
         setImageResource(R.drawable.ic_baseline_remove_24)
-        imageTintList = ColorStateList.valueOf(Color.BLACK)
+        imageTintList = ColorStateList.valueOf(MaterialColors.getColor(this,
+            android.R.attr.colorForeground, Color.BLACK))
         setBackgroundColor(Color.TRANSPARENT)
     }
 
@@ -1104,7 +1119,8 @@ private class TextSelector(
             }
         }
 
-        setBackgroundColor(Color.WHITE)
+        setBackgroundColor(MaterialColors.getColor(this,
+            android.R.attr.colorBackground, Color.MAGENTA))
 
         LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
