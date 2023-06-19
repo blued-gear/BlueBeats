@@ -4,8 +4,6 @@ import android.content.res.ColorStateList
 import android.graphics.Color
 import android.util.Log
 import android.view.View
-import android.view.ViewGroup
-import androidx.core.view.children
 import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.util.SimpleObservable
@@ -64,18 +62,8 @@ internal abstract class SelectableItem<Holder : RecyclerView.ViewHolder> : Abstr
             else
                 MaterialColors.getColor(this.itemView, android.R.attr.colorBackground, Color.MAGENTA)
 
-            applyColorToViewTree(this.itemView, col)
-        }
-
-        private fun applyColorToViewTree(view: View, col: Int) {
-            view.setBackgroundColor(col)
-            view.backgroundTintList = ColorStateList.valueOf(col)
-
-            if(view is ViewGroup) {
-                view.children.forEach {
-                    applyColorToViewTree(it, col)
-                }
-            }
+            this.itemView.setBackgroundColor(col)
+            this.itemView.backgroundTintList = ColorStateList.valueOf(col)
         }
     }
 }
