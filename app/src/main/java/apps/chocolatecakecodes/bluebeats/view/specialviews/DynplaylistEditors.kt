@@ -14,6 +14,7 @@ import android.view.inputmethod.EditorInfo
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatImageButton
+import androidx.core.view.children
 import androidx.core.view.setPadding
 import androidx.core.widget.TextViewCompat
 import androidx.core.widget.addTextChangedListener
@@ -270,13 +271,21 @@ private class DynplaylistIncludeEditor(
 
     private fun onRemoveDir(entry: MediaDir) {
         rule.removeDir(entry)
-        contentList.removeView(this)
+        contentList.children.first {
+            it is MediaNodeView && it.path === entry
+        }.let {
+            contentList.removeView(it)
+        }
         changedCallback(rule)
     }
 
     private fun onRemoveFile(entry: MediaFile) {
         rule.removeFile(entry)
-        contentList.removeView(this)
+        contentList.children.first {
+            it is MediaNodeView && it.path === entry
+        }.let {
+            contentList.removeView(it)
+        }
         changedCallback(rule)
     }
 }
