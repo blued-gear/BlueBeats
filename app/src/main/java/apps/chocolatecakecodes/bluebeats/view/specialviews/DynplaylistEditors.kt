@@ -61,19 +61,19 @@ private class DynplaylistGroupEditor(
     //FIXME this will create unreachable garbage-entries in the DB if the user does not save after creating a rule
     private val ruleGenerators = mapOf(
         context.getString(R.string.dynpl_type_group) to {
-            RoomDB.DB_INSTANCE.dplRuleGroupDao().createNew(Rule.Share(1f, true)).copy()//TODO change default to even
+            RoomDB.DB_INSTANCE.dplRuleGroupDao().createNew(Rule.Share(-1f, true)).copy()
         },
         context.getString(R.string.dynpl_type_include) to {
-            RoomDB.DB_INSTANCE.dplIncludeRuleDao().createNew(Rule.Share(1f, true)).copy()
+            RoomDB.DB_INSTANCE.dplIncludeRuleDao().createNew(Rule.Share(-1f, true)).copy()
         },
         context.getString(R.string.dynpl_type_usertags) to {
-            RoomDB.DB_INSTANCE.dplUsertagsRuleDao().createNew(Rule.Share(1f, true)).copy()
+            RoomDB.DB_INSTANCE.dplUsertagsRuleDao().createNew(Rule.Share(-1f, true)).copy()
         },
         context.getString(R.string.dynpl_type_id3tag) to {
-            RoomDB.DB_INSTANCE.dplID3TagsRuleDao().create(Rule.Share(1f, true)).copy()
+            RoomDB.DB_INSTANCE.dplID3TagsRuleDao().create(Rule.Share(-1f, true)).copy()
         },
         context.getString(R.string.dynpl_regex_title) to {
-            RoomDB.DB_INSTANCE.dplRegexRuleDao().createNew(Rule.Share(1f, true)).copy()
+            RoomDB.DB_INSTANCE.dplRegexRuleDao().createNew(Rule.Share(-1f, true)).copy()
         }
     )
 
