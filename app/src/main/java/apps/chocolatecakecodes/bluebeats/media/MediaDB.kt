@@ -1,6 +1,5 @@
 package apps.chocolatecakecodes.bluebeats.media
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -192,7 +191,6 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
         return currentParent
     }
 
-    @SuppressLint("Range")
     fun getThumbnail(file: MediaFile, width: Int, height: Int): Bitmap? {
         if(!File(file.path).exists())
             return null
@@ -379,11 +377,16 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
     }
 
     private fun tryLoadThumbnail(filePath: String): Bitmap? {
-        return useMediaMetadataRetriever { retriever ->
-            retriever.setDataSource(filePath)
-            retriever.embeddedPicture?.let {
-                BitmapFactory.decodeByteArray(it, 0, it.size)
+        try {
+            return useMediaMetadataRetriever { retriever ->
+                retriever.setDataSource(filePath)
+                retriever.embeddedPicture?.let {
+                    BitmapFactory.decodeByteArray(it, 0, it.size)
+                }
             }
+        } catch(e: Exception) {
+            Log.w(LOG_TAG, "unable to extract thumbnail for $filePath", e)
+            return null
         }
     }
 
@@ -391,13 +394,22 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
         val timePercentage = 0.1
         val maxTime = 90000L
 
-        return useMediaMetadataRetriever { retriever ->
-            retriever.setDataSource(filePath)
+        try {
+            return useMediaMetadataRetriever { retriever ->
+                retriever.setDataSource(filePath)
 
-            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLong()?.let { totalTime ->
-                val thumbTime = (totalTime * timePercentage).toLong().coerceAtMost(maxTime)
-                retriever.getFrameAtTime(thumbTime, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-            } ?: return null
+                retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLong()
+                    ?.let { totalTime ->
+                        val thumbTime = (totalTime * timePercentage).toLong().coerceAtMost(maxTime)
+                        retriever.getFrameAtTime(
+                            thumbTime,
+                            MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                        )
+                    } ?: return null
+            }
+        } catch(e: Exception) {
+            Log.w(LOG_TAG, "unable to extract frame for thumbnail for $filePath", e)
+            return null
         }
     }
 
