@@ -78,6 +78,7 @@ dependencies {
     def fastadapter_version = '5.7.0'
     def media2_version = "1.2.1"
     def lifecycle_version = "2.6.1"
+    def acra_version = "5.10.1"
 
     implementation project(':taglib')
 
@@ -109,6 +110,9 @@ dependencies {
     implementation "com.mikepenz:fastadapter-extensions-utils:${fastadapter_version}"
 
     implementation 'com.github.cachapa:ExpandableLayout:2.9.2'
+
+    implementation "ch.acra:acra-mail:$acra_version"
+    implementation "ch.acra:acra-dialog:$acra_version"
 
     implementation 'org.videolan.android:libvlc-all:4.0.0-eap11'
 
