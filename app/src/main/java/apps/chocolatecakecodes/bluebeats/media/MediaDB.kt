@@ -213,7 +213,7 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
 
     //region private methods
     private fun processFile(path: String): MediaFile? {
-        if(IGNORE_LIST.any { path.endsWith(it) })
+        if(IGNORE_LIST.any { path.endsWith(it, true) })
             return null
 
         val lastSlash = path.lastIndexOf('/')
