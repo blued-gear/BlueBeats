@@ -1,6 +1,7 @@
 package apps.chocolatecakecodes.bluebeats.util
 
-import java.util.*
+import java.util.Observable
+import java.util.Observer
 
 class SimpleObservable<T>(initialValue: T) : Observable() {
 

@@ -58,4 +58,8 @@
     <string name="dynpl_regex_regex">Regex Pattern</string>
     <string name="dynpl_regex_title">Regex</string>
     <string name="dynpl_regex_regex_invalid">invalid Regex</string>
+    <string name="crash_dlg_message">The application crashed. Do you want to send a report?</string>
+    <string name="crash_dlg_title">Application Crash</string>
+    <string name="misc_yes">Yes</string>
+    <string name="misc_no">No</string>
 </resources>

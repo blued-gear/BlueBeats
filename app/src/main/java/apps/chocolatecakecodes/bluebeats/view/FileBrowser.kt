@@ -27,6 +27,7 @@ import apps.chocolatecakecodes.bluebeats.taglib.BuildConfig
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.SmartBackPressedCallback
 import apps.chocolatecakecodes.bluebeats.util.Utils
+import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaDirItem
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
 import apps.chocolatecakecodes.bluebeats.view.specialviews.FileBrowserView
 import apps.chocolatecakecodes.bluebeats.view.specialviews.SpinnerTextbox
@@ -167,16 +168,36 @@ class FileBrowser : Fragment() {
             }
             override fun handleNewNodeFound(node: MediaNode) {
                 if(node.parent == viewModel.currentDir.value) {
-                    mediaNodeToItem(node)?.let {
-                        if(!browser.listAdapter.adapterItems.contains(it))
-                            browser.listAdapter.add(it)
+                    browser.listAdapter.adapterItems.any {
+                        if(node is MediaDir && it is MediaDirItem) {
+                            it.dir.entityId == node.entityId
+                        } else if(node is MediaFile && it is MediaFileItem) {
+                            it.file.entityId == node.entityId
+                        } else {
+                            false
+                        }
+                    }.let {  containsNode ->
+                        if(!containsNode) {
+                            mediaNodeToItem(node)?.let {
+                                browser.listAdapter.add(it)
+                            }
+                        }
                     }
                 }
             }
             override fun handleNodeRemoved(node: MediaNode) {
-                if(node.parent == viewModel.currentDir.value){
-                    mediaNodeToItem(node)?.let {
-                        browser.listAdapter.remove(browser.listAdapter.getPosition(it))
+                if(node.parent == viewModel.currentDir.value) {
+                    browser.listAdapter.adapterItems.indexOfFirst {
+                        if(node is MediaDir && it is MediaDirItem) {
+                            it.dir.entityId == node.entityId
+                        } else if(node is MediaFile && it is MediaFileItem) {
+                            it.file.entityId == node.entityId
+                        } else {
+                            false
+                        }
+                    }.let {  idx ->
+                        if(idx != -1)
+                            browser.listAdapter.remove(idx)
                     }
                 }
             }
@@ -247,7 +268,7 @@ class FileBrowser : Fragment() {
 
             viewModel.mediaScanned()// call before scanInAll to prevent calls to scanMedia() before scan was complete
 
-            mediaDB.scanInAll()
+            mediaDB.scanInAll(this@FileBrowser.requireContext())
         }
     }
 

@@ -1,7 +1,7 @@
 package apps.chocolatecakecodes.bluebeats.media.model
 
 import apps.chocolatecakecodes.bluebeats.util.Utils
-import java.util.*
+import java.util.Objects
 import java.util.concurrent.TimeUnit
 
 internal abstract class MediaNode : Comparable<MediaNode> {
