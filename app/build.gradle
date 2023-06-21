@@ -1,5 +1,7 @@
 import com.jaredsburrows.license.LicenseReportTask
 
+import java.nio.file.Files
+
 plugins {
     id 'com.android.application'
     id 'kotlin-android'
@@ -15,6 +17,8 @@ idea{
         downloadSources = true
     }
 }
+
+def appVersionName = "Alpha-1.2.0"
 
 repositories {
     google()
@@ -43,7 +47,7 @@ android {
         minSdkVersion 25
         targetSdkVersion version_sdk
         versionCode 1
-        versionName "Alpha-1.2.0"
+        versionName appVersionName
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         multiDexEnabled true
@@ -125,4 +129,43 @@ dependencies {
 
 tasks.withType(LicenseReportTask) {
     notCompatibleWithConfigurationCache("")
+}
+
+task publishApkDebug(group: "publish") {
+    dependsOn("build")
+
+    Properties properties = new Properties()
+    properties.load(project.rootProject.file('local.properties').newDataInputStream())
+
+    def url = "${properties.getProperty("gitlab.host")}/api/v4/projects/${properties.getProperty("gitlab.projectId")}/packages/generic/${project.name}/$appVersionName/BlueBeats.apk"
+    def file = java.nio.file.Path.of("${project.buildDir}/outputs/apk/debug/app-debug.apk")
+    def authCredentials = "${properties.getProperty("gitlab.publish.username")}:${properties.getProperty("gitlab.publish.password")}"
+
+    doLast {
+        def http = (HttpURLConnection) new URL(url).openConnection()
+        http.doOutput = true
+        http.doInput = true
+        http.instanceFollowRedirects = true
+        http.requestMethod = "PUT"
+        http.setRequestProperty("Authorization", "Basic " + Base64.getEncoder().encodeToString(authCredentials.getBytes()))
+
+        def httpOut = http.outputStream
+        def fileIn = Files.newInputStream(file)
+        fileIn.transferTo(httpOut)
+        httpOut.flush()
+        httpOut.close()
+        fileIn.close()
+
+        def httpRespCode = http.getResponseCode()
+        if(httpRespCode < 200 || httpRespCode >= 300) {
+            def httpErrIn = new BufferedReader(new InputStreamReader(http.errorStream))
+            def respLines = httpErrIn.readLines()
+            httpErrIn.close()
+
+            def msg = "Upload of debug apk failed: statusCode = $httpRespCode; statusMessage = ${http.responseMessage}\n${respLines.join("\n")}"
+            throw new IOException(msg)
+        } else {
+            logger.info("Uploaded debug apk")
+        }
+    }
 }

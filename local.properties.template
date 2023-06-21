@@ -6,6 +6,13 @@
 # Location of the SDK. This is only used by Gradle.
 # For customization when using a Version Control System, please read the
 # header note.
+
 sdk.dir=path_to_android_sdk
+
 keystore.file=path_to_signing_keystore
 keystore.password=password_of_keystore
+
+gitlab.host=url_of_gitlab
+gitlab.projectId=id_of_gitlab_project
+gitlab.publish.username=username_of_deploy_token
+gitlab.publish.password=password_of_deploy_token
