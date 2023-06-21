@@ -14,6 +14,7 @@ import android.view.inputmethod.EditorInfo
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatImageButton
+import androidx.core.view.children
 import androidx.core.view.setPadding
 import androidx.core.widget.TextViewCompat
 import androidx.core.widget.addTextChangedListener
@@ -26,6 +27,7 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.*
 import apps.chocolatecakecodes.bluebeats.util.Debouncer
 import apps.chocolatecakecodes.bluebeats.util.Utils
+import com.google.android.material.color.MaterialColors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -56,21 +58,22 @@ private class DynplaylistGroupEditor(
     ctx: Context
 ) : AbstractDynplaylistEditorView(ctx) {
 
+    //FIXME this will create unreachable garbage-entries in the DB if the user does not save after creating a rule
     private val ruleGenerators = mapOf(
         context.getString(R.string.dynpl_type_group) to {
-            RoomDB.DB_INSTANCE.dplRuleGroupDao().createNew(Rule.Share(1f, true))
+            RoomDB.DB_INSTANCE.dplRuleGroupDao().createNew(Rule.Share(-1f, true)).copy()
         },
         context.getString(R.string.dynpl_type_include) to {
-            RoomDB.DB_INSTANCE.dplIncludeRuleDao().createNew(Rule.Share(1f, true))
+            RoomDB.DB_INSTANCE.dplIncludeRuleDao().createNew(Rule.Share(-1f, true)).copy()
         },
         context.getString(R.string.dynpl_type_usertags) to {
-            RoomDB.DB_INSTANCE.dplUsertagsRuleDao().createNew(Rule.Share(1f, true))
+            RoomDB.DB_INSTANCE.dplUsertagsRuleDao().createNew(Rule.Share(-1f, true)).copy()
         },
         context.getString(R.string.dynpl_type_id3tag) to {
-            RoomDB.DB_INSTANCE.dplID3TagsRuleDao().create(Rule.Share(1f, true))
+            RoomDB.DB_INSTANCE.dplID3TagsRuleDao().create(Rule.Share(-1f, true)).copy()
         },
         context.getString(R.string.dynpl_regex_title) to {
-            RoomDB.DB_INSTANCE.dplRegexRuleDao().createNew(Rule.Share(1f, true))
+            RoomDB.DB_INSTANCE.dplRegexRuleDao().createNew(Rule.Share(-1f, true)).copy()
         }
     )
 
@@ -157,7 +160,8 @@ private class DynplaylistGroupEditor(
 
             ImageButton(context).apply {
                 setImageResource(R.drawable.ic_baseline_remove_24)
-                imageTintList = ColorStateList.valueOf(Color.BLACK)
+                imageTintList = ColorStateList.valueOf(MaterialColors.getColor(this,
+                    android.R.attr.colorForeground, Color.BLACK))
                 setBackgroundColor(Color.TRANSPARENT)
                 setOnClickListener {
                     group.removeRule(ruleItem.first)
@@ -268,13 +272,21 @@ private class DynplaylistIncludeEditor(
 
     private fun onRemoveDir(entry: MediaDir) {
         rule.removeDir(entry)
-        contentList.removeView(this)
+        contentList.children.first {
+            it is MediaNodeView && it.path === entry
+        }.let {
+            contentList.removeView(it)
+        }
         changedCallback(rule)
     }
 
     private fun onRemoveFile(entry: MediaFile) {
         rule.removeFile(entry)
-        contentList.removeView(this)
+        contentList.children.first {
+            it is MediaNodeView && it.path === entry
+        }.let {
+            contentList.removeView(it)
+        }
         changedCallback(rule)
     }
 }
@@ -677,8 +689,9 @@ private class SimpleAddableRuleHeaderView(ctx: Context) : LinearLayout(ctx) {
 
         fun addButton(ctx: Context) = AppCompatImageButton(ctx).apply {
             setImageResource(R.drawable.ic_baseline_add_24)
-            imageTintList = ColorStateList.valueOf(Color.BLACK)
             setBackgroundColor(Color.TRANSPARENT)
+            imageTintList = ColorStateList.valueOf(MaterialColors.getColor(this,
+                android.R.attr.colorForeground, Color.BLACK))
         }
 
         fun negateCheckbox(ctx: Context) = CheckBox(ctx).apply {
@@ -688,6 +701,12 @@ private class SimpleAddableRuleHeaderView(ctx: Context) : LinearLayout(ctx) {
         fun logicButton(ctx: Context) = LogicButton(ctx)
 
         class LogicButton(ctx: Context) : AppCompatImageButton(ctx) {
+
+            init {
+                imageTintList = ColorStateList.valueOf(MaterialColors.getColor(this,
+                    android.R.attr.colorForeground, Color.BLACK))
+            }
+
             fun setLogicMode(and: Boolean) {
                 if(and)
                     this.setImageResource(R.drawable.ic_intersect)
@@ -788,7 +807,8 @@ private class ShareEditor(
     private val cancelBtn: Button
 
     init {
-        setBackgroundColor(Color.WHITE)
+        setBackgroundColor(MaterialColors.getColor(this,
+            android.R.attr.colorBackground, Color.MAGENTA))
 
         LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
@@ -956,7 +976,8 @@ private class MediaNodeView(val path: MediaNode, context: Context, showDeepCB: B
     }
     val removeBtn = ImageButton(context).apply {
         setImageResource(R.drawable.ic_baseline_remove_24)
-        imageTintList = ColorStateList.valueOf(Color.BLACK)
+        imageTintList = ColorStateList.valueOf(MaterialColors.getColor(this,
+            android.R.attr.colorForeground, Color.BLACK))
         setBackgroundColor(Color.TRANSPARENT)
         gravity = Gravity.END
     }
@@ -967,6 +988,8 @@ private class MediaNodeView(val path: MediaNode, context: Context, showDeepCB: B
 
     init {
         orientation = HORIZONTAL
+        setBackgroundColor(MaterialColors.getColor(this,
+            android.R.attr.colorBackground, Color.MAGENTA))
 
         addView(text, LayoutParams(0, LayoutParams.MATCH_PARENT, 10f))
         if(showDeepCB && path is MediaDir)
@@ -985,7 +1008,8 @@ private class MediaNodeSelectPopup(
     private val browser = FileBrowserView(ctx)
 
     init {
-        this.setBackgroundColor(Color.WHITE)
+        setBackgroundColor(MaterialColors.getColor(this,
+            android.R.attr.colorBackground, Color.MAGENTA))
         this.setPadding(24)
 
         setupContent()
@@ -1049,7 +1073,8 @@ private class TextElement(val tag: String, ctx: Context): LinearLayout(ctx) {
     val removeBtn = ImageButton(context).apply {
         gravity = Gravity.END
         setImageResource(R.drawable.ic_baseline_remove_24)
-        imageTintList = ColorStateList.valueOf(Color.BLACK)
+        imageTintList = ColorStateList.valueOf(MaterialColors.getColor(this,
+            android.R.attr.colorForeground, Color.BLACK))
         setBackgroundColor(Color.TRANSPARENT)
     }
 
@@ -1104,7 +1129,8 @@ private class TextSelector(
             }
         }
 
-        setBackgroundColor(Color.WHITE)
+        setBackgroundColor(MaterialColors.getColor(this,
+            android.R.attr.colorBackground, Color.MAGENTA))
 
         LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL

@@ -30,7 +30,6 @@ internal class MediaDirItem(
             view.findViewById<ImageView?>(R.id.v_mf_thumb).apply {
                 visibility = View.VISIBLE
                 imageTintList = ColorStateList.valueOf(context.getColor(R.color.gray_600))
-                setBackgroundColor(context.getColor(R.color.gray_410))
                 setImageResource(R.drawable.ic_baseline_folder_24)
             }
         }

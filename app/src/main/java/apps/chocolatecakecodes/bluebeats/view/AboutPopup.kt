@@ -1,6 +1,7 @@
 package apps.chocolatecakecodes.bluebeats.view
 
 import android.content.Context
+import android.os.Build
 import android.util.Base64
 import android.view.View
 import android.view.ViewGroup
@@ -10,6 +11,8 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.OnBackPressedDispatcher
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
+import androidx.webkit.WebSettingsCompat
+import androidx.webkit.WebViewFeature
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import com.google.android.material.tabs.TabLayout
@@ -54,6 +57,12 @@ internal object AboutPopup {
             }
             val contentView = WebView(parent.context).apply {
                 layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+                    isForceDarkAllowed = true
+                if(WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING))
+                    WebSettingsCompat.setAlgorithmicDarkeningAllowed(this.settings, true)
+
                 scrollView.addView(this)
             }
 

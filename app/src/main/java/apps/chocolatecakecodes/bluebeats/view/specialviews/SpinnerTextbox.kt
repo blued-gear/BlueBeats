@@ -10,6 +10,7 @@ import android.widget.*
 import androidx.appcompat.widget.LinearLayoutCompat
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
+import com.google.android.material.color.MaterialColors
 
 internal class SpinnerTextbox : FrameLayout {
 
@@ -53,7 +54,7 @@ internal class SpinnerTextbox : FrameLayout {
         val btn = ImageButton(ctx).apply {
             setImageResource(R.drawable.ic_arrow_corner_bottomright)
             imageTintList = ColorStateList.valueOf(Color.GRAY)
-            setBackgroundColor(Color.WHITE)
+            setBackgroundColor(MaterialColors.getColor(this, android.R.attr.colorBackgroundFloating, Color.MAGENTA))
 
             setOnClickListener {
                 textbox.showDropDown()

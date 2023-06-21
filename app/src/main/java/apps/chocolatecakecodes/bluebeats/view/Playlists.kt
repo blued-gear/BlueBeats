@@ -517,7 +517,7 @@ internal class Playlists : Fragment() {
             isEnabled = staticPlaylist && someSelected
         }
 
-        menu.findItem(MNU_ID_PLAYLIST_INFO).apply {
+        menu.findItem(MNU_ID_PLAYLIST_INFO)?.apply {
             val mediaSelected = viewModel.selectedMedia !== null
             isEnabled = !dialogOpen && mediaSelected
         }
