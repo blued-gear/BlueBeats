@@ -25,11 +25,6 @@ import java.io.File
 import java.io.FileNotFoundException
 
 /**
- * first: subdirs, second: files
- */
-private typealias DirContents = Pair<List<IMedia>, List<IMedia>>
-
-/**
  * searches media files, extract metadata and index them, store in DB, manage tags
  * actions a synchronous but the progress can be monitored asynchronous by ScanEventHandler
  */
@@ -443,7 +438,9 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
     private inline fun <T> useMediaMetadataRetriever(run: (MediaMetadataRetriever) -> T): T {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             return MediaMetadataRetriever().use {
-                run(it)
+                val ret = run(it)
+                it.release()
+                ret
             }
         } else {
             var retriever: MediaMetadataRetriever? = null
@@ -452,7 +449,7 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
                 return run(retriever)
             } finally {
                 if(retriever !== null)
-                    retriever.close()
+                    retriever.release()
             }
         }
     }
