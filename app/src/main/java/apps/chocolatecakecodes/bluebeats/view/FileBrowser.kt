@@ -267,7 +267,9 @@ class FileBrowser : Fragment() {
         }else if(browser.inSelection){// clear selection
             browser.clearSelection()
         } else {// go one dir up
-            browser.goDirUp()
+            browser.goDirUp()?.let { newDir ->
+                viewModel.setCurrentDir(newDir)
+            }
         }
     }
 

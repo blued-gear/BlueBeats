@@ -126,10 +126,12 @@ internal class FileBrowserView(context: Context): FrameLayout(context){
         listAdapter.getSelectExtension().deselect()
     }
 
-    fun goDirUp() {
+    fun goDirUp(): MediaDir? {
         currentDir?.parent?.let {
             currentDir = it
+            return it
         }
+        return null
     }
 
     fun addNode(node: MediaNode): Boolean {
