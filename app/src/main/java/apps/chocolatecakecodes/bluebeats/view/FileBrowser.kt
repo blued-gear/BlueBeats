@@ -27,12 +27,8 @@ import apps.chocolatecakecodes.bluebeats.taglib.BuildConfig
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.SmartBackPressedCallback
 import apps.chocolatecakecodes.bluebeats.util.Utils
-import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaDirItem
-import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
 import apps.chocolatecakecodes.bluebeats.view.specialviews.FileBrowserView
 import apps.chocolatecakecodes.bluebeats.view.specialviews.SpinnerTextbox
-import apps.chocolatecakecodes.bluebeats.view.specialviews.mediaNodeToItem
-import com.mikepenz.fastadapter.select.getSelectExtension
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -168,37 +164,12 @@ class FileBrowser : Fragment() {
             }
             override fun handleNewNodeFound(node: MediaNode) {
                 if(node.parent == viewModel.currentDir.value) {
-                    browser.listAdapter.adapterItems.any {
-                        if(node is MediaDir && it is MediaDirItem) {
-                            it.dir.entityId == node.entityId
-                        } else if(node is MediaFile && it is MediaFileItem) {
-                            it.file.entityId == node.entityId
-                        } else {
-                            false
-                        }
-                    }.let {  containsNode ->
-                        if(!containsNode) {
-                            mediaNodeToItem(node)?.let {
-                                browser.listAdapter.add(it)
-                            }
-                        }
-                    }
+                    browser.addNode(node)
                 }
             }
             override fun handleNodeRemoved(node: MediaNode) {
                 if(node.parent == viewModel.currentDir.value) {
-                    browser.listAdapter.adapterItems.indexOfFirst {
-                        if(node is MediaDir && it is MediaDirItem) {
-                            it.dir.entityId == node.entityId
-                        } else if(node is MediaFile && it is MediaFileItem) {
-                            it.file.entityId == node.entityId
-                        } else {
-                            false
-                        }
-                    }.let {  idx ->
-                        if(idx != -1)
-                            browser.listAdapter.remove(idx)
-                    }
+                    browser.removeNode(node)
                 }
             }
             override fun handleNodeUpdated(node: MediaNode, oldVersion: MediaNode) {
@@ -296,7 +267,9 @@ class FileBrowser : Fragment() {
         }else if(browser.inSelection){// clear selection
             browser.clearSelection()
         } else {// go one dir up
-            browser.goDirUp()
+            browser.goDirUp()?.let { newDir ->
+                viewModel.setCurrentDir(newDir)
+            }
         }
     }
 
@@ -363,11 +336,7 @@ class FileBrowser : Fragment() {
     }
 
     private fun onSelectAllClicked() {
-        browser.listAdapter.adapterItems
-            .filterIsInstance<MediaFileItem>()
-            .forEach {
-                browser.listAdapter.getSelectExtension().select(it, true)
-            }
+        browser.selectAll()
     }
     //endregion
 }

@@ -63,9 +63,7 @@ internal class FileBrowserView(context: Context): FrameLayout(context){
     val inSelection: Boolean
         get() = listAdapter.getSelectExtension().selectedItems.isNotEmpty()
 
-    lateinit var listAdapter: GenericFastItemAdapter
-        private set
-
+    private lateinit var listAdapter: GenericFastItemAdapter
     private lateinit var listView: RecyclerView
     private var inDeselectClick = false
 
@@ -116,13 +114,62 @@ internal class FileBrowserView(context: Context): FrameLayout(context){
         }
     }
 
+    fun selectAll() {
+        listAdapter.adapterItems
+            .filterIsInstance<MediaFileItem>()
+            .forEach {
+                listAdapter.getSelectExtension().select(it, true)
+            }
+    }
+
     fun clearSelection() {
         listAdapter.getSelectExtension().deselect()
     }
 
-    fun goDirUp() {
+    fun goDirUp(): MediaDir? {
         currentDir?.parent?.let {
             currentDir = it
+            return it
+        }
+        return null
+    }
+
+    fun addNode(node: MediaNode): Boolean {
+        listAdapter.adapterItems.any {
+            if(node is MediaDir && it is MediaDirItem) {
+                it.dir.entityId == node.entityId
+            } else if(node is MediaFile && it is MediaFileItem) {
+                it.file.entityId == node.entityId
+            } else {
+                false
+            }
+        }.let {  containsNode ->
+            if(!containsNode) {
+                mediaNodeToItem(node, showThumb)?.let {
+                    listAdapter.add(it)
+                }
+            }
+
+            return !containsNode
+        }
+    }
+
+    fun removeNode(node: MediaNode): Boolean {
+        listAdapter.adapterItems.indexOfFirst {
+            if(node is MediaDir && it is MediaDirItem) {
+                it.dir.entityId == node.entityId
+            } else if(node is MediaFile && it is MediaFileItem) {
+                it.file.entityId == node.entityId
+            } else {
+                false
+            }
+        }.let {  idx ->
+            if(idx != -1) {
+                listAdapter.remove(idx)
+                return true
+            } else {
+                return false
+            }
         }
     }
 
