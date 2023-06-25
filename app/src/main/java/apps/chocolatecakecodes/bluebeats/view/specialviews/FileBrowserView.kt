@@ -143,7 +143,7 @@ internal class FileBrowserView(context: Context): FrameLayout(context){
             }
         }.let {  containsNode ->
             if(!containsNode) {
-                mediaNodeToItem(node)?.let {
+                mediaNodeToItem(node, showThumb)?.let {
                     listAdapter.add(it)
                 }
             }
