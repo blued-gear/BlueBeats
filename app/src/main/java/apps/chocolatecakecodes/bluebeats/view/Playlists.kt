@@ -377,6 +377,8 @@ internal class Playlists : Fragment() {
             CoroutineScope(Dispatchers.IO).launch {
                 viewModel.allLists = RoomDB.DB_INSTANCE.playlistManager().listAllPlaylist().map {
                     PlaylistInfo(it.key, it.value.first, it.value.second)
+                }.sortedWith { a, b ->
+                    Utils.compareStringNaturally(a.first, b.first)
                 }
 
                 withContext(Dispatchers.Main) {
