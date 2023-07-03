@@ -756,7 +756,7 @@ private class ListsItem(val playlist: PlaylistInfo) : SelectableItem<ListsItem.V
         // try to get the thumbnail of the first <count> items
         for(i in items.indices) {
             val itm = items[i]
-            val thumb = VlcManagers.getMediaDB().getSubject().getThumbnail(itm, 256, 256)
+            val thumb = VlcManagers.getMediaDB().getSubject().getThumbnail(itm, -1, -1)
             if(thumb != null)
                 thumbs.add(thumb)
 

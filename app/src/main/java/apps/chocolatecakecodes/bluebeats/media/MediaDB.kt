@@ -186,6 +186,11 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
         return currentParent
     }
 
+    /**
+     * @param file the file to generate the thumbnail for
+     * @param width the required width; -1 for use aspect-ration from height; if width and height is -1 the image will not be scaled
+     * @param height the required height; -1 for use aspect-ration from width; if width and height is -1 the image will not be scaled
+     */
     fun getThumbnail(file: MediaFile, width: Int, height: Int): Bitmap? {
         if(!File(file.path).exists())
             return null
@@ -415,8 +420,7 @@ internal class MediaDB constructor(private val libVLC: ILibVLC, private val even
         val sWidth: Int
         val sHeight: Int
         if(width == -1 && height == -1) {
-            sWidth = src.width
-            sHeight = src.height
+            return src
         } else if(width == -1) {
             sHeight = height
             sWidth = ((src.width.toFloat() / src.height) * sHeight).toInt()
