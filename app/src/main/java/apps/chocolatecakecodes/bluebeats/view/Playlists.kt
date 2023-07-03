@@ -1,5 +1,9 @@
 package apps.chocolatecakecodes.bluebeats.view
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -7,11 +11,14 @@ import android.view.Menu
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewTreeObserver.OnGlobalLayoutListener
 import android.widget.Button
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -19,6 +26,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
+import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
 import apps.chocolatecakecodes.bluebeats.media.playlist.StaticPlaylist
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylist
@@ -44,6 +52,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.sqrt
 
 private const val LOG_TAG = "Playlists"
 private const val MNU_ID_OVERVIEW_RM = 11
@@ -637,22 +646,129 @@ private class ListsItem(val playlist: PlaylistInfo) : SelectableItem<ListsItem.V
     override val type: Int = R.layout.playlists_fragment.shl(3) + 1
     override val layoutRes: Int = R.layout.playlists_entry_list
 
+    private var thumb: Bitmap? = null
+
     override fun getViewHolder(v: View) = ViewHolder(v)
 
     class ViewHolder(view: View) : SelectableItem.ViewHolder<ListsItem>(view) {
 
         private val name = this.itemView.findViewById<TextView>(R.id.pls_lists_name)
+        private val thumb = this.itemView.findViewById<ImageView>(R.id.pls_lists_thumb)
 
         override fun bindView(item: ListsItem, payloads: List<Any>) {
             super.bindView(item, payloads)
 
             name.text = item.playlist.first
+
+            thumb.setImageDrawable(null)
+            setThumbOnLayout(item)
         }
         override fun unbindView(item: ListsItem) {
             super.unbindView(item)
 
             name.text = null
+            thumb.setImageDrawable(null)
         }
+
+        private fun setThumbOnLayout(item: ListsItem) {
+            if(thumb.width > 0 && thumb.height > 0) {
+                setThumb(item)
+            } else {
+                thumb.viewTreeObserver.addOnGlobalLayoutListener(object : OnGlobalLayoutListener {
+                    override fun onGlobalLayout() {
+                        thumb.viewTreeObserver.removeOnGlobalLayoutListener(this)
+
+                        setThumb(item)
+                    }
+                })
+            }
+        }
+
+        private fun setThumb(item: ListsItem) {
+            CoroutineScope(Dispatchers.IO).launch {
+                item.createThumb(thumb.width, thumb.height, itemView.context).let { content ->
+                    withContext(Dispatchers.Main) {
+                        thumb.setImageBitmap(content)
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun createThumb(w: Int, h: Int, ctx: Context): Bitmap {
+        thumb?.let { thumb ->
+            if(thumb.width == w && thumb.height == h)
+                return thumb
+        }
+
+        return withContext(Dispatchers.IO) {
+            val components = loadPlaylistThumbComponents(playlist)
+
+            val thumb = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(thumb)
+
+            canvas.drawColor(Color.TRANSPARENT)
+
+            if(components.isEmpty()) {
+                val replacementThumb = ContextCompat.getDrawable(ctx, R.drawable.baseline_playlist_play_24)!!
+                replacementThumb.setBounds(0, 0, canvas.width, canvas.height)
+                replacementThumb.draw(canvas)
+            } else {
+                val divW = w / sqrt(components.size.toDouble()).toInt()
+                val divH = h / sqrt(components.size.toDouble()).toInt()
+
+                var t = 0f
+                var l = 0f
+                for(component in components) {
+                    val scaled = Bitmap.createScaledBitmap(component, divW, divH, true)
+                    canvas.drawBitmap(scaled, l, t, null)
+
+                    l += divW
+                    if(l >= thumb.width) {
+                        l = 0f
+                        t += divH
+                    }
+                }
+            }
+
+            this@ListsItem.thumb = thumb
+            return@withContext thumb
+        }
+    }
+
+    private fun loadPlaylistThumbComponents(pli: PlaylistInfo): List<Bitmap> {
+        val pl = when(pli.second) {
+            PlaylistType.STATIC -> RoomDB.DB_INSTANCE.staticPlaylistDao().load(pli.third)
+            PlaylistType.DYNAMIC -> RoomDB.DB_INSTANCE.dynamicPlaylistDao().load(pli.third)
+        }
+        val items = pl.items()
+
+        fun evenCount(n: Int) = if(n >= 4)
+            4
+        else if(n == 1)
+            1
+        else
+            0
+
+        val count = evenCount(items.size)
+
+        val thumbs = ArrayList<Bitmap>(count)
+        // try to get the thumbnail of the first <count> items
+        for(i in items.indices) {
+            val itm = items[i]
+            val thumb = VlcManagers.getMediaDB().getSubject().getThumbnail(itm, 256, 256)
+            if(thumb != null)
+                thumbs.add(thumb)
+
+            if(thumbs.size == count)
+                break
+        }
+
+        if(thumbs.size < count) {
+            // to many items were unsuccessful -> trim to even count
+            return thumbs.take(evenCount(thumbs.size))
+        }
+        return thumbs
     }
 }
 //endregion
