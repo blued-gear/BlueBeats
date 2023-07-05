@@ -707,13 +707,18 @@ private class ListsItem(val playlist: PlaylistInfo) : SelectableItem<ListsItem.V
             val thumb = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(thumb)
 
-            canvas.drawColor(Color.TRANSPARENT)
-
             if(components.isEmpty()) {
+                canvas.drawColor(Color.GRAY)
+
                 val replacementThumb = ContextCompat.getDrawable(ctx, R.drawable.baseline_playlist_play_24)!!
-                replacementThumb.setBounds(0, 0, canvas.width, canvas.height)
+                replacementThumb.setBounds(
+                    (canvas.width * 0.05).toInt(), 0,// offset the image 5% to the right so that it looks a bit more centered
+                    canvas.width, canvas.height
+                )
                 replacementThumb.draw(canvas)
             } else {
+                canvas.drawColor(Color.TRANSPARENT)
+
                 val divW = w / sqrt(components.size.toDouble()).toInt()
                 val divH = h / sqrt(components.size.toDouble()).toInt()
 
