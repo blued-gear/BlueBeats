@@ -723,6 +723,9 @@ private class ListsItem(val playlist: PlaylistInfo) : SelectableItem<ListsItem.V
                     val scaled = Bitmap.createScaledBitmap(component, divW, divH, true)
                     canvas.drawBitmap(scaled, l, t, null)
 
+                    scaled.recycle()
+                    component.recycle()
+
                     l += divW
                     if(l >= thumb.width) {
                         l = 0f
