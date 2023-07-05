@@ -748,12 +748,14 @@ private class ListsItem(val playlist: PlaylistInfo) : SelectableItem<ListsItem.V
 
         fun evenCount(n: Int) = if(n >= 4)
             4
-        else if(n == 1)
+        else if(n >= 1)
             1
         else
             0
 
         val count = evenCount(items.size)
+        if(count == 0)
+            return emptyList()
 
         val thumbs = ArrayList<Bitmap>(count)
         // try to get the thumbnail of the first <count> items
