@@ -18,7 +18,7 @@ idea{
     }
 }
 
-def appVersionName = "Alpha-1.2.0"
+def appVersionName = "Alpha-1.3.0"
 
 repositories {
     google()
