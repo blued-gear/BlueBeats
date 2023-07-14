@@ -8,7 +8,7 @@ plugins {
     //id 'org.jetbrains.kotlin.android'
     id 'kotlin-kapt'
     id 'idea'
-    id 'com.jaredsburrows.license' version '0.9.2'
+    id 'com.jaredsburrows.license' version '0.9.3'
 }
 
 idea{
@@ -71,14 +71,14 @@ android {
     }
     kotlinOptions {
         jvmTarget = '17'
-        freeCompilerArgs += '-Xjvm-default=enable'
+        freeCompilerArgs += '-Xjvm-default=all'
     }
 
     namespace 'apps.chocolatecakecodes.bluebeats'
 }
 
 dependencies {
-    def room_version = "2.5.1"
+    def room_version = "2.5.2"
     def fastadapter_version = '5.7.0'
     def media2_version = "1.2.1"
     def lifecycle_version = "2.6.1"

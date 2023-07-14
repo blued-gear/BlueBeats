@@ -9,12 +9,18 @@ internal abstract class PlaylistsManager {
         return insertNewEntry(PlaylistName(0, name, type.ordinal))
     }
 
+    /**
+     * @return Map<name, Pair<type, id>>
+     */
     fun listAllPlaylist(): Map<String, Pair<PlaylistType, Long>> {
         return getAllPlaylists().associate {
             Pair(it.name, Pair(PlaylistType.values()[it.type], it.id))
         }
     }
 
+    /**
+     * @return Map<name, id>
+     */
     fun listAllPlaylistsWithType(type: PlaylistType): Map<String, Long> {
         return getAllPlaylistsWithType(type.ordinal).associate {
             Pair(it.name, it.id)
