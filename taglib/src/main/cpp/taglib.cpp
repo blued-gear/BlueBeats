@@ -172,21 +172,21 @@ void BlueBeats_Parser::readID3Tags(const JavaIDs& jid, const Tag *tag, const Pro
     assert(dest != nullptr);
 
     String artist = tag->artist();
-    if(!artist.isNull()) {
+    if(!artist.isEmpty()) {
         const char* artistStr = artist.toCString(true);
         jstring artistJStr = jid.jni->NewStringUTF(artistStr);
         jid.jni->SetObjectField(dest, jid.f_TagFields_Artist, artistJStr);
     }
 
     String title = tag->title();
-    if(!title.isNull()) {
+    if(!title.isEmpty()) {
         const char* titleStr = title.toCString(true);
         jstring titleJStr = jid.jni->NewStringUTF(titleStr);
         jid.jni->SetObjectField(dest, jid.f_TagFields_Title, titleJStr);
     }
 
     String genre = tag->genre();
-    if(!genre.isNull()) {
+    if(!genre.isEmpty()) {
         const char* genreStr = genre.toCString(true);
         jstring genreJStr = jid.jni->NewStringUTF(genreStr);
         jid.jni->SetObjectField(dest, jid.f_TagFields_Genre, genreJStr);
