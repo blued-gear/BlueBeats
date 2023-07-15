@@ -11,6 +11,7 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import com.mikepenz.fastadapter.drag.IDraggable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -40,6 +41,7 @@ internal open class MediaFileItem(
         private val thumb: ImageView = view.findViewById<ImageView?>(R.id.v_mf_thumb).apply {
             setBackgroundColor(context.getColor(R.color.gray_410))
         }
+        private var thumbJobScope: CoroutineScope? = null
 
         private val svgColor = ColorStateList.valueOf(view.context.getColor(R.color.gray_600))
 
@@ -94,26 +96,32 @@ internal open class MediaFileItem(
 
         private fun loadThumbnail(file: MediaFile) {
             if(thumb.height > 0) {
-                CoroutineScope(Dispatchers.IO).launch {
-                    if(File(file.path).exists()) {
-                        VlcManagers.getMediaDB().getSubject()
-                            .getThumbnail(file, -1, thumb.height).let {
-                                withContext(Dispatchers.Main) {
-                                    if(it !== null) {
-                                        thumb.imageTintList = null
-                                        thumb.setImageBitmap(it)
-                                    } else {
-                                        when(file.type) {
-                                            MediaFile.Type.AUDIO -> thumb.setImageResource(R.drawable.ic_baseline_audiotrack_24)
-                                            MediaFile.Type.VIDEO -> thumb.setImageResource(R.drawable.ic_baseline_local_movies_24)
-                                            MediaFile.Type.OTHER -> thumb.setImageResource(R.drawable.ic_baseline_insert_drive_file_24)
+                synchronized(this) {
+                    thumbJobScope?.cancel()
+
+                    thumbJobScope = CoroutineScope(Dispatchers.IO).also {
+                        it.launch {
+                            if (File(file.path).exists()) {
+                                VlcManagers.getMediaDB().getSubject()
+                                    .getThumbnail(file, -1, thumb.height).let {
+                                        withContext(Dispatchers.Main) {
+                                            if (it !== null) {
+                                                thumb.imageTintList = null
+                                                thumb.setImageBitmap(it)
+                                            } else {
+                                                when (file.type) {
+                                                    MediaFile.Type.AUDIO -> thumb.setImageResource(R.drawable.ic_baseline_audiotrack_24)
+                                                    MediaFile.Type.VIDEO -> thumb.setImageResource(R.drawable.ic_baseline_local_movies_24)
+                                                    MediaFile.Type.OTHER -> thumb.setImageResource(R.drawable.ic_baseline_insert_drive_file_24)
+                                                }
+                                            }
                                         }
                                     }
+                            } else {
+                                withContext(Dispatchers.Main) {
+                                    thumb.setImageResource(R.drawable.ic_baseline_file_removed)
                                 }
                             }
-                    } else {
-                        withContext(Dispatchers.Main) {
-                            thumb.setImageResource(R.drawable.ic_baseline_file_removed)
                         }
                     }
                 }
