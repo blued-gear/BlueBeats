@@ -46,12 +46,14 @@ dependencies {
 
 }
 
-task("cleanIncludeDir", type: Delete) {
+tasks.register('cleanIncludeDir', Delete) {
     delete(file(project.projectDir.absolutePath + "/src/main/cpp/include/"))
 }
-tasks.findByName("clean").dependsOn("cleanIncludeDir")
+tasks.named("clean").configure {
+    dependsOn("cleanIncludeDir")
+}
 
-task("generateIncludeDir", type: Copy) {
+tasks.register('generateIncludeDir', Copy) {
     from file(project.projectDir.absolutePath + "/src/main/cpp/")
     into file(project.projectDir.absolutePath + "/src/main/cpp/include/")
     include("**/*.h")
@@ -67,10 +69,12 @@ task("generateIncludeDir", type: Copy) {
     includeEmptyDirs = false
 }
 
-task("generateConfigHeader", type: Copy, dependsOn: ["generateIncludeDir"]) {
+tasks.register('generateConfigHeader', Copy) {
+    dependsOn["generateIncludeDir"]
+
     from file(project.projectDir.absolutePath + "/src/main/cpp/taglib/taglib_config.h.cmake")
     into file(project.projectDir.absolutePath + "/src/main/cpp/taglib/")
     rename { "taglib_config.h" }
 }
 
-task("generateInitialFiles", group: "build", dependsOn: ["generateConfigHeader"])
+tasks.register('generateInitialFiles') { dependsOn["generateConfigHeader"] }

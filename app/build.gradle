@@ -5,8 +5,7 @@ import java.nio.file.Files
 plugins {
     id 'com.android.application'
     id 'kotlin-android'
-    //id 'org.jetbrains.kotlin.android'
-    id 'kotlin-kapt'
+    id 'com.google.devtools.ksp'
     id 'idea'
     id 'com.jaredsburrows.license' version '0.9.3'
 }
@@ -39,8 +38,7 @@ android {
         }
     }
 
-    compileSdkVersion version_sdk
-    buildToolsVersion version_buildtools
+    compileSdk version_sdk
 
     defaultConfig {
         applicationId "apps.chocolatecakecodes.bluebeats"
@@ -100,7 +98,7 @@ dependencies {
     implementation 'androidx.webkit:webkit:1.8.0'
 
     implementation "androidx.room:room-runtime:$room_version"
-    kapt "androidx.room:room-compiler:$room_version"
+    ksp "androidx.room:room-compiler:$room_version"
     implementation 'com.google.guava:guava:32.0.1-android'
     implementation "androidx.media2:media2-session:$media2_version"
     implementation "androidx.media2:media2-common:$media2_version"
@@ -127,11 +125,11 @@ dependencies {
     testImplementation "androidx.room:room-testing:$room_version"
 }
 
-tasks.withType(LicenseReportTask) {
+tasks.withType(LicenseReportTask).configureEach {
     notCompatibleWithConfigurationCache("")
 }
 
-task publishApkDebug(group: "publish") {
+tasks.register('publishApkDebug') {
     dependsOn("build")
 
     Properties properties = new Properties()
@@ -157,7 +155,7 @@ task publishApkDebug(group: "publish") {
         fileIn.close()
 
         def httpRespCode = http.getResponseCode()
-        if(httpRespCode < 200 || httpRespCode >= 300) {
+        if (httpRespCode < 200 || httpRespCode >= 300) {
             def httpErrIn = new BufferedReader(new InputStreamReader(http.errorStream))
             def respLines = httpErrIn.readLines()
             httpErrIn.close()
