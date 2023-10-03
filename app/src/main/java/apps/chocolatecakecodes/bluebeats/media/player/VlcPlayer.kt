@@ -38,6 +38,7 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
     private var currentPlaylist: PlaylistIterator? = null
     private var suppressCallbacks: Boolean = false
     private var newMediaLoading: Boolean = false
+    private var lastPlayingTime: Long = 0
 
     init {
         player.setEventListener(this)
@@ -84,6 +85,7 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
 
         clearPlaylist()
 
+        lastPlayingTime = 0
         currentMedia.set(null)
         callListeners {
             it.onCurrentMediaItemChanged(this, null)
@@ -138,6 +140,9 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
             return Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_INVALID_STATE, null))
         }
 
+        if(player.isPlaying)
+            lastPlayingTime = player.time
+
         player.pause()
         return playerResultWithCurrentMedia(PlayerResult.RESULT_SUCCESS)
     }
@@ -186,7 +191,11 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
             return UNKNOWN_TIME
         }
 
-        return player.time
+        // there is a bug in VLC where the time will advance even if paused
+        return if(player.isPlaying)
+            player.time
+        else
+            lastPlayingTime
     }
 
     override fun getDuration(): Long {
@@ -614,6 +623,7 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
         }
 
         currentMedia.set(media)
+        lastPlayingTime = 0
         player.play(media.path)
     }
 
