@@ -4,7 +4,8 @@ import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
 /**
- * Used to indicate that a property is only once settable, even if it is 'var'
+ * Used to indicate that a property is only once settable, even if it is 'var'.
+ * Think of it like a <code>lateinit val</code>.
  */
 class OnceSettable<in T, V> : ReadWriteProperty<T, V> {
 
