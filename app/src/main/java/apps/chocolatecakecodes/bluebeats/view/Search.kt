@@ -16,7 +16,7 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
-import apps.chocolatecakecodes.bluebeats.service.PlayerService
+import apps.chocolatecakecodes.bluebeats.media.player.VlcPlayer
 import apps.chocolatecakecodes.bluebeats.util.*
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
 import com.google.android.material.tabs.TabLayout
@@ -47,6 +47,9 @@ internal class Search : Fragment(R.layout.search_fragment) {
 
     private var menu: Menu? = null
     private var inSelection = false
+
+    private val player: VlcPlayer
+        get() = requireActivity().castTo<MainActivity>().playerConn.player!!
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -103,9 +106,9 @@ internal class Search : Fragment(R.layout.search_fragment) {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
-
         viewModel.contextProvider = null
+
+        super.onDestroy()
     }
 
     private fun setupSubgroupsSpinner() {
@@ -265,7 +268,7 @@ internal class Search : Fragment(R.layout.search_fragment) {
             itemListAdapter.getSelectExtension().toggleSelection(pos)
         } else {
             mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
-            PlayerService.getInstancePlayer().playMedia(item.file)
+            player.playMedia(item.file)
         }
     }
 

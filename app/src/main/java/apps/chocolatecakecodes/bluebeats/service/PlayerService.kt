@@ -6,9 +6,12 @@ import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
+import android.os.Binder
 import android.os.Build
+import android.os.IBinder
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import android.view.KeyEvent
@@ -32,13 +35,19 @@ import apps.chocolatecakecodes.bluebeats.view.MainActivity
 internal class PlayerService : MediaSessionService(){
 
     companion object {
+        const val INTENT_INTERNAL_BINDER = "apps.chocolatecakecodes.bluebeats.service.PlayerService.internalBinder"
+
         private const val LOG_TAG = "PlayerService"
 
-        // really not the best way but works for my usecase
-        private var instance: PlayerService? = null
+        fun connect(ctx: Context): PlayerServiceConnection {
+            val conn = PlayerServiceConnection()
 
-        fun getInstancePlayer(): VlcPlayer {
-            return instance?.player ?: throw IllegalStateException("service not running")
+            ctx.startService(Intent(ctx.applicationContext, PlayerService::class.java))
+            ctx.bindService(Intent(ctx, PlayerService::class.java).apply {
+                action = INTENT_INTERNAL_BINDER
+            }, conn, Context.BIND_AUTO_CREATE)
+
+            return conn
         }
     }
 
@@ -65,16 +74,23 @@ internal class PlayerService : MediaSessionService(){
         notificationHandlerFix = MediaNotificationHandlerFix(this, session)
 
         initialized = true
-        instance = this
     }
 
     override fun onDestroy() {
-        instance = null
-
+        initialized = false
         session.close()
         player.release()
 
         super.onDestroy()
+    }
+
+    override fun onBind(intent: Intent): IBinder? {
+        val superRet = super.onBind(intent)
+
+        return if(intent.action == INTENT_INTERNAL_BINDER)
+            PlayerServiceBinder()
+        else
+            superRet
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession {
@@ -94,6 +110,24 @@ internal class PlayerService : MediaSessionService(){
     private fun setupSession() {
         session = MediaSession.Builder(this, player).build()
         this.addSession(session)
+    }
+
+    internal inner class PlayerServiceBinder : Binder() {
+        val player = this@PlayerService.player
+    }
+}
+
+internal class PlayerServiceConnection : ServiceConnection {
+
+    var player: VlcPlayer? = null
+        private set
+
+    override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+        player = (service as PlayerService.PlayerServiceBinder).player
+    }
+
+    override fun onServiceDisconnected(name: ComponentName?) {
+        player = null
     }
 }
 

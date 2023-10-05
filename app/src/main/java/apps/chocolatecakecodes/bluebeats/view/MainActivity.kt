@@ -1,7 +1,6 @@
 package apps.chocolatecakecodes.bluebeats.view
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -23,6 +22,7 @@ import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.service.PlayerService
+import apps.chocolatecakecodes.bluebeats.service.PlayerServiceConnection
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 import kotlinx.coroutines.CoroutineScope
@@ -38,6 +38,9 @@ class MainActivity : AppCompatActivity() {
 
         private const val STORAGE_PERM_REQ_ID = 11
     }
+
+    internal lateinit var playerConn: PlayerServiceConnection
+        private set
 
     private lateinit var viewModel: MainActivityViewModel
     private lateinit var mainContentView: View
@@ -58,7 +61,7 @@ class MainActivity : AppCompatActivity() {
         if(!VlcManagers.isInitialized())
             VlcManagers.init(this)
 
-        this.startService(Intent(this, PlayerService::class.java))
+        playerConn = PlayerService.connect(this)
 
         setupTabs()
         setupSystemBarsHider()
@@ -73,6 +76,12 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
 
         viewModel.currentTab.value = MainActivityViewModel.Tabs.values()[mainTabContent.currentItem]
+    }
+
+    override fun onDestroy() {
+        this.unbindService(playerConn)
+
+        super.onDestroy()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {

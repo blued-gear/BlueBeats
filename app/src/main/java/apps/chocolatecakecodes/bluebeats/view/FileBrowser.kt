@@ -21,12 +21,13 @@ import apps.chocolatecakecodes.bluebeats.media.MediaDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
+import apps.chocolatecakecodes.bluebeats.media.player.VlcPlayer
 import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
-import apps.chocolatecakecodes.bluebeats.service.PlayerService
 import apps.chocolatecakecodes.bluebeats.taglib.BuildConfig
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.SmartBackPressedCallback
 import apps.chocolatecakecodes.bluebeats.util.Utils
+import apps.chocolatecakecodes.bluebeats.util.castTo
 import apps.chocolatecakecodes.bluebeats.view.specialviews.FileBrowserView
 import apps.chocolatecakecodes.bluebeats.view.specialviews.SpinnerTextbox
 import kotlinx.coroutines.CoroutineScope
@@ -48,6 +49,9 @@ class FileBrowser : Fragment() {
     private lateinit var scanListener: MediaDB.ScanEventHandler
     private var browser: FileBrowserView by OnceSettable()
     private var scanRequested = false
+
+    private val player: VlcPlayer
+        get() = requireActivity().castTo<MainActivity>().playerConn.player!!
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -307,7 +311,7 @@ class FileBrowser : Fragment() {
                 viewModel.selectFile(item)
 
                 mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
-                PlayerService.getInstancePlayer().playMedia(item)
+                player.playMedia(item)
             }
         }
     }

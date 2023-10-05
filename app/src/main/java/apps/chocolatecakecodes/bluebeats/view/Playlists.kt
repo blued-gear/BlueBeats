@@ -27,11 +27,11 @@ import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
+import apps.chocolatecakecodes.bluebeats.media.player.VlcPlayer
 import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
 import apps.chocolatecakecodes.bluebeats.media.playlist.StaticPlaylist
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylist
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylistIterator
-import apps.chocolatecakecodes.bluebeats.service.PlayerService
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.RequireNotNull
 import apps.chocolatecakecodes.bluebeats.util.SmartBackPressedCallback
@@ -77,6 +77,9 @@ internal class Playlists : Fragment() {
     private var upBtn = RequireNotNull<ImageButton>()
     private var menu: Menu? = null
     private var inSelection = false
+
+    private val player: VlcPlayer
+        get() = requireActivity().castTo<MainActivity>().playerConn.player!!
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -251,7 +254,7 @@ internal class Playlists : Fragment() {
             }
 
             mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
-            PlayerService.getInstancePlayer().playPlaylist(iter)
+            player.playPlaylist(iter)
         }
     }
 

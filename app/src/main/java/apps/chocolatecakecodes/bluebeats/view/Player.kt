@@ -20,7 +20,6 @@ import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.player.VlcPlayer
-import apps.chocolatecakecodes.bluebeats.service.PlayerService
 import apps.chocolatecakecodes.bluebeats.taglib.Chapter
 import apps.chocolatecakecodes.bluebeats.util.*
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
@@ -48,7 +47,6 @@ class Player : Fragment() {
     private val playerCallback = PlayerListener()
     private var viewModel: PlayerViewModel by OnceSettable()
     private var mainVM: MainActivityViewModel by OnceSettable()
-    private var player: VlcPlayer by OnceSettable()
     private var playerView: VLCVideoLayout by OnceSettable()
     private var playerContainer: ViewGroup by OnceSettable()
     private var seekBar: SegmentedSeekBar by OnceSettable()
@@ -61,14 +59,15 @@ class Player : Fragment() {
     private val seekHandler = SeekHandler()
     private var fullscreenState: Boolean = false
 
+    private val player: VlcPlayer
+        get() = requireActivity().castTo<MainActivity>().playerConn.player!!
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         val vmProvider = ViewModelProvider(this.requireActivity())
         viewModel = vmProvider.get(PlayerViewModel::class.java)
         mainVM = vmProvider.get(MainActivityViewModel::class.java)
-
-        player = PlayerService.getInstancePlayer()
 
         seekDebouncer = Debouncer.create(SEEK_DEBOUNCE_TIMEOUT) {
             player.seekTo(it)
@@ -120,9 +119,9 @@ class Player : Fragment() {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
-
         seekDebouncer.stop()
+
+        super.onDestroy()
     }
 
     private fun attachPlayer() {
