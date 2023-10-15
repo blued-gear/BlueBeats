@@ -51,8 +51,8 @@ android {
         multiDexEnabled true
 
         javaCompileOptions {
-            annotationProcessorOptions {
-                arguments += ["room.schemaLocation": "$projectDir/misc/db_schemas/".toString()]
+            ksp {
+                arg("room.schemaLocation", "$projectDir/misc/db_schemas/".toString())
             }
         }
     }
@@ -76,11 +76,11 @@ android {
 }
 
 dependencies {
-    def room_version = "2.5.2"
+    def room_version = '2.5.2'
     def fastadapter_version = '5.7.0'
-    def media2_version = "1.2.1"
-    def lifecycle_version = "2.6.2"
-    def acra_version = "5.11.2"
+    def media2_version = '1.2.1'
+    def lifecycle_version = '2.6.2'
+    def acra_version = '5.11.2'
 
     implementation project(':taglib')
 
