@@ -13,6 +13,7 @@ internal abstract class MediaNode : Comparable<MediaNode> {
          * used for single parsed files
          */
         val UNSPECIFIED_DIR: MediaDir = MediaDir.new(-2, "~UNSPECIFIED~", { null })
+        val INVALID_FILE: MediaFile = MediaFile.new(-2, "~Missing File~", MediaFile.Type.OTHER, { UNSPECIFIED_DIR })
 
         @JvmStatic
         protected val NODE_CACHE_TIME = TimeUnit.MINUTES.toMillis(5)

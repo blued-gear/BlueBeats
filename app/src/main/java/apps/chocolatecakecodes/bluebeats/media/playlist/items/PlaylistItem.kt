@@ -9,6 +9,7 @@ internal sealed interface PlaylistItem {
     val file: MediaFile?
 
     fun play(player: VlcPlayer)
-}
 
-//TODO INVALID interface to handle load-fails at deser
+    /** marker for items which could not be loaded (for example when the referenced file was removed) */
+    sealed interface INVALID : PlaylistItem
+}

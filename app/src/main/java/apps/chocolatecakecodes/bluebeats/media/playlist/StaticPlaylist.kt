@@ -33,7 +33,8 @@ internal class StaticPlaylist private constructor(
     }
 
     override fun getIterator(repeat: Boolean, shuffle: Boolean): PlaylistIterator {
-        return StaticPlaylistIterator(media, repeat, shuffle)
+        val validMedia = media.filter { it !is PlaylistItem.INVALID }
+        return StaticPlaylistIterator(validMedia, repeat, shuffle)
     }
 
     fun addMedia(toAdd: MediaFile) {

@@ -13,5 +13,6 @@ internal sealed interface PlaylistItemItem<VH : RecyclerView.ViewHolder> : IItem
 internal fun itemForPlaylistItem(itm: PlaylistItem, draggable: Boolean): SelectableItem<out SelectableItem.ViewHolder<*>> {
     return when(itm) {
         is MediaFilePlItem -> MediaFileItemItem(itm, draggable)
+        is PlaylistItem.INVALID -> throw AssertionError("not all PlaylistItem implementations were handled")
     }
 }

@@ -32,6 +32,7 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
 import apps.chocolatecakecodes.bluebeats.media.playlist.StaticPlaylist
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylist
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylistIterator
+import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.RequireNotNull
 import apps.chocolatecakecodes.bluebeats.util.SmartBackPressedCallback
@@ -247,10 +248,14 @@ internal class Playlists : Fragment() {
         }
     }
     private fun onPlayPlaylistAt(idx: Int) {
+        val item = itemsAdapter.getItem(idx)!!.castTo<PlaylistItemItem<*>>().item
+        if(item is PlaylistItem.INVALID)
+            return
+
         CoroutineScope(Dispatchers.IO).launch {
             val iter = viewModel.selectedPlaylist!!.getIterator(false, false)
             if(iter is DynamicPlaylistIterator) {
-                iter.seekToMedia(itemsAdapter.getItem(idx)!!.castTo<PlaylistItemItem<*>>().item)
+                iter.seekToMedia(item)
             } else {
                 iter.seek(idx)
             }

@@ -2,6 +2,7 @@ package apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist
 
 import android.os.Parcel
 import android.os.Parcelable
+import android.util.Log
 import androidx.room.*
 import apps.chocolatecakecodes.bluebeats.database.*
 import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
@@ -10,6 +11,7 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.items.MediaFileItem
 import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import apps.chocolatecakecodes.bluebeats.util.takeOrAll
+import java.io.File
 import java.util.*
 
 /** <dir, deep (include all subdirs)> */
@@ -42,6 +44,7 @@ internal class IncludeRule private constructor(
         return expandDirs()
             .union(getFiles())
             .minus(excludedFiles)
+            .filter { File(it.path).exists() }
             .map { MediaFileItem(it) }
             .shuffled()
             .toList()
@@ -198,11 +201,21 @@ internal class IncludeRule private constructor(
         fun load(id: Long): IncludeRule {
             val entity = getEntity(id)
 
-            val fileEntries = getFileEntriesForRule(id).map {
-                fileDao.getForId(it.file)
+            val fileEntries = getFileEntriesForRule(id).mapNotNull {
+                try {
+                    fileDao.getForId(it.file)
+                } catch(e: Exception) {
+                    Log.e("IncludeRuleDao", "exception while loading file", e)
+                    null
+                }
             }.toSet()
-            val dirEntries = getDirEntriesForRule(id).map {
-                dirDao.getForId(it.dir) to it.deep
+            val dirEntries = getDirEntriesForRule(id).mapNotNull {
+                try {
+                    dirDao.getForId(it.dir) to it.deep
+                } catch(e: Exception) {
+                    Log.e("IncludeRuleDao", "exception while loading dir", e)
+                    null
+                }
             }.toSet()
 
             return IncludeRule(id, true, dirEntries, fileEntries, entity.share)

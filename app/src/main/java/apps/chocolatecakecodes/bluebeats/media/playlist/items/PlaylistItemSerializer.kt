@@ -26,6 +26,7 @@ internal class PlaylistItemSerializer {
         serializersModule = SerializersModule {
             polymorphic(PlaylistItem::class) {
                 subclass(MediaFileItem::class)
+                subclass(MediaFileItem.INVALID::class)
             }
         }
     }
