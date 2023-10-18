@@ -5,6 +5,8 @@ import android.os.Parcelable
 import androidx.room.*
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import apps.chocolatecakecodes.bluebeats.media.playlist.items.MediaFileItem
+import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import apps.chocolatecakecodes.bluebeats.util.takeOrAll
 import java.util.*
@@ -17,6 +19,7 @@ internal class UsertagsRule private constructor(
     private val entityId: Long
 ) : Rule<UsertagsRule> {
 
+    private val tagsDao = RoomDB.DB_INSTANCE.userTagDao()
     private val tags = HashSet<String>()
     private val tagsRO = Collections.unmodifiableSet(tags)
 
@@ -32,18 +35,25 @@ internal class UsertagsRule private constructor(
         return tagsRO
     }
 
-    override fun generateItems(amount: Int, exclude: Set<MediaFile>): List<MediaFile> {
+    override fun generateItems(amount: Int, exclude: Set<PlaylistItem>): List<PlaylistItem> {
+        val excludedFiles = exclude.mapNotNull {
+            if(it is MediaFileItem)
+                it.file
+            else
+                null
+        }.toSet()
+
         // and-combine results (all tags must match)
-        val tagsDao = RoomDB.DB_INSTANCE.userTagDao()
         val tags = getTags()
         return tagsDao.getFilesForTags(tags.toList())
-            .minus(exclude)
+            .minus(excludedFiles)
             .let {
                 if (combineWithAnd)
                     combineAnd(it)
                 else
                     combineOr(it)
             }
+            .map { MediaFileItem(it) }
             .toList()
             .shuffled()
             .takeOrAll(amount)

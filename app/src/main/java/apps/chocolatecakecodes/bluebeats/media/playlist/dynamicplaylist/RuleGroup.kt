@@ -4,7 +4,7 @@ import android.os.Parcel
 import android.os.Parcelable
 import androidx.room.*
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import apps.chocolatecakecodes.bluebeats.util.castTo
 import apps.chocolatecakecodes.bluebeats.util.removeIfSingle
@@ -25,7 +25,7 @@ internal class RuleGroup private constructor(
     }
     private val graveyard: MutableList<GenericRule> = ArrayList()
 
-    override fun generateItems(amount: Int, exclude: Set<MediaFile>): List<MediaFile> {
+    override fun generateItems(amount: Int, exclude: Set<PlaylistItem>): List<PlaylistItem> {
         val (negativeRules, positiveRules) = getRules().partition { it.second }.let {
             Pair(
                 it.first.map { it.first },
@@ -77,10 +77,10 @@ internal class RuleGroup private constructor(
                     acc.intersect(cur)
                 } ?: emptySet()
             } else {
-                val absoluteCombined = LinkedHashSet<MediaFile>()
+                val absoluteCombined = LinkedHashSet<PlaylistItem>()
                 absoluteItems.forEach { absoluteCombined.addAll(it) }
 
-                val relativeCombined = LinkedHashSet<MediaFile>()
+                val relativeCombined = LinkedHashSet<PlaylistItem>()
                 relativeItems.forEach { relativeCombined.addAll(it) }
                 evenItems.forEach { relativeCombined.addAll(it) }
 

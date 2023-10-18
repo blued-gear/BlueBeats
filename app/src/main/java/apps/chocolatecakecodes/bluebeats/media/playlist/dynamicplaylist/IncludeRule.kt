@@ -6,6 +6,8 @@ import androidx.room.*
 import apps.chocolatecakecodes.bluebeats.database.*
 import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import apps.chocolatecakecodes.bluebeats.media.playlist.items.MediaFileItem
+import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import apps.chocolatecakecodes.bluebeats.util.takeOrAll
 import java.util.*
@@ -29,10 +31,18 @@ internal class IncludeRule private constructor(
 
     override var share = initialShare
 
-    override fun generateItems(amount: Int, exclude: Set<MediaFile>): List<MediaFile> {
+    override fun generateItems(amount: Int, exclude: Set<PlaylistItem>): List<PlaylistItem> {
+        val excludedFiles = exclude.mapNotNull {
+            if(it is MediaFileItem)
+                it.file
+            else
+                null
+        }.toSet()
+
         return expandDirs()
             .union(getFiles())
-            .minus(exclude)
+            .minus(excludedFiles)
+            .map { MediaFileItem(it) }
             .shuffled()
             .toList()
             .takeOrAll(amount)

@@ -1,6 +1,6 @@
 package apps.chocolatecakecodes.bluebeats.media.playlist
 
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
 
 const val UNDETERMINED_COUNT: Int = -1
 
@@ -39,13 +39,13 @@ internal interface PlaylistIterator {
      * returns the next media to play and advances currentPosition by one
      * @throws NoSuchElementException if the iterator is at its end
      */
-    fun nextMedia(): MediaFile
+    fun nextItem(): PlaylistItem
 
     /**
      * returns the current media
      * (no state will be changed)
      */
-    fun currentMedia(): MediaFile
+    fun currentItem(): PlaylistItem
 
     /**
      * seek relative to the current position
@@ -63,5 +63,5 @@ internal interface PlaylistIterator {
      * If shuffle is true then this method will return the shuffled items.
      * (In case of a dynamic playlist the result is the current collection before the next items will be generated.)
      */
-    fun getItems(): List<MediaFile>
+    fun getItems(): List<PlaylistItem>
 }

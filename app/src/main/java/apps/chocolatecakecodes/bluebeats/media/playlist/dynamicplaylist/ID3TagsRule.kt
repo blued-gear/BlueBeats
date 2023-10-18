@@ -5,7 +5,8 @@ import android.os.Parcelable
 import android.util.Log
 import androidx.room.*
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import apps.chocolatecakecodes.bluebeats.media.playlist.items.MediaFileItem
+import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import apps.chocolatecakecodes.bluebeats.util.takeOrAll
 import java.util.*
@@ -18,6 +19,7 @@ internal class ID3TagsRule private constructor(
     private val entityId: Long
 ) : Rule<ID3TagsRule>{
 
+    private val tagsDao = RoomDB.DB_INSTANCE.id3TagDao()
     private val tagValues = HashSet<String>()
     private val tagValuesRO = Collections.unmodifiableSet(tagValues)
 
@@ -40,16 +42,25 @@ internal class ID3TagsRule private constructor(
         tagValues.remove(value)
     }
 
-    override fun generateItems(amount: Int, exclude: Set<MediaFile>): List<MediaFile> {
+    override fun generateItems(amount: Int, exclude: Set<PlaylistItem>): List<PlaylistItem> {
         if(tagType.isEmpty()) {
             Log.w(LOG_TAG, "no tag-type set; skipping")
             return emptyList()
         }
 
-        val tagsDao = RoomDB.DB_INSTANCE.id3TagDao()
-        return getTagValues().flatMap {
-            tagsDao.getFilesWithTag(tagType, it)
-        }.toSet().minus(exclude).shuffled().takeOrAll(amount)
+        val excludedFiles = exclude.mapNotNull {
+            if(it is MediaFileItem)
+                it.file
+            else
+                null
+        }.toSet()
+
+        return getTagValues()
+            .flatMap { tagsDao.getFilesWithTag(tagType, it) }
+            .toSet()
+            .minus(excludedFiles)
+            .map { MediaFileItem(it) }
+            .shuffled().takeOrAll(amount)
     }
 
     override fun copy(): ID3TagsRule {

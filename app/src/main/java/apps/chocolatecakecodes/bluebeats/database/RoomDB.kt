@@ -7,6 +7,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
+import apps.chocolatecakecodes.bluebeats.database.migrations.Migration6to7
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistName
 import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistsManager
@@ -32,7 +33,7 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.Usertags
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.UsertagsRuleEntry
 import java.util.concurrent.atomic.AtomicReference
 
-@Database(version = 6, entities = [
+@Database(version = 7, entities = [
     MediaDirEntity::class, MediaFileEntity::class,
     ID3TagTypeEntity::class, ID3TagValueEntity::class, ID3TagReferenceEntity::class,
     UserTagEntity::class, UserTagRelation::class,
@@ -65,6 +66,7 @@ internal abstract class RoomDB : RoomDatabase() {
                 
                 val dbInst = Room.databaseBuilder(context, RoomDB::class.java, "MediaDB.db")
                     .addCallback(DBUpgradeCallback())
+                    .addMigrations(Migration6to7)
                     .build()
                 dbInstance.set(dbInst)
             }

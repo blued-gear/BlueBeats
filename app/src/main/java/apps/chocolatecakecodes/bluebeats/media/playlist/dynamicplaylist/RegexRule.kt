@@ -12,6 +12,8 @@ import androidx.room.Transaction
 import androidx.room.Update
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import apps.chocolatecakecodes.bluebeats.media.playlist.items.MediaFileItem
+import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
 import apps.chocolatecakecodes.bluebeats.util.takeOrAll
 import java.util.Objects
 
@@ -36,34 +38,23 @@ internal class RegexRule private constructor(
         get() = matcher.pattern
         set(value) { matcher = Regex(value) }
 
+    private val fileDao = RoomDB.DB_INSTANCE.mediaFileDao()
     private var matcher = Regex(regex)
 
     //region public functions
-    override fun generateItems(amount: Int, exclude: Set<MediaFile>): List<MediaFile> {
-        val fileDao = RoomDB.DB_INSTANCE.mediaFileDao()
-        return fileDao.getAllFiles().asSequence().filterNot {
-            exclude.contains(it)
-        }.map {
-            val attr: List<String> = when (attribute) {
-                Attribute.FILENAME -> listOf(it.name)
-                Attribute.FILEPATH -> listOf(it.path)
-                Attribute.TITLE -> listOf(it.mediaTags.title)
-                Attribute.ARTIST -> listOf(it.mediaTags.artist)
-                Attribute.USERTAGS -> it.userTags
-            }.filterNot {
-                it.isNullOrEmpty()
-            }
+    override fun generateItems(amount: Int, exclude: Set<PlaylistItem>): List<PlaylistItem> {
+        val excludedFiles = exclude.mapNotNull {
+            if(it is MediaFileItem)
+                it.file
+            else
+                null
+        }.toSet()
 
-            Pair(it, attr)
-        }.filterNot {
-            it.second.isEmpty()
-        }.filter {
-            it.second.any {
-                matcher.matches(it)
-            }
-        }.map {
-            it.first
-        }.shuffled().takeOrAll(amount).toList()
+        return collectFiles(excludedFiles)
+            .shuffled()
+            .takeOrAll(amount)
+            .map { MediaFileItem(it) }
+            .toList()
     }
 
     override fun copy(): RegexRule {
@@ -93,6 +84,34 @@ internal class RegexRule private constructor(
         attribute = other.attribute
         matcher = Regex(other.regex)
         share = other.share.copy()
+    }
+    //endregion
+
+    //region private functions
+    private fun collectFiles(exclude: Set<MediaFile>): Sequence<MediaFile> {
+        return fileDao.getAllFiles().asSequence().filterNot {
+            exclude.contains(it)
+        }.map {
+            val attr: List<String> = when (attribute) {
+                Attribute.FILENAME -> listOf(it.name)
+                Attribute.FILEPATH -> listOf(it.path)
+                Attribute.TITLE -> listOf(it.mediaTags.title)
+                Attribute.ARTIST -> listOf(it.mediaTags.artist)
+                Attribute.USERTAGS -> it.userTags
+            }.filterNot {
+                it.isNullOrEmpty()
+            }
+
+            Pair(it, attr)
+        }.filterNot {
+            it.second.isEmpty()
+        }.filter {
+            it.second.any {
+                matcher.matches(it)
+            }
+        }.map {
+            it.first
+        }
     }
     //endregion
 

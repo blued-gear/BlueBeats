@@ -9,6 +9,7 @@ import androidx.media2.common.SessionPlayer
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistIterator
 import apps.chocolatecakecodes.bluebeats.media.playlist.UNDETERMINED_COUNT
+import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
 import apps.chocolatecakecodes.bluebeats.taglib.Chapter
 import apps.chocolatecakecodes.bluebeats.util.RequireNotNull
 import apps.chocolatecakecodes.bluebeats.util.castTo
@@ -59,9 +60,23 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
         player.detachViews()
     }
 
-    fun playMedia(media: MediaFile) {
-        //TODO do I have to stop playback (like in the old impl)
-        playMedia(media, false)
+    fun playMedia(media: MediaFile, keepPlaylist: Boolean = false) {
+        if(!keepPlaylist) {
+            clearPlaylist()
+        }
+
+        chapters.clear()
+        getChapters().let { chaptersRO ->
+            callListeners {
+                if(it is PlayerCallback) {
+                    it.onChaptersChanged(this, chaptersRO)
+                }
+            }
+        }
+
+        currentMedia.set(media)
+        lastPlayingTime = 0
+        player.play(media.path)
     }
 
     fun playPlaylist(playlist: PlaylistIterator) {
@@ -77,7 +92,7 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
             }
         }
 
-        playMedia(playlist.nextMedia(), true)
+        playlist.nextItem().play(this)
     }
 
     fun stop() {
@@ -111,7 +126,7 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
                         return@let Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_INVALID_STATE, null))
                     }
 
-                    playMedia(it.currentMedia(), true)
+                    it.currentItem().play(this@VlcPlayer)
 
                     playerResultWithCurrentMedia(PlayerResult.RESULT_SUCCESS)
                 } ?: Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_INVALID_STATE, null))).let {
@@ -342,7 +357,7 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
     override fun getPlaylist(): MutableList<MediaItem>? {
         return currentPlaylist?.let {
             it.getItems().map {
-                mediaFileToMediaItem(it).get()
+                playlistItemToMediaItem(it).get()
             }.toMutableList()
         }
     }
@@ -505,7 +520,7 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
 
     private fun playNextPlaylistItem() {
         CoroutineScope(Dispatchers.IO).launch {
-            playMedia(currentPlaylist!!.nextMedia(), true)
+            currentPlaylist!!.nextItem().play(this@VlcPlayer)
         }
     }
 
@@ -531,6 +546,19 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
             Futures.immediateFuture(null)
         else
             mediaFileToMediaItem(currentMedia.get()).castTo()
+    }
+
+    private fun playlistItemToMediaItem(item: PlaylistItem): ListenableFuture<MediaItem> {
+        val file = item.file
+
+        return if(file != null)
+            mediaFileToMediaItem(file)
+        else
+            // unknown media
+            Futures.immediateFuture(MediaItem.Builder().apply {
+                this.setStartPosition(0)
+                this.setEndPosition(-1)
+            }.build())
     }
 
     private fun mediaFileToMediaItem(media: MediaFile): ListenableFuture<MediaItem> {
@@ -606,25 +634,6 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
                 }
             }
         }
-    }
-
-    private fun playMedia(media: MediaFile, keepPlaylist: Boolean) {
-        if(!keepPlaylist) {
-            clearPlaylist()
-        }
-
-        chapters.clear()
-        getChapters().let { chaptersRO ->
-            callListeners {
-                if(it is PlayerCallback) {
-                    it.onChaptersChanged(this, chaptersRO)
-                }
-            }
-        }
-
-        currentMedia.set(media)
-        lastPlayingTime = 0
-        player.play(media.path)
     }
 
     private fun clearPlaylist() {

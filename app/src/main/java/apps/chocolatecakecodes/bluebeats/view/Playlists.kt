@@ -39,6 +39,8 @@ import apps.chocolatecakecodes.bluebeats.util.Utils
 import apps.chocolatecakecodes.bluebeats.util.castTo
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
 import apps.chocolatecakecodes.bluebeats.view.specialitems.SelectableItem
+import apps.chocolatecakecodes.bluebeats.view.specialitems.playlistitems.PlaylistItemItem
+import apps.chocolatecakecodes.bluebeats.view.specialitems.playlistitems.itemForPlaylistItem
 import apps.chocolatecakecodes.bluebeats.view.specialviews.SpinnerTextbox
 import com.mikepenz.fastadapter.FastAdapter
 import com.mikepenz.fastadapter.GenericItem
@@ -248,7 +250,7 @@ internal class Playlists : Fragment() {
         CoroutineScope(Dispatchers.IO).launch {
             val iter = viewModel.selectedPlaylist!!.getIterator(false, false)
             if(iter is DynamicPlaylistIterator) {
-                iter.seekToMedia(itemsAdapter.getItem(idx)!!.castTo<MediaFileItem>().file)
+                iter.seekToMedia(itemsAdapter.getItem(idx)!!.castTo<PlaylistItemItem<*>>().item)
             } else {
                 iter.seek(idx)
             }
@@ -285,7 +287,7 @@ internal class Playlists : Fragment() {
     }
 
     private fun onItemMoved(from: Int, to: Int) {
-        val playlist = viewModel.selectedPlaylist!! as StaticPlaylist// only supported static playlist
+        val playlist = viewModel.selectedPlaylist!! as StaticPlaylist// only supported in static playlist
 
         CoroutineScope(Dispatchers.IO).launch {
             playlist.moveMedia(from, to)
@@ -420,7 +422,7 @@ internal class Playlists : Fragment() {
             withContext(Dispatchers.Main) {
                 val isStaticPl = viewModel.selectedPlaylist is StaticPlaylist
                 itemsAdapter.setNewList(viewModel.playlistItems!!.map {
-                    MediaFileItem(it, isStaticPl, useTitle = true, showThumb = true)
+                    itemForPlaylistItem(it, isStaticPl)
                 })
 
                 updateMenu()
@@ -460,7 +462,7 @@ internal class Playlists : Fragment() {
 
         menu.add(Menu.NONE, MNU_ID_OVERVIEW_EDIT_DYN, Menu.NONE, R.string.playlist_edit_dyn).apply {
             setOnMenuItemClickListener {
-                itemsAdapter.getSelectExtension().selectedItems.iterator().next().castTo<ListsItem>().playlist.third.let{ id ->
+                itemsAdapter.getSelectExtension().selectedItems.iterator().next().castTo<ListsItem>().playlist.third.let { id ->
                     CoroutineScope(Dispatchers.IO).launch {
                         RoomDB.DB_INSTANCE.dynamicPlaylistDao().load(id).let {
                             withContext(Dispatchers.Main) {
@@ -765,17 +767,12 @@ private class ListsItem(val playlist: PlaylistInfo) : SelectableItem<ListsItem.V
         if(count == 0)
             return emptyList()
 
-        val thumbs = ArrayList<Bitmap>(count)
         // try to get the thumbnail of the first <count> items
-        for(i in items.indices) {
-            val itm = items[i]
-            val thumb = VlcManagers.getMediaDB().getSubject().getThumbnail(itm, -1, -1)
-            if(thumb != null)
-                thumbs.add(thumb)
-
-            if(thumbs.size == count)
-                break
-        }
+        val thumbs = items.asSequence().mapNotNull {
+            it.file
+        }.mapNotNull {
+            VlcManagers.getMediaDB().getSubject().getThumbnail(it, -1, -1)
+        }.take(count).toList()
 
         if(thumbs.size < count) {
             // to many items were unsuccessful -> trim to even count

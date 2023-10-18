@@ -1,6 +1,6 @@
 package apps.chocolatecakecodes.bluebeats.media.playlist
 
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
 
 /**
  * provides a generic interface for the most important playlist-attributes
@@ -22,7 +22,7 @@ internal interface Playlist {
      * returns all items in this playlist
      * (in case of dynamic playlists this may only be a representative selection)
      */
-    fun items(): List<MediaFile>
+    fun items(): List<PlaylistItem>
 
     /**
      * generates a PlaylistIterator to play this playlist with the given parameters

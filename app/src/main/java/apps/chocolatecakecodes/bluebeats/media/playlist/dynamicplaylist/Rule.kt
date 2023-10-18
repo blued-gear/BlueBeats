@@ -2,7 +2,7 @@ package apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist
 
 import android.os.Parcel
 import android.os.Parcelable
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
 import apps.chocolatecakecodes.bluebeats.util.Utils
 
 internal typealias GenericRule = Rule<*>
@@ -69,7 +69,7 @@ internal interface Rule<T> : Parcelable {
      * @param amount the expected amount of media to return; if -1 then the amount is unlimited
      * @param exclude set of files which must not be contained in the resulting set
      */
-    fun generateItems(amount: Int, exclude: Set<MediaFile>): List<MediaFile>
+    fun generateItems(amount: Int, exclude: Set<PlaylistItem>): List<PlaylistItem>
 
     /**
      * Returns a deep-copy of the rule and all its subrules.

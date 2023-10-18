@@ -1,9 +1,11 @@
 package apps.chocolatecakecodes.bluebeats.media.playlist
 
 import androidx.room.*
-import apps.chocolatecakecodes.bluebeats.database.MediaFileEntity
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import apps.chocolatecakecodes.bluebeats.media.playlist.items.MediaFileItem
+import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
+import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItemSerializer
 import apps.chocolatecakecodes.bluebeats.util.TimerThread
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
@@ -15,7 +17,7 @@ import java.util.concurrent.TimeUnit
  */
 internal class StaticPlaylist private constructor(
     name: String,
-    entries: List<MediaFile>
+    entries: List<PlaylistItem>
 ) : Playlist {
 
     override val type: PlaylistType = PlaylistType.STATIC
@@ -23,10 +25,10 @@ internal class StaticPlaylist private constructor(
     override var name: String = name
         private set
 
-    private val media: ArrayList<MediaFile> = ArrayList(entries)
-    private val mediaImmutable: List<MediaFile> = Collections.unmodifiableList(media)
+    private val media: ArrayList<PlaylistItem> = ArrayList(entries)
+    private val mediaImmutable: List<PlaylistItem> = Collections.unmodifiableList(media)
 
-    override fun items(): List<MediaFile> {
+    override fun items(): List<PlaylistItem> {
         return mediaImmutable
     }
 
@@ -35,7 +37,7 @@ internal class StaticPlaylist private constructor(
     }
 
     fun addMedia(toAdd: MediaFile) {
-        media.add(toAdd)
+        media.add(MediaFileItem(toAdd))
     }
 
     fun removeMedia(index: Int) {
@@ -67,7 +69,7 @@ internal class StaticPlaylist private constructor(
 
         @Transaction
         open fun createNew(name: String): StaticPlaylist {
-            val playlist = StaticPlaylist(name, emptyList())
+            val playlist = StaticPlaylist(name, emptyList<PlaylistItem>())
             val id = playlistsManager.createNewEntry(name, playlist.type)
             insertEntity(StaticPlaylistEntity(id))
 
@@ -82,7 +84,7 @@ internal class StaticPlaylist private constructor(
                 val entries = getEntriesForPlaylist(id).sortedBy {
                     it.pos
                 }.map {
-                    RoomDB.DB_INSTANCE.mediaFileDao().getForId(it.media)
+                    PlaylistItemSerializer.INSTANCE.deserialize(it.item)
                 }
 
                 StaticPlaylist(name, entries)
@@ -94,8 +96,9 @@ internal class StaticPlaylist private constructor(
             val id = playlistsManager.getPlaylistId(playlist.name)
 
             deleteEntriesOfPlaylist(id)
-            playlist.items().mapIndexed { idx, media ->
-                StaticPlaylistEntry(0, id, media.entityId, idx)
+            playlist.items().mapIndexed { idx, item ->
+                val itemJson = PlaylistItemSerializer.INSTANCE.serialize(item)
+                StaticPlaylistEntry(0, id, itemJson, idx)
             }.let {
                 insertPlaylistEntries(it)
             }
@@ -151,27 +154,21 @@ internal data class StaticPlaylistEntity(
             entity = StaticPlaylistEntity::class,
             parentColumns = ["id"], childColumns = ["playlist"],
             onDelete = ForeignKey.RESTRICT, onUpdate = ForeignKey.RESTRICT
-        ),
-        ForeignKey(
-            entity = MediaFileEntity::class,
-            parentColumns = ["id"], childColumns = ["media"],
-            onDelete = ForeignKey.CASCADE, onUpdate = ForeignKey.CASCADE//TODO maybe remap to _DELETED_ITEM_ entry
         )
     ],
     indices = [
-        Index(value = ["playlist"]),
-        Index(value = ["media"])
+        Index(value = ["playlist"])
     ]
 )
 internal data class StaticPlaylistEntry(
     @PrimaryKey(autoGenerate = true) val id: Long,
     @ColumnInfo(name = "playlist") val playlist: Long,
-    @ColumnInfo(name = "media") val media: Long,
+    @ColumnInfo(name = "item") val item: String,
     @ColumnInfo(name = "pos") val pos: Int
 )
 
 private class StaticPlaylistIterator(
-    media: List<MediaFile>,
+    media: List<PlaylistItem>,
     override var repeat: Boolean,
     shuffle: Boolean
     ) : PlaylistIterator {
@@ -196,7 +193,7 @@ private class StaticPlaylistIterator(
             shuffle()
     }
 
-    override fun nextMedia(): MediaFile {
+    override fun nextItem(): PlaylistItem {
         if(isAtEnd())
             throw NoSuchElementException("end reached")
 
@@ -204,7 +201,7 @@ private class StaticPlaylistIterator(
         return items[currentPosition]
     }
 
-    override fun currentMedia(): MediaFile {
+    override fun currentItem(): PlaylistItem {
         return items[currentPosition.coerceAtLeast(0)]
     }
 
@@ -238,7 +235,7 @@ private class StaticPlaylistIterator(
         return !repeat && currentPosition == (totalItems - 1)
     }
 
-    override fun getItems(): List<MediaFile> {
+    override fun getItems(): List<PlaylistItem> {
         return itemsRO
     }
 

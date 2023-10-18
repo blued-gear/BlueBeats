@@ -2,8 +2,8 @@ package apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist
 
 import androidx.room.*
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.playlist.*
+import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
 import apps.chocolatecakecodes.bluebeats.util.TimerThread
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
@@ -31,7 +31,7 @@ internal class DynamicPlaylist private constructor(
      */
     var iterationSize = EXAMPLE_ITEM_COUNT
 
-    override fun items(): List<MediaFile> {
+    override fun items(): List<PlaylistItem> {
         return rootRuleGroup.generateItems(iterationSize.coerceAtLeast(EXAMPLE_ITEM_COUNT), emptySet())
     }
 
@@ -137,9 +137,9 @@ internal class DynamicPlaylistIterator(
     private val bufferSize: Int
 ) : PlaylistIterator {
 
-    private val mediaBuffer = ArrayList<MediaFile>(bufferSize + 2)
+    private val mediaBuffer = ArrayList<PlaylistItem>(bufferSize + 2)
     private val mediaBufferRO = Collections.unmodifiableList(mediaBuffer)
-    private val pregeneratedMediaBuffer = ArrayList<MediaFile>(bufferSize + 1)
+    private val pregeneratedMediaBuffer = ArrayList<PlaylistItem>(bufferSize + 1)
     @Volatile
     private var pregeneratedMediaBufferValid: Boolean = false
 
@@ -154,8 +154,8 @@ internal class DynamicPlaylistIterator(
     override var shuffle: Boolean = true
         set(_) {
             // used to trigger regeneration
-            val current = currentMedia()
-            generateItems(mediaBuffer, currentMedia())
+            val current = currentItem()
+            generateItems(mediaBuffer, currentItem())
             seekToMedia(current)
         }
 
@@ -164,12 +164,12 @@ internal class DynamicPlaylistIterator(
         currentPosition = -1
     }
 
-    override fun nextMedia(): MediaFile {
+    override fun nextItem(): PlaylistItem {
         seek(1)
         return mediaBuffer[currentPosition]
     }
 
-    override fun currentMedia(): MediaFile {
+    override fun currentItem(): PlaylistItem {
         return mediaBuffer[currentPosition.coerceAtLeast(0)]
     }
 
@@ -208,7 +208,7 @@ internal class DynamicPlaylistIterator(
      * Tries to find the media in the current buffer and selects it as the next media.
      * If the media could not be found in the buffer, it will be inserted after the current item.
      */
-    fun seekToMedia(media: MediaFile) {
+    fun seekToMedia(media: PlaylistItem) {
         val idx = mediaBuffer.indexOf(media)
         if(idx != -1) {
             currentPosition = idx - 1
@@ -221,11 +221,11 @@ internal class DynamicPlaylistIterator(
         return false
     }
 
-    override fun getItems(): List<MediaFile> {
+    override fun getItems(): List<PlaylistItem> {
         return mediaBufferRO
     }
 
-    private fun generateItems(dest: MutableList<MediaFile>, prepend: MediaFile?) {
+    private fun generateItems(dest: MutableList<PlaylistItem>, prepend: PlaylistItem?) {
         val toExclude = if(prepend !== null) setOf(prepend) else emptySet()// exclude to prevent repetition
 
         dest.clear()

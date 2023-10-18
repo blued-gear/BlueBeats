@@ -13,7 +13,7 @@ internal class MediaFile private constructor(
     mediaTagsSupplier: () -> TagFields = { TagFields() },
     chaptersSupplier: () -> List<Chapter>? = { null },
     usertagsSupplier: () -> List<String> = { emptyList() }
-): MediaNode(){
+): MediaNode() {
 
     companion object {
         fun new(
@@ -30,11 +30,11 @@ internal class MediaFile private constructor(
         }
     }
 
-    override val parent: MediaDir by CachedReference(this, NODE_CACHE_TIME){
+    override val parent: MediaDir by CachedReference(this, NODE_CACHE_TIME) {
         parentSupplier()
     }
 
-    override val path: String by lazy{
+    override val path: String by lazy {
         parent.path + name
     }
 
@@ -76,13 +76,13 @@ internal class MediaFile private constructor(
     /**
      * like <code>equals(other)</code>, with the difference that just the type and path are compared
      */
-    fun shallowEquals(other: MediaFile?): Boolean{
+    fun shallowEquals(other: MediaFile?): Boolean {
         if(other === null)
             return false
         return  this.type == other.type && this.path == other.path
     }
 
-    enum class Type{
+    enum class Type {
         AUDIO, VIDEO, OTHER
     }
 }
