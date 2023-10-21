@@ -433,7 +433,7 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
 
     private fun onPlayingChanged(state: Int) {
         when(state) {
-            MediaPlayer.Event.Opening, MediaPlayer.Event.Buffering -> {
+            MediaPlayer.Event.Opening -> {//MediaPlayer.Event.Buffering (removed; hope this will do more good than bad)
                 currentMediaToMediaItem().let {
                     it.addListener({
                         it.get().let { mediaItem ->
@@ -471,7 +471,7 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
     }
 
     private fun onPlaying() {
-        if(newMediaLoading){
+        if(newMediaLoading) {
             newMediaLoading = false
 
             // chapter-info should now be loaded
