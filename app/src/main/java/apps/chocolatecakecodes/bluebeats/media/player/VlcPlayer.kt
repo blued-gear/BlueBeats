@@ -425,6 +425,7 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
                     MediaPlayer.Event.Playing, MediaPlayer.Event.Paused,
                     MediaPlayer.Event.Stopped, MediaPlayer.Event.EndReached -> onPlayingChanged(it.type)
                 MediaPlayer.Event.MediaChanged -> onMediaChanged()
+                MediaPlayer.Event.LengthChanged -> onMediaLoaded()
                 MediaPlayer.Event.TimeChanged -> onTimeChanged()
                 MediaPlayer.Event.EncounteredError -> onPlayerError()
             }
@@ -454,7 +455,6 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
                 callListeners {
                     it.onPlayerStateChanged(this, PLAYER_STATE_PLAYING)
                 }
-                onPlaying()
             }
             MediaPlayer.Event.EndReached -> {
                 callListeners {
@@ -470,7 +470,7 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
         }
     }
 
-    private fun onPlaying() {
+    private fun onMediaLoaded() {
         if(newMediaLoading) {
             newMediaLoading = false
 
