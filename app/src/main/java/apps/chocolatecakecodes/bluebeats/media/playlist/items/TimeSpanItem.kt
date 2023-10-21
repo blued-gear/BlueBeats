@@ -18,6 +18,7 @@ import kotlinx.serialization.encoding.decodeStructure
 import kotlinx.serialization.encoding.encodeStructure
 import java.io.File
 import java.io.IOException
+import java.util.Objects
 import java.util.concurrent.Executors
 
 @Serializable(with = TimeSpanItemSerializer::class)
@@ -35,6 +36,25 @@ internal open class TimeSpanItem(
     override fun play(player: VlcPlayer) {
         player.registerPlayerCallback(executor, PlayerController())
         player.playMedia(file, true)
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is TimeSpanItem) return false
+
+        if (!file.shallowEquals(other.file)) return false
+        if (startMs != other.startMs) return false
+        if (endMs != other.endMs) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return Objects.hash(this.javaClass.name, file, startMs, endMs)
+    }
+
+    override fun toString(): String {
+        return "TimeSpanItem(file=$file, startMs=$startMs, endMs=$endMs)"
     }
 
     @Serializable(with = TimeSpanItemInvalidSerializer::class)
