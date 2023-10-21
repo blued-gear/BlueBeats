@@ -62,4 +62,9 @@
     <string name="crash_dlg_title">Application Crash</string>
     <string name="misc_yes">Yes</string>
     <string name="misc_no">No</string>
+    <string name="dynpl_type_timespan">TimeSpan-Rule</string>
+    <string name="misc_path">Path</string>
+    <string name="dynpl_timespan_start">Start (s):</string>
+    <string name="dynpl_timespan_end">End (s):</string>
+    <string name="misc_description">Description</string>
 </resources>
