@@ -160,11 +160,13 @@ internal class RuleGroup private constructor(
                         this.addRule(rule, negate)
                     } else {
                         // make new instance
-                        when(rule.javaClass) {
-                            RuleGroup::class.java -> RoomDB.DB_INSTANCE.dplRuleGroupDao().createNew(rule.share)
-                            IncludeRule::class.java -> RoomDB.DB_INSTANCE.dplIncludeRuleDao().createNew(rule.share)
-                            UsertagsRule::class.java -> RoomDB.DB_INSTANCE.dplUsertagsRuleDao().createNew(rule.share)
-                            else -> throw IllegalArgumentException("unsupported type")
+                        when(rule) {
+                            is RuleGroup -> RoomDB.DB_INSTANCE.dplRuleGroupDao().createNew(rule.share)
+                            is IncludeRule -> RoomDB.DB_INSTANCE.dplIncludeRuleDao().createNew(rule.share)
+                            is UsertagsRule -> RoomDB.DB_INSTANCE.dplUsertagsRuleDao().createNew(rule.share)
+                            is ID3TagsRule -> RoomDB.DB_INSTANCE.dplID3TagsRuleDao().create(rule.share)
+                            is RegexRule -> RoomDB.DB_INSTANCE.dplRegexRuleDao().createNew(rule.share)
+                            is TimeSpanRule -> RoomDB.DB_INSTANCE.dplTimeSpanRuleDao().createNew(rule.share)
                         }.castTo<Rule<in GenericRule>>().apply {
                             this.applyFrom(rule)
                         }.let {
@@ -279,7 +281,8 @@ internal class RuleGroup private constructor(
             INCLUDE_RULE,
             USERTAGS_RULE,
             ID3TAGS_RULE,
-            REGEX_RULE
+            REGEX_RULE,
+            TIMESPAN_RULE
         }
 
         companion object {
@@ -289,7 +292,7 @@ internal class RuleGroup private constructor(
                 is UsertagsRule -> KnownRuleTypes.USERTAGS_RULE
                 is ID3TagsRule -> KnownRuleTypes.ID3TAGS_RULE
                 is RegexRule -> KnownRuleTypes.REGEX_RULE
-                else -> throw IllegalArgumentException("unsupported type")
+                is TimeSpanRule -> KnownRuleTypes.TIMESPAN_RULE
             }
 
             fun getRuleEntityId(rule: GenericRule): Long {
@@ -299,6 +302,7 @@ internal class RuleGroup private constructor(
                     KnownRuleTypes.USERTAGS_RULE -> RoomDB.DB_INSTANCE.dplUsertagsRuleDao().getEntityId(rule as UsertagsRule)
                     KnownRuleTypes.ID3TAGS_RULE -> RoomDB.DB_INSTANCE.dplID3TagsRuleDao().getEntityId(rule as ID3TagsRule)
                     KnownRuleTypes.REGEX_RULE -> RoomDB.DB_INSTANCE.dplRegexRuleDao().getEntityId(rule as RegexRule)
+                    KnownRuleTypes.TIMESPAN_RULE -> RoomDB.DB_INSTANCE.dplTimeSpanRuleDao().getEntityId(rule as TimeSpanRule)
                 }
             }
         }
@@ -421,6 +425,7 @@ internal class RuleGroup private constructor(
                 KnownRuleTypes.USERTAGS_RULE -> RoomDB.DB_INSTANCE.dplUsertagsRuleDao().load(id)
                 KnownRuleTypes.ID3TAGS_RULE -> RoomDB.DB_INSTANCE.dplID3TagsRuleDao().load(id)
                 KnownRuleTypes.REGEX_RULE -> RoomDB.DB_INSTANCE.dplRegexRuleDao().load(id)
+                KnownRuleTypes.TIMESPAN_RULE -> RoomDB.DB_INSTANCE.dplTimeSpanRuleDao().load(id)
             }
         }
 
@@ -451,6 +456,11 @@ internal class RuleGroup private constructor(
                 KnownRuleTypes.REGEX_RULE -> {
                     val rule = rule as RegexRule
                     val dao = RoomDB.DB_INSTANCE.dplRegexRuleDao()
+                    dao.save(rule)
+                }
+                KnownRuleTypes.TIMESPAN_RULE -> {
+                    val rule = rule as TimeSpanRule
+                    val dao = RoomDB.DB_INSTANCE.dplTimeSpanRuleDao()
                     dao.save(rule)
                 }
             }
@@ -487,6 +497,12 @@ internal class RuleGroup private constructor(
                     deleteEntry(group, dao.getEntityId(rule), type.ordinal)
                     dao.delete(rule)
                 }
+                KnownRuleTypes.TIMESPAN_RULE -> {
+                    val rule = rule as TimeSpanRule
+                    val dao = RoomDB.DB_INSTANCE.dplTimeSpanRuleDao()
+                    deleteEntry(group, dao.getEntityId(rule), type.ordinal)
+                    dao.delete(rule)
+                }
             }
         }
 
@@ -513,6 +529,11 @@ internal class RuleGroup private constructor(
                 }
                 KnownRuleTypes.REGEX_RULE -> {
                     val dao = RoomDB.DB_INSTANCE.dplRegexRuleDao()
+                    deleteEntry(group, ruleId, ruleType.ordinal)
+                    dao.delete(ruleId)
+                }
+                KnownRuleTypes.TIMESPAN_RULE -> {
+                    val dao = RoomDB.DB_INSTANCE.dplTimeSpanRuleDao()
                     deleteEntry(group, ruleId, ruleType.ordinal)
                     dao.delete(ruleId)
                 }

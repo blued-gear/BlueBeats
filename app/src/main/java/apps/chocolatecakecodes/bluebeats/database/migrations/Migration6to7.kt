@@ -18,7 +18,7 @@ object Migration6to7 : Migration(6, 7) {
 
     private fun upgradeStaticPlaylistsToPlaylistItems(db: SupportSQLiteDatabase) {
         val newItems = readStaticPlEntriesWithFile(db).map {
-            Pair(it.first, transformStaticPlEntryToItem(db, it.second))
+            Pair(it.first, transformStaticPlEntryToItem(it.second))
         }
 
         changeStaticPlTableCols(db)
@@ -59,7 +59,7 @@ object Migration6to7 : Migration(6, 7) {
         }
     }
 
-    private fun transformStaticPlEntryToItem(db: SupportSQLiteDatabase, fileId: Long): String {
+    private fun transformStaticPlEntryToItem(fileId: Long): String {
         val fileItem = MediaFileItem(MediaFile.new(fileId,
             "", MediaFile.Type.OTHER, { MediaNode.UNSPECIFIED_DIR }))
         return PlaylistItemSerializer.INSTANCE.serialize(fileItem)

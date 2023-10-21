@@ -27,6 +27,8 @@ internal class PlaylistItemSerializer {
             polymorphic(PlaylistItem::class) {
                 subclass(MediaFileItem::class)
                 subclass(MediaFileItem.INVALID::class)
+                subclass(TimeSpanItem::class)
+                subclass(TimeSpanItem.INVALID::class)
             }
         }
     }

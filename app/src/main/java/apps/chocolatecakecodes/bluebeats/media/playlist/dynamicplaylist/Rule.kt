@@ -12,7 +12,7 @@ internal typealias GenericRule = Rule<*>
 /**
  * @param T type of the implementing class
  */
-internal interface Rule<T> : Parcelable {
+internal sealed interface Rule<T> : Parcelable {
 
     /**
      * determines how much items a rule should add to the resulting collection <br/>

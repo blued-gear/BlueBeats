@@ -570,6 +570,7 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
                     this.setStartPosition(0)
                     this.setEndPosition(media.mediaTags.length)
                     MediaMetadata.Builder().apply {
+                        this.putString(MediaMetadata.METADATA_KEY_MEDIA_ID, media.entityId.toString())
                         this.putString(MediaMetadata.METADATA_KEY_TITLE, media.title)
                         this.putLong(MediaMetadata.METADATA_KEY_DURATION, media.mediaTags.length)
                         if (!media.mediaTags.artist.isNullOrEmpty())

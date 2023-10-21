@@ -3,6 +3,7 @@ package apps.chocolatecakecodes.bluebeats.database
 import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -28,24 +29,32 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RegexRul
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGroup
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGroupEntity
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGroupEntry
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.TimeSpanRule
+import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.TimeSpanRuleEntity
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.UsertagsRule
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.UsertagsRuleEntity
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.UsertagsRuleEntry
 import java.util.concurrent.atomic.AtomicReference
 
-@Database(version = 7, entities = [
-    MediaDirEntity::class, MediaFileEntity::class,
-    ID3TagTypeEntity::class, ID3TagValueEntity::class, ID3TagReferenceEntity::class,
-    UserTagEntity::class, UserTagRelation::class,
-    PlaylistName::class,
-    StaticPlaylistEntity::class, StaticPlaylistEntry::class,
-    DynamicPlaylistEntity::class,
-    RuleGroupEntity::class, RuleGroupEntry::class,
-    IncludeRuleEntity::class, IncludeRuleFileEntry::class, IncludeRuleDirEntry::class,
-    UsertagsRuleEntity::class, UsertagsRuleEntry::class,
-    ID3TagsRuleEntity::class, ID3TagsRuleEntry::class,
-    RegexRuleEntity::class
-])
+@Database(
+    version = 8,
+    entities = [
+        MediaDirEntity::class, MediaFileEntity::class,
+        ID3TagTypeEntity::class, ID3TagValueEntity::class, ID3TagReferenceEntity::class,
+        UserTagEntity::class, UserTagRelation::class,
+        PlaylistName::class,
+        StaticPlaylistEntity::class, StaticPlaylistEntry::class,
+        DynamicPlaylistEntity::class,
+        RuleGroupEntity::class, RuleGroupEntry::class,
+        IncludeRuleEntity::class, IncludeRuleFileEntry::class, IncludeRuleDirEntry::class,
+        UsertagsRuleEntity::class, UsertagsRuleEntry::class,
+        ID3TagsRuleEntity::class, ID3TagsRuleEntry::class,
+        RegexRuleEntity::class,
+        TimeSpanRuleEntity::class
+    ],
+    autoMigrations = [
+        AutoMigration(from = 7, to = 8)
+    ])
 internal abstract class RoomDB : RoomDatabase() {
 
     companion object{
@@ -87,6 +96,7 @@ internal abstract class RoomDB : RoomDatabase() {
     internal abstract fun dplUsertagsRuleDao(): UsertagsRule.UsertagsRuleDao
     internal abstract fun dplID3TagsRuleDao(): ID3TagsRule.ID3TagsRuleDao
     internal abstract fun dplRegexRuleDao(): RegexRule.RegexRuleDao
+    internal abstract fun dplTimeSpanRuleDao(): TimeSpanRule.TimeSpanRuleDao
 }
 
 private class DBUpgradeCallback : RoomDatabase.Callback(){
