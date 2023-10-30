@@ -7,12 +7,12 @@ import android.util.Log
 import android.view.*
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
-import androidx.core.content.ContextCompat
 import androidx.core.view.GestureDetectorCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
-import androidx.media2.common.MediaItem
-import androidx.media2.common.SessionPlayer
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.util.UnstableApi
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.RecyclerView
@@ -29,20 +29,24 @@ import com.mikepenz.fastadapter.adapters.FastItemAdapter
 import com.mikepenz.fastadapter.select.getSelectExtension
 import kotlinx.coroutines.*
 import org.videolan.libvlc.util.VLCVideoLayout
+import androidx.media3.common.Player as Media3Player
 
 private const val CONTROLS_FADE_IN_TIME = 200L
 private const val CONTROLS_FADE_OUT_TIME = 100L
-private const val CONTROLS_FADE_OUT_DELAY = 2000L
+//private const val CONTROLS_FADE_OUT_DELAY = 2000L
+private const val CONTROLS_FADE_OUT_DELAY = 200000L
 private const val SEEK_STEP = 1000.0f
 private const val SEEK_DEBOUNCE_TIMEOUT = 200L
+private const val TIME_UPDATER_INTERVAL_RUNNING = 500L
+private const val TIME_UPDATER_INTERVAL_IDLING = 1000L
 
+@androidx.annotation.OptIn(UnstableApi::class)
 class Player : Fragment() {
 
     companion object {
         fun newInstance() = Player()
 
         private const val SEEK_AREA_WIDTH = 0.4f// in %/100 (per side)
-        private const val SEEK_AMOUNT = 5000L// in ms TODO make changeable by user
     }
 
     private val playerCallback = PlayerListener()
@@ -59,6 +63,7 @@ class Player : Fragment() {
     private var controlsHideCoroutine: Job? = null
     private val seekHandler = SeekHandler()
     private var fullscreenState: Boolean = false
+    private var timeUpdaterTimerId: Int = -1
 
     private val player: VlcPlayer
         get() = requireActivity().castTo<MainActivity>().playerConn.player!!
@@ -71,7 +76,9 @@ class Player : Fragment() {
         mainVM = vmProvider.get(MainActivityViewModel::class.java)
 
         seekDebouncer = Debouncer.create(SEEK_DEBOUNCE_TIMEOUT) {
-            player.seekTo(it)
+            withContext(Dispatchers.Main) {
+                player.seekTo(it)
+            }
         }
     }
 
@@ -104,7 +111,8 @@ class Player : Fragment() {
         super.onResume()
 
         attachPlayer()
-        player.registerPlayerCallback(ContextCompat.getMainExecutor(this.requireContext()), playerCallback)
+        player.addListener(playerCallback)
+        timeUpdaterTimerId = TimerThread.INSTANCE.addInterval(TIME_UPDATER_INTERVAL_IDLING, TimeUpdater())
 
         setupMainMenu()
         refreshPlayerControls()
@@ -113,8 +121,9 @@ class Player : Fragment() {
     override fun onPause() {
         super.onPause()
 
+        TimerThread.INSTANCE.removeTask(timeUpdaterTimerId)
         player.clearVideoOutput()
-        player.unregisterPlayerCallback(playerCallback)
+        player.removeListener(playerCallback)
 
         mainMenu = null
     }
@@ -180,18 +189,18 @@ class Player : Fragment() {
     }
 
     private fun onPlayPauseClick() {
-        if(player.isPlaying())
+        if(player.isPlaying)
             player.pause()
         else if(player.getCurrentMedia() !== null)
             player.play()
     }
 
     private fun onPrevClick() {
-        player.skipToPreviousPlaylistItem()
+        player.seekToPrevious()
     }
 
     private fun onNextClick() {
-        player.skipToNextPlaylistItem()
+        player.seekToNext()
     }
 
     private fun onFullscreenClick() {
@@ -269,7 +278,7 @@ class Player : Fragment() {
             return@map "${it.name} ($start - $end)"
         }.toTypedArray()
 
-        dlgBuilder.setItems(itemTexts){ _, itemIdx ->
+        dlgBuilder.setItems(itemTexts) { _, itemIdx ->
             // jump to chapter
             val chapter = chapters[itemIdx]
             player.seekTo(chapter.start)
@@ -473,12 +482,12 @@ class Player : Fragment() {
 
             if(x <= width * SEEK_AREA_WIDTH){
                 // seek back
-                player.seekTo(player.currentPosition - SEEK_AMOUNT)
+                player.seekBack()
 
                 return true
             }else if(x >= width * (1.0f - SEEK_AREA_WIDTH)){
                 // seek forward
-                player.seekTo(player.currentPosition + SEEK_AMOUNT)
+                player.seekForward()
 
                 return true
             }
@@ -573,8 +582,8 @@ class Player : Fragment() {
             btnRepeat = repeat
             btnShuffle = shuffle
 
-            repeat.backgroundTintList = if(player.repeatMode == SessionPlayer.REPEAT_MODE_ALL) tintSelected else tintNotSelected
-            shuffle.backgroundTintList = if(player.shuffleMode == SessionPlayer.SHUFFLE_MODE_ALL) tintSelected else tintNotSelected
+            setRepeatButtonContent(repeat, player.repeatMode)
+            shuffle.backgroundTintList = if(player.shuffleModeEnabled) tintSelected else tintNotSelected
 
             repeat.setOnClickListener {
                 onRepeatClick()
@@ -584,13 +593,32 @@ class Player : Fragment() {
             }
         }
 
+        private fun setRepeatButtonContent(btn: ImageButton, repeatMode: Int) {
+            when(repeatMode) {
+                Media3Player.REPEAT_MODE_ALL -> {
+                    btn.setImageResource(R.drawable.ic_baseline_repeat_24)
+                    btn.backgroundTintList = tintNotSelected
+                }
+                Media3Player.REPEAT_MODE_ONE -> {
+                    btn.setImageResource(R.drawable.baseline_repeat_one_24)
+                    btn.backgroundTintList = tintNotSelected
+                }
+                Media3Player.REPEAT_MODE_OFF -> {
+                    btn.setImageResource(R.drawable.ic_baseline_repeat_24)
+                    btn.backgroundTintList = tintNotSelected
+                }
+            }
+        }
+
         private fun setupCurrentItemObserver() {
-            val mediaChangedListener = object : VlcPlayer.PlayerCallback() {
-                override fun onCurrentMediaItemChanged(player: SessionPlayer, item: MediaItem?) {
+            val mediaChangedListener = object : Media3Player.Listener {
+
+                override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
                     val select = listAdapter.getSelectExtension()
                     select.deselect()
 
-                    if(player.currentMediaItemIndex != SessionPlayer.INVALID_ITEM_INDEX){
+                    val plPos = player.getCurrentPlaylist()?.currentPosition ?: -1
+                    if(plPos != -1) {
                         select.select(
                             player.currentMediaItemIndex,
                             false,
@@ -600,9 +628,9 @@ class Player : Fragment() {
                 }
             }
 
-            player.registerPlayerCallback(ContextCompat.getMainExecutor(this@Player.requireContext()), mediaChangedListener)
+            player.addListener(mediaChangedListener)
             popup.setOnDismissListener {
-                player.unregisterPlayerCallback(mediaChangedListener)
+                player.removeListener(mediaChangedListener)
             }
         }
 
@@ -625,29 +653,27 @@ class Player : Fragment() {
         }
 
         private fun onItemClick(position: Int) {
-            player.skipToPlaylistItem(position)
+            player.seekToDefaultPosition(position)
             popup.dismiss()
         }
 
         private fun onRepeatClick() {
-            player.repeatMode = if(player.repeatMode == SessionPlayer.REPEAT_MODE_ALL)
-                    SessionPlayer.REPEAT_MODE_NONE
-                else
-                    SessionPlayer.REPEAT_MODE_ALL
+            //TODO support REPEAT_MODE_ONE
+            player.repeatMode = if(player.repeatMode == Media3Player.REPEAT_MODE_OFF)
+                Media3Player.REPEAT_MODE_ALL
+            else
+                Media3Player.REPEAT_MODE_OFF
 
-            btnRepeat.backgroundTintList = if(player.repeatMode == SessionPlayer.REPEAT_MODE_ALL) tintSelected else tintNotSelected
+            setRepeatButtonContent(btnRepeat, player.repeatMode)
         }
 
         private fun onShuffleClick() {
             // DynamicPlaylist will run DB-Queries when re-shuffling
             CoroutineScope(Dispatchers.IO).launch {
-                player.shuffleMode = if(player.shuffleMode == SessionPlayer.SHUFFLE_MODE_ALL)
-                        SessionPlayer.SHUFFLE_MODE_NONE
-                    else
-                        SessionPlayer.SHUFFLE_MODE_ALL
+                player.shuffleModeEnabled = !player.shuffleModeEnabled
 
                 withContext(Dispatchers.Main) {
-                    btnShuffle.backgroundTintList = if(player.shuffleMode == SessionPlayer.SHUFFLE_MODE_ALL) tintSelected else tintNotSelected
+                    btnShuffle.backgroundTintList = if(player.shuffleModeEnabled) tintSelected else tintNotSelected
                     // shuffle can change the items
                     loadItems()
                 }
@@ -682,36 +708,54 @@ class Player : Fragment() {
         }
     }
 
-    private inner class PlayerListener : VlcPlayer.PlayerCallback() {
+    private inner class PlayerListener : Media3Player.Listener {
 
-        override fun onPlayerStateChanged(player: SessionPlayer, playerState: Int) {
-            if (player.castTo<VlcPlayer>().isPlaying()) {
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            if(isPlaying) {
                 playerContainer.findViewById<ImageButton>(R.id.player_controls_play).setImageResource(R.drawable.ic_baseline_pause)
                 hideControlsWithDelay()
-            }else {
+            } else {
                 playerContainer.findViewById<ImageButton>(R.id.player_controls_play).setImageResource(R.drawable.ic_baseline_play)
             }
         }
 
-        override fun onTimeChanged(player: VlcPlayer, time: Long) {
-            if(!seekHandler.isSeeking) {
-                seekBar.value = ((time / player.duration.toDouble()) * SEEK_STEP).toInt().coerceAtLeast(1)
+        override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
+            player.getCurrentMedia()?.let { media ->
+                updateAltImg(media)
             }
-
-            timeTextView.text = formatPlayTime(time, player.duration, viewModel.timeTextAsRemaining.value!!)
+            updateChapters(player.getChapters())
         }
 
-        override fun onChaptersChanged(player: VlcPlayer, chapters: List<Chapter>) {
-            updateChapters(chapters)
-        }
-
-        override fun onCurrentMediaItemChanged(player: SessionPlayer, item: MediaItem?) {
-            if(item !== null)
-                updateAltImg(player.castTo<VlcPlayer>().getCurrentMedia()!!)
-        }
-
-        override fun onPlaylistChanged(player: VlcPlayer) {
+        override fun onPlaylistMetadataChanged(mediaMetadata: MediaMetadata) {
             updatePlaylistMenuItem()
+        }
+
+        override fun onPlayerError(error: PlaybackException) {
+            this@Player.context?.let { ctx ->
+                Toast.makeText(ctx, R.string.player_vlc_err, Toast.LENGTH_LONG)
+            }
+        }
+    }
+
+    private inner class TimeUpdater : TimerThread.TaskRunnable {
+        override operator fun invoke(): Long {
+            return runBlocking {
+                withContext(Dispatchers.Main) {
+                    val time = player.currentPosition
+                    if(time >= 0) {
+                        if(!seekHandler.isSeeking) {
+                            seekBar.value = ((time / player.duration.toDouble()) * SEEK_STEP).toInt().coerceAtLeast(1)
+                        }
+
+                        timeTextView.text = formatPlayTime(time, player.duration, viewModel.timeTextAsRemaining.value!!)
+                    }
+
+                    return@withContext if(player.isPlaying)
+                        TIME_UPDATER_INTERVAL_RUNNING
+                    else
+                        TIME_UPDATER_INTERVAL_IDLING
+                }
+            }
         }
     }
     //endregion

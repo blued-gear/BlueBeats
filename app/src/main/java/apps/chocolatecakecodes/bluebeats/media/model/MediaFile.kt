@@ -79,7 +79,7 @@ internal class MediaFile private constructor(
     fun shallowEquals(other: MediaFile?): Boolean {
         if(other === null)
             return false
-        return  this.type == other.type && this.path == other.path
+        return this.type == other.type && this.path == other.path
     }
 
     enum class Type {

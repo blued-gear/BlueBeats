@@ -1,21 +1,26 @@
 package apps.chocolatecakecodes.bluebeats.media.player
 
-import android.annotation.SuppressLint
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
-import androidx.media.AudioAttributesCompat
-import androidx.media2.common.MediaItem
-import androidx.media2.common.MediaMetadata
-import androidx.media2.common.SessionPlayer
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaItem.ClippingConfiguration
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.Player.Commands
+import androidx.media3.common.SimpleBasePlayer
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistIterator
 import apps.chocolatecakecodes.bluebeats.media.playlist.UNDETERMINED_COUNT
+import apps.chocolatecakecodes.bluebeats.media.playlist.items.MediaFileItem
 import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
+import apps.chocolatecakecodes.bluebeats.media.playlist.items.TimeSpanItem
 import apps.chocolatecakecodes.bluebeats.taglib.Chapter
 import apps.chocolatecakecodes.bluebeats.util.RequireNotNull
-import apps.chocolatecakecodes.bluebeats.util.castTo
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
-import com.google.common.util.concurrent.MoreExecutors
 import com.google.common.util.concurrent.SettableFuture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -24,30 +29,113 @@ import org.videolan.libvlc.MediaPlayer
 import org.videolan.libvlc.interfaces.ILibVLC
 import org.videolan.libvlc.util.VLCVideoLayout
 import java.util.*
+import kotlin.concurrent.Volatile
 
-@Suppress("NestedLambdaShadowedImplicitParameter")
-@SuppressLint("RestrictedApi")
-internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventListener {
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(looper), MediaPlayer.EventListener {
 
     companion object {
         private const val LOG_TAG = "VlcPlayer"
     }
 
+    var seekAmount = 5000L
+        set(value) {
+            field = value
+
+            synchronized(state) {
+                state.setSeekBackIncrementMs(value)
+                state.setSeekForwardIncrementMs(value)
+                mainThreadHandler.post { this.invalidateState() }
+            }
+        }
+    var maxSeekBackUntilPrev = 2000L
+        set(value) {
+            field = value
+
+            synchronized(state) {
+                state.setMaxSeekToPreviousPositionMs(value)
+                mainThreadHandler.post { this.invalidateState() }
+            }
+        }
+
     private val player = MediaPlayer(libVlc)
+    private val mainThreadHandler = Handler(looper)
     private val chapters = ArrayList<Chapter>()
+    private val chaptersRO = Collections.unmodifiableList(chapters)
+    private var state: SimpleBasePlayer.State.Builder
     private var currentMedia = RequireNotNull<MediaFile>()
     private var currentPlaylist: PlaylistIterator? = null
     private var suppressCallbacks: Boolean = false
-    private var newMediaLoading: Boolean = false
-    private var lastPlayingTime: Long = 0
+    @Volatile
+    private var playbackPos: Long = 0
+    private var repeatMode: Int = Player.REPEAT_MODE_OFF//TODO once #3 is implemented rewrite this + currentMedia to a ad-hoc created playlist for single files if jus a file is playing
+
+    private val supportedCommands = Commands.Builder().addAll(
+        Player.COMMAND_PLAY_PAUSE,
+        Player.COMMAND_STOP,
+        Player.COMMAND_SEEK_BACK,
+        Player.COMMAND_SEEK_FORWARD,
+        Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM,
+        Player.COMMAND_SEEK_TO_NEXT,
+        Player.COMMAND_SEEK_TO_DEFAULT_POSITION,
+        Player.COMMAND_SEEK_TO_MEDIA_ITEM,
+        Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
+        Player.COMMAND_SEEK_TO_PREVIOUS,
+        Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
+        Player.COMMAND_SET_SHUFFLE_MODE,
+        Player.COMMAND_SET_REPEAT_MODE,
+        Player.COMMAND_GET_CURRENT_MEDIA_ITEM,
+        Player.COMMAND_GET_TIMELINE,
+        Player.COMMAND_RELEASE,
+        Player.COMMAND_GET_AUDIO_ATTRIBUTES,
+    ).build()
 
     init {
         player.setEventListener(this)
+
+        state = State.Builder().apply {
+            setAvailableCommands(supportedCommands)
+
+            setSeekBackIncrementMs(seekAmount)
+            setSeekForwardIncrementMs(seekAmount)
+            setMaxSeekToPreviousPositionMs(maxSeekBackUntilPrev)
+
+            setContentPositionMs(this@VlcPlayer::getTimePos)
+            setPlaybackState(Player.STATE_IDLE)
+
+            // set initial dummy-PL (because the order of VLC loading events doesn't play nice with the media3 requirements)
+            setPlaylist(listOf(MediaItemData.Builder("").build()))
+        }
     }
 
-    fun release() {
-        stop()
-        player.release()
+    //region other public methods
+    fun playMedia(media: MediaFile, keepPlaylist: Boolean = false) {
+        if(!keepPlaylist) {
+            currentPlaylist = null
+            repeatMode = Player.REPEAT_MODE_OFF
+        }
+
+        chapters.clear()
+
+        currentMedia.set(media)
+        playbackPos = 0
+        player.play(media.path)
+
+        // state will be invalidated by VLC event
+    }
+
+    fun playPlaylist(playlist: PlaylistIterator) {
+        currentPlaylist = playlist
+        repeatMode = if(playlist.repeat) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF
+
+        synchronized(state) {
+            state.setRepeatMode(if(playlist.repeat) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF)
+            state.setShuffleModeEnabled(playlist.shuffle)
+        }
+
+        playlist.nextItem().play(this)
+
+        // state will be invalidated by VLC event
     }
 
     fun setVideoOutput(out: VLCVideoLayout) {
@@ -60,436 +148,210 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
         player.detachViews()
     }
 
-    fun playMedia(media: MediaFile, keepPlaylist: Boolean = false) {
-        if(!keepPlaylist) {
-            clearPlaylist()
-        }
-
-        chapters.clear()
-        getChapters().let { chaptersRO ->
-            callListeners {
-                if(it is PlayerCallback) {
-                    it.onChaptersChanged(this, chaptersRO)
-                }
-            }
-        }
-
-        currentMedia.set(media)
-        lastPlayingTime = 0
-        player.play(media.path)
+    fun getChapters(): List<Chapter> {
+        return chaptersRO
     }
 
-    fun playPlaylist(playlist: PlaylistIterator) {
-        currentPlaylist = playlist
-
-        callListeners {
-            it.onPlaylistChanged(this, emptyList(), null)//XXX can not convert PlaylistIterator to list of items
-            it.onRepeatModeChanged(this, repeatMode)
-            it.onShuffleModeChanged(this, shuffleMode)
-
-            if(it is PlayerCallback) {
-                it.onPlaylistChanged(this)
-            }
-        }
-
-        playlist.nextItem().play(this)
+    fun getCurrentMedia(): MediaFile? {
+        return if(currentMedia.isNull()) null else currentMedia.get()
     }
 
-    fun stop() {
+    fun getCurrentPlaylist(): PlaylistIterator? {
+        return currentPlaylist
+    }
+    //endregion
+
+    //region media3 player getters
+    override fun getState(): State {
+        return synchronized(state) {
+            state.apply {
+                this.setRepeatMode(repeatMode)
+                this.setShuffleModeEnabled(currentPlaylist?.shuffle ?: false)
+            }.build()
+        }
+    }
+
+    private fun getTimePos(): Long {
+        return playbackPos
+    }
+    //endregion
+
+    //region media3 player commands
+    override fun handleRelease(): ListenableFuture<*> {
+        this.stop()
+        player.release()
+
+        return Futures.immediateVoidFuture()
+    }
+
+    override fun handleSetPlayWhenReady(playWhenReady: Boolean): ListenableFuture<*> {
+        if(playWhenReady) {
+            return handlePlay()
+        } else {
+            return handlePause()
+        }
+    }
+
+    override fun handleStop(): ListenableFuture<*> {
         player.stop()
 
-        clearPlaylist()
-
-        lastPlayingTime = 0
+        currentPlaylist = null
+        playbackPos = 0
         currentMedia.set(null)
-        callListeners {
-            it.onCurrentMediaItemChanged(this, null)
+        repeatMode = Player.REPEAT_MODE_OFF
+
+        synchronized(state) {
+            state.setPlaybackState(Player.STATE_IDLE)
+                .setTotalBufferedDurationMs(PositionSupplier.ZERO)
+                .setContentBufferedPositionMs { C.TIME_UNSET }
+                .setIsLoading(false)
+        }
+        
+        return Futures.immediateVoidFuture()
+    }
+
+    override fun handleSeek(mediaItemIndex: Int, positionMs: Long, seekCommand: Int): ListenableFuture<*> {
+        if(currentPlaylist == null) {
+            if(positionMs != C.TIME_UNSET)
+                player.setTime(positionMs, false)
+
+            return Futures.immediateVoidFuture()
+        } else {
+            val ret = SettableFuture.create<Unit>()
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val pl = currentPlaylist!!
+
+                    if(pl.currentPosition == UNDETERMINED_COUNT) {
+                        ret.setException(IllegalStateException("playlist not started"))
+                        return@launch
+                    }
+
+                    if(mediaItemIndex != pl.currentPosition) {
+                        pl.seek(mediaItemIndex - pl.currentPosition)
+                        pl.currentItem().play(this@VlcPlayer)
+                    }
+
+                    if(positionMs != C.TIME_UNSET) {
+                        //TODO this might not work as the player might still be loading
+                        player.setTime(positionMs, true)
+                    }
+
+                    synchronized(state) {
+                        state.setCurrentMediaItemIndex(pl.currentPosition)
+                    }
+                    ret.set(Unit)
+                } catch (e: Exception) {
+                    Log.e(LOG_TAG, "exception in handleSeek()::pl_seek", e)
+                    ret.setException(e)
+                }
+            }
+            return ret
         }
     }
 
-    fun isPlaying() = player.isPlaying
+    override fun handleSetRepeatMode(repeatMode: Int): ListenableFuture<*> {
+        this.repeatMode = repeatMode
+        currentPlaylist?.let { it.repeat = repeatMode != Player.REPEAT_MODE_OFF }
 
-    fun getCurrentMedia() = if(currentMedia.isNull()) null else currentMedia.get()
+        return Futures.immediateVoidFuture()
+    }
 
-    fun getCurrentPlaylist() = currentPlaylist
+    override fun handleSetShuffleModeEnabled(shuffleModeEnabled: Boolean): ListenableFuture<*> {
+        if(currentPlaylist == null)
+            return Futures.immediateVoidFuture()// silently ignore
 
-    fun getChapters(): List<Chapter> = Collections.unmodifiableList(chapters)
-
-    fun seekPlaylist(by: Int): ListenableFuture<PlayerResult> {
-        val ret = SettableFuture.create<PlayerResult>()
+        // on DynamicPlaylist this will trigger regeneration, so run it outside of main-thread
+        val ret = SettableFuture.create<Unit>()
         CoroutineScope(Dispatchers.IO).launch {
-            try {
-                (currentPlaylist?.let {
-                    try {
-                        it.seek(by)
-                    }catch (e: IllegalArgumentException) {
-                        return@let Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_INVALID_STATE, null))
-                    }
-
-                    it.currentItem().play(this@VlcPlayer)
-
-                    playerResultWithCurrentMedia(PlayerResult.RESULT_SUCCESS)
-                } ?: Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_INVALID_STATE, null))).let {
-                    ret.setFuture(it)
-                }
-            } catch (e: Exception) {
-                Log.e(LOG_TAG, "exception in seekPlaylist()", e)
-                ret.setException(e)
-            }
+            currentPlaylist!!.shuffle = shuffleModeEnabled
+            ret.set(Unit)
         }
         return ret
     }
 
-    //region interface methods
-    override fun play(): ListenableFuture<PlayerResult> {
-        if(currentMedia.isNull()){
-            return Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_INVALID_STATE, null))
+    private fun handlePlay(): ListenableFuture<*> {
+        if(currentMedia.isNull()) {
+            return Futures.immediateFailedFuture<Void?>(IllegalStateException("no media set"))
         }
 
         player.play()
-        return playerResultWithCurrentMedia(PlayerResult.RESULT_SUCCESS)
-    }
 
-    override fun pause(): ListenableFuture<PlayerResult> {
-        if(currentMedia.isNull()){
-            return Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_INVALID_STATE, null))
+        synchronized(state) {
+            state.setPlayWhenReady(true, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
+            state.setPlaybackState(Player.STATE_READY)
         }
 
-        if(player.isPlaying)
-            lastPlayingTime = player.time
+        return Futures.immediateVoidFuture()
+    }
+
+    private fun handlePause(): ListenableFuture<*> {
+        if(currentMedia.isNull()) {
+            return Futures.immediateFailedFuture<Void?>(IllegalStateException("no media set"))
+        }
 
         player.pause()
-        return playerResultWithCurrentMedia(PlayerResult.RESULT_SUCCESS)
-    }
 
-    override fun prepare(): ListenableFuture<PlayerResult> {
-        return playerResultWithCurrentMedia(PlayerResult.RESULT_SUCCESS)
-    }
-
-    override fun seekTo(position: Long): ListenableFuture<PlayerResult> {
-        if(currentMedia.isNull()){
-            return Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_INVALID_STATE, null))
+        synchronized(state) {
+            state.setPlayWhenReady(false, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
         }
 
-        player.setTime(position.coerceAtLeast(0).coerceAtMost(player.length), false)
-
-        callListeners {
-            it.onSeekCompleted(this, position)
-        }
-        return playerResultWithCurrentMedia(PlayerResult.RESULT_SUCCESS)
-    }
-
-    override fun setPlaybackSpeed(playbackSpeed: Float): ListenableFuture<PlayerResult> {
-        player.rate = playbackSpeed
-
-        callListeners {
-            it.onPlaybackSpeedChanged(this, player.rate)
-        }
-        return playerResultWithCurrentMedia(PlayerResult.RESULT_SUCCESS)
-    }
-
-    override fun setAudioAttributes(attributes: AudioAttributesCompat): ListenableFuture<PlayerResult> {
-        return Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_NOT_SUPPORTED, null))
-    }
-
-    override fun getPlayerState(): Int {
-        if(currentMedia.isNull())
-            return PLAYER_STATE_IDLE
-        return if(player.isPlaying)
-            PLAYER_STATE_PLAYING
-        else
-            PLAYER_STATE_PAUSED
-    }
-
-    override fun getCurrentPosition(): Long {
-        if(currentMedia.isNull()){
-            return UNKNOWN_TIME
-        }
-
-        // there is a bug in VLC where the time will advance even if paused
-        return if(player.isPlaying)
-            player.time
-        else
-            lastPlayingTime
-    }
-
-    override fun getDuration(): Long {
-        if(currentMedia.isNull()){
-            return UNKNOWN_TIME
-        }
-
-        return if(player.length < 0)
-            UNKNOWN_TIME
-        else
-            player.length
-    }
-
-    override fun getBufferedPosition(): Long {
-        return UNKNOWN_TIME
-    }
-
-    override fun getBufferingState(): Int {
-        return BUFFERING_STATE_UNKNOWN
-    }
-
-    override fun getPlaybackSpeed(): Float {
-        return player.rate
-    }
-
-    override fun setPlaylist(list: MutableList<MediaItem>, metadata: MediaMetadata?): ListenableFuture<PlayerResult> {
-        return Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_NOT_SUPPORTED, null))
-    }
-
-    override fun getAudioAttributes(): AudioAttributesCompat? {
-        return AudioAttributesCompat.Builder().apply {
-            setUsage(AudioAttributesCompat.USAGE_MEDIA)
-            setContentType(AudioAttributesCompat.CONTENT_TYPE_MUSIC)
-        }.build()
-    }
-
-    override fun setMediaItem(item: MediaItem): ListenableFuture<PlayerResult> {
-        return Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_NOT_SUPPORTED, null))
-    }
-
-    override fun addPlaylistItem(index: Int, item: MediaItem): ListenableFuture<PlayerResult> {
-        return Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_NOT_SUPPORTED, null))
-    }
-
-    override fun removePlaylistItem(index: Int): ListenableFuture<PlayerResult> {
-        return Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_NOT_SUPPORTED, null))
-    }
-
-    override fun replacePlaylistItem(index: Int, item: MediaItem): ListenableFuture<PlayerResult> {
-        return Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_NOT_SUPPORTED, null))
-    }
-
-    override fun skipToPreviousPlaylistItem(): ListenableFuture<PlayerResult> {
-        if(currentPosition > 2000) {
-            // seek to start of media
-            return seekTo(0)
-        }
-
-        return currentPlaylist.let { playlist ->
-            if (playlist !== null) {
-                if (playlist.currentPosition > 0) {
-                    seekPlaylist(-1)
-                } else {
-                    // seek to start of media
-                    seekTo(0)
-                }
-            } else {
-                // seek to start of media
-                seekTo(0)
-            }
-        }
-    }
-
-    override fun skipToNextPlaylistItem(): ListenableFuture<PlayerResult> {
-        return currentPlaylist.let { playlist ->
-            if (playlist !== null) {
-                if (!playlist.isAtEnd()) {
-                    seekPlaylist(1)
-                } else {
-                    // seek to end of media
-                    seekTo(duration)
-                }
-            } else {
-                // seek to end of media
-                seekTo(duration)
-            }
-        }
-    }
-
-    override fun skipToPlaylistItem(index: Int): ListenableFuture<PlayerResult> {
-        return currentPlaylist?.let {
-            seekPlaylist(index - it.currentPosition)
-        } ?: Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_INVALID_STATE, null))
-    }
-
-    override fun updatePlaylistMetadata(metadata: MediaMetadata?): ListenableFuture<PlayerResult> {
-        return Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_NOT_SUPPORTED, null))
-    }
-
-    override fun setRepeatMode(repeatMode: Int): ListenableFuture<PlayerResult> {
-        if(repeatMode == REPEAT_MODE_GROUP || repeatMode == REPEAT_MODE_ONE)
-            return Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_NOT_SUPPORTED, null))
-
-        return currentPlaylist?.let {
-            val oldMode = it.repeat
-            it.repeat = repeatMode != REPEAT_MODE_NONE
-
-            if(oldMode != it.repeat) {
-                callListeners {
-                    it.onRepeatModeChanged(this, repeatMode)
-                }
-
-                playerResultWithCurrentMedia(PlayerResult.RESULT_SUCCESS)
-            } else {
-                playerResultWithCurrentMedia(PlayerResult.RESULT_INFO_SKIPPED)
-            }
-        } ?: Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_INVALID_STATE, null))
-    }
-
-    override fun setShuffleMode(shuffleMode: Int): ListenableFuture<PlayerResult> {
-        if(shuffleMode == SHUFFLE_MODE_GROUP)
-            return Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_NOT_SUPPORTED, null))
-
-        return currentPlaylist?.let {
-            val future = SettableFuture.create<PlayerResult>()
-            CoroutineScope(Dispatchers.IO).launch {
-                val oldMode = it.shuffle
-                it.shuffle = shuffleMode != SHUFFLE_MODE_NONE
-
-                if(oldMode != it.shuffle) {
-                    callListeners {
-                        it.onShuffleModeChanged(this@VlcPlayer, shuffleMode)
-                    }
-
-                    future.setFuture(playerResultWithCurrentMedia(PlayerResult.RESULT_SUCCESS))
-                } else {
-                    future.setFuture(playerResultWithCurrentMedia(PlayerResult.RESULT_INFO_SKIPPED))
-                }
-            }
-            future
-        } ?: Futures.immediateFuture(PlayerResult(PlayerResult.RESULT_ERROR_INVALID_STATE, null))
-    }
-
-    override fun getPlaylist(): MutableList<MediaItem>? {
-        return currentPlaylist?.let {
-            it.getItems().map {
-                playlistItemToMediaItem(it).get()
-            }.toMutableList()
-        }
-    }
-
-    override fun getPlaylistMetadata(): MediaMetadata? {
-        return null
-    }
-
-    override fun getRepeatMode(): Int {
-        return currentPlaylist?.let {
-            if(it.repeat)
-                REPEAT_MODE_ALL
-            else
-                REPEAT_MODE_NONE
-        } ?: REPEAT_MODE_NONE
-    }
-
-    override fun getShuffleMode(): Int {
-        return currentPlaylist?.let {
-            if(it.shuffle)
-                SHUFFLE_MODE_ALL
-            else
-                SHUFFLE_MODE_NONE
-        } ?: SHUFFLE_MODE_NONE
-    }
-
-    override fun getCurrentMediaItem(): MediaItem? {
-        return currentMediaToMediaItem().get()
-    }
-
-    override fun getCurrentMediaItemIndex(): Int {
-        return currentPlaylist?.let {
-            if(it.currentPosition == UNDETERMINED_COUNT)
-                return INVALID_ITEM_INDEX
-            return it.currentPosition
-        } ?: INVALID_ITEM_INDEX
-    }
-
-    override fun getPreviousMediaItemIndex(): Int {
-        return currentPlaylist?.let {
-            if(it.currentPosition == UNDETERMINED_COUNT)
-                return INVALID_ITEM_INDEX
-            if(it.currentPosition == 0)
-                return INVALID_ITEM_INDEX
-            return it.currentPosition - 1
-        } ?: INVALID_ITEM_INDEX
-    }
-
-    override fun getNextMediaItemIndex(): Int {
-        return currentPlaylist?.let {
-            if(it.currentPosition == UNDETERMINED_COUNT)
-                return INVALID_ITEM_INDEX
-            if(it.currentPosition == it.totalItems - 1)
-                return INVALID_ITEM_INDEX
-            return it.currentPosition + 1
-        } ?: INVALID_ITEM_INDEX
+        return Futures.immediateVoidFuture()
     }
     //endregion
 
-    //region player callbacks
+    //region vlc events
     override fun onEvent(event: MediaPlayer.Event?) {
+        if(suppressCallbacks)
+            return
+
         event?.let {
             when(it.type) {
-                MediaPlayer.Event.Opening, MediaPlayer.Event.Buffering,
-                    MediaPlayer.Event.Playing, MediaPlayer.Event.Paused,
-                    MediaPlayer.Event.Stopped, MediaPlayer.Event.EndReached -> onPlayingChanged(it.type)
-                MediaPlayer.Event.MediaChanged -> onMediaChanged()
+                MediaPlayer.Event.Playing, MediaPlayer.Event.Paused,
+                MediaPlayer.Event.Stopped -> onPlayingChanged()
+                MediaPlayer.Event.EndReached -> onEndReached()
+                /*MediaPlayer.Event.MediaChanged -> onMediaChanged()
+                MediaPlayer.Event.LengthChanged -> onMediaLoaded()*/
+                MediaPlayer.Event.Opening -> onMediaLoading()
                 MediaPlayer.Event.LengthChanged -> onMediaLoaded()
-                MediaPlayer.Event.TimeChanged -> onTimeChanged()
+                MediaPlayer.Event.TimeChanged -> onTimeChanged(it.timeChanged)
                 MediaPlayer.Event.EncounteredError -> onPlayerError()
+                else -> Unit// ignore
             }
         }
     }
 
-    private fun onPlayingChanged(state: Int) {
-        when(state) {
-            MediaPlayer.Event.Opening -> {//MediaPlayer.Event.Buffering (removed; hope this will do more good than bad)
-                currentMediaToMediaItem().let {
-                    it.addListener({
-                        it.get().let { mediaItem ->
-                            callListeners {
-                                it.onPlayerStateChanged(this@VlcPlayer, PLAYER_STATE_PAUSED)
-                                it.onBufferingStateChanged(this@VlcPlayer, mediaItem, BUFFERING_STATE_BUFFERING_AND_STARVED)
-                            }
-                        }
-                    }, MoreExecutors.directExecutor())
-                }
-            }
-            MediaPlayer.Event.Paused -> {
-                callListeners {
-                    it.onPlayerStateChanged(this, PLAYER_STATE_PAUSED)
-                }
-            }
-            MediaPlayer.Event.Playing -> {
-                callListeners {
-                    it.onPlayerStateChanged(this, PLAYER_STATE_PLAYING)
-                }
-            }
-            MediaPlayer.Event.EndReached -> {
-                callListeners {
-                    it.onPlayerStateChanged(this, PLAYER_STATE_PAUSED)
-                }
-                onEndReached()
-            }
-            MediaPlayer.Event.Stopped -> {
-                callListeners {
-                    it.onPlayerStateChanged(this, PLAYER_STATE_IDLE)
-                }
-            }
+    private fun onPlayingChanged() {
+        synchronized(state) {
+            state.setPlayWhenReady(player.isPlaying, Player.PLAY_WHEN_READY_CHANGE_REASON_REMOTE)
+            mainThreadHandler.post { invalidateState() }
+        }
+    }
+
+    private fun onMediaLoading() {
+        synchronized(state) {
+            state.setPlayWhenReady(player.isPlaying, Player.PLAY_WHEN_READY_CHANGE_REASON_REMOTE)
+            state.setPlaybackState(Player.STATE_BUFFERING)
+            state.setIsLoading(true)
+
+            mainThreadHandler.post { invalidateState() }
         }
     }
 
     private fun onMediaLoaded() {
-        if(newMediaLoading) {
-            newMediaLoading = false
-
+        // in IO-thread because fillInStateMedia() will load media-attrs from DB
+        CoroutineScope(Dispatchers.IO).launch {
             // chapter-info should now be loaded
+            chapters.clear()
             loadChapters()
-        }
-    }
 
-    private fun onMediaChanged() {
-        newMediaLoading = true
+            synchronized(state) {
+                fillInStateMedia(state)
+                state.setPlaybackState(Player.STATE_READY)
+                state.setIsLoading(false)
 
-        currentMediaToMediaItem().let {
-            it.addListener({
-                it.get().let { mediaItem ->
-                    callListeners {
-                        it.onCurrentMediaItemChanged(this@VlcPlayer, mediaItem)
-                    }
-                }
-            }, MoreExecutors.directExecutor())
+                mainThreadHandler.post { invalidateState() }
+            }
         }
     }
 
@@ -511,101 +373,42 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
         suppressCallbacks = true
         player.play(currentMedia.get().path)
         player.pause()
+        playbackPos = 0
         suppressCallbacks = false
 
-        callListeners {
-            it.onPlaybackCompleted(this)
+        synchronized(state) {
+            state.setPlaybackState(Player.STATE_ENDED)
+            state.setPlayWhenReady(false, Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM)
+            mainThreadHandler.post { invalidateState() }
         }
     }
 
-    private fun playNextPlaylistItem() {
-        CoroutineScope(Dispatchers.IO).launch {
-            currentPlaylist!!.nextItem().play(this@VlcPlayer)
-        }
-    }
-
-    private fun onTimeChanged() {
-        callListeners {
-            if(it is PlayerCallback) {
-                it.onTimeChanged(this, player.time)
-            }
-        }
+    private fun onTimeChanged(time: Long) {
+        playbackPos = time
     }
 
     private fun onPlayerError() {
         Log.e(LOG_TAG, "received error-event")
-        callListeners {
-            it.onPlayerStateChanged(this, PLAYER_STATE_ERROR)
+
+        synchronized(state) {
+            state.setPlayerError(PlaybackException("VLC reported an error", null, PlaybackException.ERROR_CODE_UNSPECIFIED))
+            mainThreadHandler.post { invalidateState() }
         }
     }
     //endregion
 
     //region private methods
-    private fun currentMediaToMediaItem(): ListenableFuture<MediaItem?> {
-        return if(currentMedia.isNull())
-            Futures.immediateFuture(null)
-        else
-            mediaFileToMediaItem(currentMedia.get()).castTo()
-    }
-
-    private fun playlistItemToMediaItem(item: PlaylistItem): ListenableFuture<MediaItem> {
-        val file = item.file
-
-        return if(file != null)
-            mediaFileToMediaItem(file)
-        else
-            // unknown media
-            Futures.immediateFuture(MediaItem.Builder().apply {
-                this.setStartPosition(0)
-                this.setEndPosition(-1)
-            }.build())
-    }
-
-    private fun mediaFileToMediaItem(media: MediaFile): ListenableFuture<MediaItem> {
-        val future = SettableFuture.create<MediaItem>()
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                MediaItem.Builder().apply {
-                    this.setStartPosition(0)
-                    this.setEndPosition(media.mediaTags.length)
-                    MediaMetadata.Builder().apply {
-                        this.putString(MediaMetadata.METADATA_KEY_MEDIA_ID, media.entityId.toString())
-                        this.putString(MediaMetadata.METADATA_KEY_TITLE, media.title)
-                        this.putLong(MediaMetadata.METADATA_KEY_DURATION, media.mediaTags.length)
-                        if (!media.mediaTags.artist.isNullOrEmpty())
-                            this.putString(
-                                MediaMetadata.METADATA_KEY_ARTIST,
-                                media.mediaTags.artist
-                            )
-                        if (!media.mediaTags.genre.isNullOrEmpty())
-                            this.putString(MediaMetadata.METADATA_KEY_GENRE, media.mediaTags.genre)
-                    }.let {
-                        this.setMetadata(it.build())
-                    }
-                }.build().let {
-                    future.set(it)
-                }
-            } catch (e: Exception) {
-                future.setException(e)
+    private fun playNextPlaylistItem() {
+        if(repeatMode == Player.REPEAT_MODE_ONE) {
+            val pl = currentPlaylist
+            if(pl != null) {
+                pl.currentItem().play(this)
+            } else {
+                player.setTime(0, false)
             }
-        }
-
-        return future
-    }
-
-    private fun playerResultWithCurrentMedia(status: Int): ListenableFuture<PlayerResult> {
-        return Futures.transform(currentMediaToMediaItem(), {
-            PlayerResult(status, it)
-        }, MoreExecutors.directExecutor())
-    }
-
-    private fun callListeners(call: (SessionPlayer.PlayerCallback) -> Unit) {
-        if(suppressCallbacks) return
-
-        this.callbacks.forEach {
-            it.second.execute {
-                call(it.first)
+        } else {
+            CoroutineScope(Dispatchers.IO).launch {
+                currentPlaylist!!.nextItem().play(this@VlcPlayer)
             }
         }
     }
@@ -627,41 +430,106 @@ internal class VlcPlayer(libVlc: ILibVLC) : SessionPlayer(), MediaPlayer.EventLi
         }
 
         this.chapters.addAll(chapters)
+    }
 
-        getChapters().let { chaptersRO ->
-            callListeners {
-                if(it is PlayerCallback) {
-                    it.onChaptersChanged(this, chaptersRO)
+    //region convert PlaylistItem to MediaItemData
+    private fun fillInStateMedia(builder: State.Builder) {
+        //TODO simplify this after the player primarily uses playlists
+
+        // set here as a DynamicPlaylist might have updated itself
+        val plItems = currentPlaylist?.getItems()
+            ?: listOf(MediaFileItem(currentMedia.get()))
+        plItems.mapIndexed { idx, itm ->
+            playlistItemToMediaItemData(itm, idx)
+        }.let {
+            builder.setPlaylist(it)
+        }
+        builder.setCurrentMediaItemIndex(currentPlaylist?.currentPosition ?: 0)
+    }
+
+    private fun playlistItemToMediaItemData(itm: PlaylistItem, itmIdx: Int): MediaItemData {
+        val id = Objects.hash(itm, itmIdx)
+        return MediaItemData.Builder(id).apply {
+            this.setIsSeekable(true)
+
+            this.setMediaItem(playlistItemToMediaItem(itm))
+            this.setDurationUs(itm.file?.mediaTags?.length?.times(1000L) ?: C.TIME_UNSET)
+
+            itm.file?.let { file ->
+                this.setPeriods(mediaFilePeriods(file))
+            }
+        }.build()
+    }
+
+    private fun playlistItemToMediaItem(itm: PlaylistItem): MediaItem {
+        return MediaItem.Builder().apply {
+            itm.file?.let { file ->
+                fillInMediaItemFromMediaFile(file, this)
+            }
+
+            if(itm is TimeSpanItem) {
+                ClippingConfiguration.Builder().apply {
+                    this.setStartPositionMs(itm.startMs)
+                    this.setEndPositionMs(itm.endMs)
+                    this.setRelativeToDefaultPosition(true)
+                }.let {
+                    this.setClippingConfiguration(it.build())
                 }
             }
+        }.build()
+    }
+
+    private fun fillInMediaItemFromMediaFile(file: MediaFile, builder: MediaItem.Builder) {
+        builder.setMediaId(file.entityId.toString())
+        builder.setUri("file://${file.path}")
+
+        MediaMetadata.Builder().apply {
+            when(file.type) {
+                MediaFile.Type.AUDIO -> this.setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+                MediaFile.Type.VIDEO -> this.setMediaType(MediaMetadata.MEDIA_TYPE_VIDEO)
+                else -> this.setMediaType(null)
+            }
+
+            this.setIsPlayable(true)
+            this.setIsBrowsable(false)
+
+            this.setTitle(file.title)
+            file.mediaTags.artist.let {
+                if(!it.isNullOrEmpty())
+                    this.setArtist(it)
+            }
+            file.mediaTags.genre.let {
+                if(!it.isNullOrEmpty())
+                    this.setGenre(it)
+            }
+
+            // chapters should now be available, so make sure that onMediaMetadataChanged() gets called
+            if(file.shallowEquals(currentMedia.get()))
+                this.setTotalTrackCount(1)
+            else
+                this.setTotalTrackCount(null)
+        }.let {
+            builder.setMediaMetadata(it.build())
         }
     }
 
-    private fun clearPlaylist() {
-        if(currentPlaylist !== null) {
-            currentPlaylist = null
-
-            callListeners {
-                it.onPlaylistChanged(this, null, null)
-                it.onRepeatModeChanged(this, repeatMode)
-                it.onShuffleModeChanged(this, shuffleMode)
-
-                if(it is PlayerCallback) {
-                    it.onPlaylistChanged(this)
-                }
+    private fun mediaFilePeriods(file: MediaFile): List<PeriodData> {
+        //TODO maybe use chapters from VLC (should be loaded for current file)
+        if(file.chapters.isNullOrEmpty()) {
+            return PeriodData.Builder(file.entityId).apply {
+                this.setDurationUs(file.mediaTags.length * 1000)
+            }.let {
+                listOf(it.build())
+            }
+        } else {
+            return file.chapters!!.map { chapter ->
+                val id = Objects.hash(file, chapter)
+                PeriodData.Builder(id).apply {
+                    this.setDurationUs(chapter.end - chapter.start)
+                }.build()
             }
         }
     }
     //endregion
-
-    //region classes
-    abstract class PlayerCallback : SessionPlayer.PlayerCallback() {
-
-        open fun onTimeChanged(player: VlcPlayer, time: Long){}
-
-        open fun onChaptersChanged(player: VlcPlayer, chapters: List<Chapter>){}
-
-        open fun onPlaylistChanged(player: VlcPlayer){}
-    }
     //endregion
 }

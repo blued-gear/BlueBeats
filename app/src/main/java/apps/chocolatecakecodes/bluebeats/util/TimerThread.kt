@@ -6,15 +6,17 @@ import android.util.Log
 import java.util.PriorityQueue
 import kotlin.random.Random
 
-private typealias TaskRunnable = () -> Long
-
 /**
  * This class provides functions similar to setTimeout() and setInterval() in JavaScript. <br/>
  * Additionally every task can change its interval after every execution: 0 => keep last interval, > 0 => set new Interval, < 0 => cancel task
  */
-class TimerThread private constructor(){
+class TimerThread private constructor() {
 
-    companion object{
+    fun interface TaskRunnable {
+        operator fun invoke(): Long
+    }
+
+    companion object {
 
         val INSTANCE = TimerThread()
 
@@ -26,7 +28,7 @@ class TimerThread private constructor(){
     private val taskQueue: PriorityQueue<Task>
     private val runner: Runner
 
-    init{
+    init {
         taskQueue = PriorityQueue(kotlin.Comparator{ o1, o2 ->
             if(o1.sleepLeft() < o2.sleepLeft())
                 return@Comparator -1
@@ -43,8 +45,12 @@ class TimerThread private constructor(){
      * will schedule the task to run after timeout
      * @param timeout time before execution in milliseconds
      * @param task task to run
+     * @return the id of the task
      */
-    fun addTimeout(timeout: Long, task: TaskRunnable): Int{
+    fun addTimeout(timeout: Long, task: TaskRunnable): Int {
+        if(timeout <= 0)
+            throw IllegalArgumentException("timeout must be > 0")
+
         synchronized(lock){
             val idTimePart: Long = System.currentTimeMillis()
             val idRngPart: Long = idRng.nextLong()
@@ -62,8 +68,11 @@ class TimerThread private constructor(){
      * @param timeout time between each executions in milliseconds
      * @param task task to run repeatedly
      */
-    fun addInterval(timeout: Long, task: TaskRunnable): Int{
-        synchronized(lock){
+    fun addInterval(timeout: Long, task: TaskRunnable): Int {
+        if(timeout <= 0)
+            throw IllegalArgumentException("timeout must be > 0")
+
+        synchronized(lock) {
             val idTimePart: Long = System.currentTimeMillis()
             val idRngPart: Long = idRng.nextLong()
             val id = ((idTimePart and 0x000000FF) or (idRngPart and 0xFFFFFF00)).toInt()
@@ -75,13 +84,13 @@ class TimerThread private constructor(){
         }
     }
 
-    fun removeTask(id: Int){
-        synchronized(lock){
+    fun removeTask(id: Int) {
+        synchronized(lock) {
             taskQueue.removeIf { it.id == id }
         }
     }
 
-    fun destroy(){
+    fun destroy() {
         runner.alive = false
         runner.interrupt()
         taskQueue.clear()
@@ -91,11 +100,11 @@ class TimerThread private constructor(){
 
         private var lastExecution: Long
 
-        init{
+        init {
             lastExecution = System.currentTimeMillis()
         }
 
-        fun execute(){
+        fun execute() {
             try{
                 val nextInterval = task()
                 if(nextInterval != 0L)
@@ -107,22 +116,22 @@ class TimerThread private constructor(){
             }
         }
 
-        fun sleepLeft(): Long{
+        fun sleepLeft(): Long {
             val ret = (lastExecution + interval) - System.currentTimeMillis()
             return if(ret >= 0) ret else 0
         }
 
-        fun shouldCancel(): Boolean{
+        fun shouldCancel(): Boolean {
             return interval < 0
         }
     }
 
-    private inner class Runner : Thread(){
+    private inner class Runner : Thread() {
 
         @Volatile
         var alive = true
 
-        init{
+        init {
             this.name = "TimerThread-Runner"
             this.isDaemon = true
         }
@@ -139,36 +148,42 @@ class TimerThread private constructor(){
 
                     // wait until first task should be executed
                     val firstTaskPeek: Task?
-                    synchronized(lock){
+                    synchronized(lock) {
                         firstTaskPeek = taskQueue.peek()
                     }
                     if (firstTaskPeek === null)
                         continue
                     synchronized(lock) {
-                        lock.wait(firstTaskPeek.sleepLeft())
+                        val t = firstTaskPeek.sleepLeft()
+                        if(t > 0)// 0 would cause infinite sleep
+                            lock.wait(t)
                     }
 
                     // check if task should be executed and execute it
                     val task : Task?
-                    synchronized(lock){
+                    synchronized(lock) {
                         task = taskQueue.poll()
                     }
+
                     if(task === null)
                         continue
-                    if(task.sleepLeft() > 0){
+
+                    if(task.sleepLeft() > 0) {
                         // not to be executed now
                         synchronized(lock) {
                             taskQueue.offer(task)
                         }
                         continue
                     }
+
                     task.execute()
+
                     if(task.repeating && !task.shouldCancel()) {// reschedule if it is an interval task
                         synchronized(lock) {
                             taskQueue.offer(task)
                         }
                     }
-                } catch (e: InterruptedException){
+                } catch(e: InterruptedException) {
                     continue
                 }
             }

@@ -1,37 +1,38 @@
 package apps.chocolatecakecodes.bluebeats.service
 
-import android.annotation.SuppressLint
-import android.app.Notification
 import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
-import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.os.Binder
 import android.os.Build
+import android.os.Bundle
 import android.os.IBinder
-import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
-import android.view.KeyEvent
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.IconCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.media.app.NotificationCompat.MediaStyle
-import androidx.media2.common.MediaMetadata
-import androidx.media2.session.MediaSession
-import androidx.media2.session.MediaSessionService
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.session.CommandButton
+import androidx.media3.session.MediaNotification
+import androidx.media3.session.MediaSession
+import androidx.media3.session.MediaSessionService
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.player.VlcPlayer
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.view.MainActivity
+import com.google.common.collect.ImmutableList
 
-
+@androidx.annotation.OptIn(UnstableApi::class)
 internal class PlayerService : MediaSessionService(){
 
     companion object {
@@ -53,7 +54,6 @@ internal class PlayerService : MediaSessionService(){
 
     private lateinit var player: VlcPlayer
     private var session: MediaSession by OnceSettable()
-    private var notificationHandlerFix: MediaNotificationHandlerFix by OnceSettable()
     private var initialized = false
 
     override fun onCreate() {
@@ -68,26 +68,25 @@ internal class PlayerService : MediaSessionService(){
             }
         }
 
-        player = VlcPlayer(VlcManagers.getLibVlc())
+        player = VlcPlayer(VlcManagers.getLibVlc(), this.mainLooper)
         setupSession()
-
-        notificationHandlerFix = MediaNotificationHandlerFix(this, session)
+        setMediaNotificationProvider(NotificationProvider(this, session))
 
         initialized = true
     }
 
     override fun onDestroy() {
         initialized = false
-        session.close()
+        session.release()
         player.release()
 
         super.onDestroy()
     }
 
-    override fun onBind(intent: Intent): IBinder? {
+    override fun onBind(intent: Intent?): IBinder? {
         val superRet = super.onBind(intent)
 
-        return if(intent.action == INTENT_INTERNAL_BINDER)
+        return if(intent?.action == INTENT_INTERNAL_BINDER)
             PlayerServiceBinder()
         else
             superRet
@@ -95,16 +94,6 @@ internal class PlayerService : MediaSessionService(){
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession {
         return session
-    }
-
-    override fun onUpdateNotification(session: MediaSession): MediaNotification? {
-        if(session !== this.session)
-            throw IllegalArgumentException("PlayerService will only handle its own session")
-
-        if(initialized)
-            notificationHandlerFix.updateNotification()
-
-        return null
     }
 
     private fun setupSession() {
@@ -131,12 +120,11 @@ internal class PlayerServiceConnection : ServiceConnection {
     }
 }
 
-// code partly taken from androidx.media2.session.MediaNotificationHandler
-@SuppressLint("PrivateResource")
+@androidx.annotation.OptIn(UnstableApi::class)
 private class NotificationProvider(
     private val context: Context,
     private val mediaSession: MediaSession
-) {
+) : MediaNotification.Provider {
 
     companion object {
         private val notificationId: Int = (PlayerService::javaClass.hashCode() shl 1) + 1
@@ -144,13 +132,8 @@ private class NotificationProvider(
     }
 
     private val notificationManager = NotificationManagerCompat.from(context)
+    private val contentActionIntent: PendingIntent
     private var lastThumb: Pair<String, Bitmap>? = null
-
-    private val contentAction: PendingIntent
-    private val playAction: NotificationCompat.Action
-    private val pauseAction: NotificationCompat.Action
-    private val skipBackAction: NotificationCompat.Action
-    private val skipNextAction: NotificationCompat.Action
 
     private val audioPlaceholderImg: Bitmap by lazy {
         ContextCompat.getDrawable(context, R.drawable.ic_baseline_audiotrack_24)!!.toBitmap(256, 256)
@@ -160,7 +143,7 @@ private class NotificationProvider(
     }
 
     init {
-        contentAction = Intent(context, MainActivity::class.java).apply {
+        contentActionIntent = Intent(context, MainActivity::class.java).apply {
             putExtra(MainActivity.INTENT_OPTION_TAB, 2)
         }.let {
             PendingIntent.getActivity(
@@ -168,55 +151,32 @@ private class NotificationProvider(
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
         }
-
-        playAction = NotificationCompat.Action(
-            androidx.media2.session.R.drawable.media_session_service_notification_ic_play,
-            context.getString(androidx.media2.session.R.string.play_button_content_description),
-            createMediaPendingIntent(PlaybackStateCompat.ACTION_PLAY)
-        )
-        pauseAction = NotificationCompat.Action(
-            androidx.media2.session.R.drawable.media_session_service_notification_ic_pause,
-            context.getString(androidx.media2.session.R.string.pause_button_content_description),
-            createMediaPendingIntent(PlaybackStateCompat.ACTION_PAUSE)
-        )
-        skipBackAction = NotificationCompat.Action(
-            androidx.media2.session.R.drawable.media_session_service_notification_ic_skip_to_previous,
-            context.getString(androidx.media2.session.R.string.skip_to_previous_item_button_content_description),
-            createMediaPendingIntent(PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)
-        )
-        skipNextAction = NotificationCompat.Action(
-            androidx.media2.session.R.drawable.media_session_service_notification_ic_skip_to_next,
-            context.getString(androidx.media2.session.R.string.skip_to_next_item_button_content_description),
-            createMediaPendingIntent(PlaybackStateCompat.ACTION_SKIP_TO_NEXT)
-        )
     }
 
-    fun createNotification(): MediaSessionService.MediaNotification {
+    override fun createNotification(
+        mediaSession: MediaSession,
+        customLayout: ImmutableList<CommandButton>,
+        actionFactory: MediaNotification.ActionFactory,
+        onNotificationChangedCallback: MediaNotification.Provider.Callback
+    ): MediaNotification {
         createNotificationChannel()
 
         val player = mediaSession.player as VlcPlayer
         return NotificationCompat.Builder(context, notificationChannelId).apply {
             setOnlyAlertOnce(true)
             setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            setOngoing(player.isPlaying())
+            setOngoing(player.isPlaying)
             setSmallIcon(R.mipmap.ic_launcher)
 
             player.currentMediaItem!!.let { media ->
-                media.metadata!!.let { meta ->
-                    setContentTitle(meta.getString(MediaMetadata.METADATA_KEY_TITLE))
-                    setContentText(meta.getString(MediaMetadata.METADATA_KEY_ARTIST))
-                }
+                setContentTitle(media.mediaMetadata.title)
+                setContentText(media.mediaMetadata.artist)
 
                 setLargeIcon(getThumbnail(player.getCurrentMedia()!!))
             }
 
-            addAction(skipBackAction)
-            if(player.isPlaying())
-                addAction(pauseAction)
-            else
-                addAction(playAction)
-            addAction(skipNextAction)
-            setContentIntent(contentAction)
+            createActions(this, actionFactory)
+            setContentIntent(contentActionIntent)
 
             MediaStyle().also {
                 it.setMediaSession(mediaSession.sessionCompatToken)
@@ -226,8 +186,12 @@ private class NotificationProvider(
                 this.setStyle(it)
             }
         }.let {
-            MediaSessionService.MediaNotification(notificationId, it.build())
+            MediaNotification(notificationId, it.build())
         }
+    }
+
+    override fun handleCustomCommand(session: MediaSession, action: String, extras: Bundle): Boolean {
+        return false
     }
 
     private fun createNotificationChannel() {
@@ -242,6 +206,38 @@ private class NotificationProvider(
         }.let {
             notificationManager.createNotificationChannel(it.build())
         }
+    }
+
+    private fun createActions(builder: NotificationCompat.Builder, factory: MediaNotification.ActionFactory) {
+        val player = mediaSession.player as VlcPlayer
+
+        builder.addAction(factory.createMediaAction(
+            mediaSession,
+            IconCompat.createWithResource(context, androidx.media3.session.R.drawable.media3_notification_seek_to_previous),
+            context.getString(androidx.media3.session.R.string.media3_controls_seek_to_previous_description),
+            Player.COMMAND_SEEK_TO_PREVIOUS
+        ))
+        if(player.isPlaying) {
+            builder.addAction(factory.createMediaAction(
+                mediaSession,
+                IconCompat.createWithResource(context, androidx.media3.session.R.drawable.media3_notification_pause),
+                context.getString(androidx.media3.session.R.string.media3_controls_pause_description),
+                Player.COMMAND_PLAY_PAUSE
+            ))
+        } else {
+            builder.addAction(factory.createMediaAction(
+                mediaSession,
+                IconCompat.createWithResource(context, androidx.media3.session.R.drawable.media3_notification_play),
+                context.getString(androidx.media3.session.R.string.media3_controls_play_description),
+                Player.COMMAND_PLAY_PAUSE
+            ))
+        }
+        builder.addAction(factory.createMediaAction(
+            mediaSession,
+            IconCompat.createWithResource(context, androidx.media3.session.R.drawable.media3_notification_seek_to_next),
+            context.getString(androidx.media3.session.R.string.media3_controls_seek_to_next_description),
+            Player.COMMAND_SEEK_TO_NEXT
+        ))
     }
 
     private fun getThumbnail(media: MediaFile): Bitmap {
@@ -262,96 +258,6 @@ private class NotificationProvider(
             }
         }.also {
             lastThumb = Pair(media.path, it)
-        }
-    }
-
-    private fun createMediaPendingIntent(action: Long): PendingIntent? {
-        val keyCode = PlaybackStateCompat.toKeyCode(action)
-        val intent = Intent(Intent.ACTION_MEDIA_BUTTON).apply {
-            component = ComponentName(context, PlayerService::class.java)
-            putExtra(Intent.EXTRA_KEY_EVENT, KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
-        }
-
-        return PendingIntent.getService(
-            context,
-            keyCode, intent,
-            PendingIntent.FLAG_IMMUTABLE
-        )
-    }
-}
-
-// XXX reimplement logic of MediaNotificationHandler::onPlayerStateChanged() because the official one is buggy
-//   (does not call the new .startForeground() method which crashes the app when in background;
-//   also stops service when not playing which leads to bug in Android which is ignoring the FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK flag
-//     -> keep service alive as long as app is open)
-private class MediaNotificationHandlerFix(
-    private val service: PlayerService,
-    private val session: MediaSession
-) {
-
-    private val notificationProvider = NotificationProvider(service, session)
-    //private val selfStartIntent = Intent(service, service.javaClass)
-    //private val notificationManagerCompat = NotificationManagerCompat.from(service)
-
-    @SuppressLint("RestrictedApi")
-    fun updateNotification() {
-        val mediaNotification = notificationProvider.createNotification()
-        val notification = mediaNotification.notification
-        val notificationId = mediaNotification.notificationId
-
-        // Call Notification.MediaStyle#setMediaSession() indirectly.
-        val fwkToken =
-            session.sessionCompat.sessionToken.token as android.media.session.MediaSession.Token
-        notification.extras.putParcelable(Notification.EXTRA_MEDIA_SESSION, fwkToken)
-
-        /*
-        if(isPlaybackStopped(session.player.playerState)) {
-            stopForegroundServiceIfNeeded()
-            normalNotification(notificationId, notification)
-        } else {
-            foregroundNotification(notificationId, notification)
-        }
-         */
-
-        foregroundNotification(notificationId, notification)
-    }
-
-    /*
-    fun isPlaybackStopped(state: Int): Boolean {
-        return state == SessionPlayer.PLAYER_STATE_PAUSED
-                || state == SessionPlayer.PLAYER_STATE_IDLE
-                || state == SessionPlayer.PLAYER_STATE_ERROR
-    }
-
-    private fun stopForegroundServiceIfNeeded() {
-        val sessions: List<MediaSession> = service.sessions
-        for (i in sessions.indices) {
-            if (!isPlaybackStopped(sessions[i].player.playerState)) {
-                return
-            }
-        }
-
-        service.stopForeground(Service.STOP_FOREGROUND_DETACH)
-    }
-
-    private fun normalNotification(notificationId: Int, notification: Notification) {
-        if(ActivityCompat.checkSelfPermission(service, Manifest.permission.POST_NOTIFICATIONS)
-            != PackageManager.PERMISSION_GRANTED) {
-            Log.w("PlayerService/Notification", "post of notification denied")
-        } else {
-            notificationManagerCompat.notify(notificationId, notification)
-        }
-    }
-     */
-
-    private fun foregroundNotification(notificationId: Int, notification: Notification) {
-        //ContextCompat.startForegroundService(service, selfStartIntent)
-
-        if(Build.VERSION.SDK_INT >= 29) {
-            service.startForeground(notificationId, notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
-        } else {
-            service.startForeground(notificationId, notification)
         }
     }
 }

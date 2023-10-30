@@ -6,7 +6,10 @@ import java.util.concurrent.TimeUnit
 
 internal abstract class MediaNode : Comparable<MediaNode> {
 
-    companion object{
+    companion object {
+        @JvmStatic
+        protected val NODE_CACHE_TIME = TimeUnit.MINUTES.toMillis(5)
+
         const val NULL_PARENT_ID: Long = -1
         const val UNALLOCATED_NODE_ID: Long = 0
         /**
@@ -14,9 +17,6 @@ internal abstract class MediaNode : Comparable<MediaNode> {
          */
         val UNSPECIFIED_DIR: MediaDir = MediaDir.new(-2, "~UNSPECIFIED~", { null })
         val INVALID_FILE: MediaFile = MediaFile.new(-2, "~Missing File~", MediaFile.Type.OTHER, { UNSPECIFIED_DIR })
-
-        @JvmStatic
-        protected val NODE_CACHE_TIME = TimeUnit.MINUTES.toMillis(5)
     }
 
     abstract val name: String

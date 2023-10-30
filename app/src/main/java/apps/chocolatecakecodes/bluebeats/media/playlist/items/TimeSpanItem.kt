@@ -1,12 +1,15 @@
 package apps.chocolatecakecodes.bluebeats.media.playlist.items
 
 import android.util.Log
-import androidx.media2.common.MediaItem
-import androidx.media2.common.SessionPlayer
+import androidx.media3.common.util.UnstableApi
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.media.player.VlcPlayer
+import apps.chocolatecakecodes.bluebeats.util.TimerThread
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -19,7 +22,6 @@ import kotlinx.serialization.encoding.encodeStructure
 import java.io.File
 import java.io.IOException
 import java.util.Objects
-import java.util.concurrent.Executors
 
 @Serializable(with = TimeSpanItemSerializer::class)
 internal open class TimeSpanItem(
@@ -28,13 +30,8 @@ internal open class TimeSpanItem(
     val endMs: Long
 ) : PlaylistItem {
 
-    companion object {
-
-        private val executor = Executors.newSingleThreadExecutor()
-    }
-
     override fun play(player: VlcPlayer) {
-        player.registerPlayerCallback(executor, PlayerController())
+        PlayerController(player).register()
         player.playMedia(file, true)
     }
 
@@ -64,35 +61,83 @@ internal open class TimeSpanItem(
         }
     }
 
-    private inner class PlayerController : VlcPlayer.PlayerCallback() {
+    @androidx.annotation.OptIn(UnstableApi::class)
+    private inner class PlayerController(
+        private val player: VlcPlayer
+    ) : TimerThread.TaskRunnable {
 
+        private var timerId: Int = -1
         private var fileLoaded = false
         private var timeSet = false
+        private var justSought = false
 
-        override fun onTimeChanged(player: VlcPlayer, time: Long) {
-            if(!fileLoaded)
-                return
+        fun register() {
+            timerId = TimerThread.INSTANCE.addInterval(100, this)
+        }
 
-            if(timeSet) {
-                if(time >= endMs) {
-                    player.unregisterPlayerCallback(this)
-                    player.skipToNextPlaylistItem()
+        override fun invoke(): Long {
+            return runBlocking {
+                val (shouldExit, shouldContinue) = checkFile()
+                if (shouldExit)
+                    return@runBlocking -1L
+
+                if (shouldContinue) {
+                    val shouldExit = checkTime()
+                    if (shouldExit)
+                        return@runBlocking -1L
                 }
-            } else {
-                player.seekTo(startMs)
-                timeSet = true
+
+                return@runBlocking 0L
             }
         }
 
-        override fun onCurrentMediaItemChanged(player: SessionPlayer, item: MediaItem?) {
-            if(item == null) {
-                player.unregisterPlayerCallback(this)
-            } else {
-                val metadata = item.metadata
-                if(metadata == null || metadata.mediaId == file.entityId.toString()) {
-                    fileLoaded = true
+        /** @return Pair<shouldExit, shouldContinue> */
+        private suspend fun checkFile(): Pair<Boolean, Boolean> {
+            return withContext(Dispatchers.IO) {
+                val currentFile = player.getCurrentMedia()
+
+                return@withContext if (fileLoaded) {
+                    if (!file.shallowEquals(currentFile)) {
+                        Pair(true, false)
+                    } else {
+                        Pair(false, true)
+                    }
                 } else {
-                    player.unregisterPlayerCallback(this)
+                    if (file.shallowEquals(currentFile)) {
+                        fileLoaded = true
+                        Pair(false, true)
+                    } else {
+                        Pair(false, false)
+                    }
+                }
+            }
+        }
+
+        /** @return shouldExit */
+        private suspend fun checkTime(): Boolean {
+            return withContext(Dispatchers.Main) {
+                val time = player.currentPosition
+
+                return@withContext if(timeSet) {
+                    if(justSought) {
+                        // wait till player did seek
+                        if((time - startMs) < 2000)
+                            justSought = false
+                        false
+                    } else {
+                        if(time >= endMs) {
+                            player.seekToNext()
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                } else {
+                    player.seekTo(startMs)
+                    timeSet = true
+                    justSought = true
+
+                    false
                 }
             }
         }
