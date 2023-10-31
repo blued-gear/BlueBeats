@@ -29,7 +29,7 @@ internal interface Playlist {
      * @param repeat if the playlist should play endlessly
      * @param shuffle if the playlist should be shuffled
      */
-    fun getIterator(repeat: Boolean, shuffle: Boolean): PlaylistIterator
+    fun getIterator(repeat: PlaylistIterator.RepeatMode, shuffle: Boolean): PlaylistIterator
 }
 
 enum class PlaylistType {

@@ -27,7 +27,7 @@ internal interface PlaylistIterator {
      * if true the iterator will automatically reset at the end of its list
      * (nextMedia() will always be successful)
      */
-    var repeat: Boolean
+    var repeat: RepeatMode
 
     /**
      * if true the items will be shuffled every time the iterator is reset
@@ -64,4 +64,8 @@ internal interface PlaylistIterator {
      * (In case of a dynamic playlist the result is the current collection before the next items will be generated.)
      */
     fun getItems(): List<PlaylistItem>
+
+    enum class RepeatMode {
+        NONE, ALL, ONE
+    }
 }

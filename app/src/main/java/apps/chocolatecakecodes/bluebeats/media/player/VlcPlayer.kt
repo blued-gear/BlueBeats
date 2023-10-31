@@ -67,7 +67,6 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
     private var suppressCallbacks: Boolean = false
     @Volatile
     private var playbackPos: Long = 0
-    private var repeatMode: Int = Player.REPEAT_MODE_OFF//TODO once #3 is implemented rewrite this + currentMedia to a ad-hoc created playlist for single files if jus a file is playing
 
     private val supportedCommands = Commands.Builder().addAll(
         Player.COMMAND_PLAY_PAUSE,
@@ -112,7 +111,6 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
         if(!keepPlaylist) {
             playPlaylist(TempPlaylist(media))
         } else {
-
             chapters.clear()
 
             playbackPos = 0
@@ -124,10 +122,13 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
 
     fun playPlaylist(playlist: PlaylistIterator) {
         currentPlaylist.set(playlist)
-        repeatMode = if(playlist.repeat) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF
 
         synchronized(state) {
-            state.setRepeatMode(if(playlist.repeat) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF)
+            when(playlist.repeat) {
+                PlaylistIterator.RepeatMode.NONE -> state.setRepeatMode(Player.REPEAT_MODE_OFF)
+                PlaylistIterator.RepeatMode.ALL -> state.setRepeatMode(Player.REPEAT_MODE_ALL)
+                PlaylistIterator.RepeatMode.ONE -> state.setRepeatMode(Player.REPEAT_MODE_ONE)
+            }
             state.setShuffleModeEnabled(playlist.shuffle)
         }
 
@@ -163,7 +164,6 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
     override fun getState(): State {
         return synchronized(state) {
             state.apply {
-                this.setRepeatMode(repeatMode)
                 this.setShuffleModeEnabled(currentPlaylist.getNullable()?.shuffle ?: false)
             }.build()
         }
@@ -195,7 +195,6 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
 
         currentPlaylist.set(null)
         playbackPos = 0
-        repeatMode = Player.REPEAT_MODE_OFF
 
         synchronized(state) {
             state.setPlaybackState(Player.STATE_IDLE)
@@ -241,8 +240,19 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
     }
 
     override fun handleSetRepeatMode(repeatMode: Int): ListenableFuture<*> {
-        this.repeatMode = repeatMode
-        currentPlaylist.get().repeat = repeatMode != Player.REPEAT_MODE_OFF
+        val pl = currentPlaylist.get()
+        when(repeatMode) {
+            Player.REPEAT_MODE_OFF -> pl.repeat = PlaylistIterator.RepeatMode.NONE
+            Player.REPEAT_MODE_ALL -> pl.repeat = PlaylistIterator.RepeatMode.ALL
+            Player.REPEAT_MODE_ONE -> pl.repeat = PlaylistIterator.RepeatMode.ONE
+        }
+
+        // DynamicPlaylist may change the set value as NONE is forbidden in this case
+        when(pl.repeat) {
+            PlaylistIterator.RepeatMode.NONE -> state.setRepeatMode(Player.REPEAT_MODE_OFF)
+            PlaylistIterator.RepeatMode.ALL -> state.setRepeatMode(Player.REPEAT_MODE_ALL)
+            PlaylistIterator.RepeatMode.ONE -> state.setRepeatMode(Player.REPEAT_MODE_ONE)
+        }
 
         return Futures.immediateVoidFuture()
     }
@@ -384,13 +394,9 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
 
     //region private methods
     private fun playNextPlaylistItem() {
-        if(repeatMode == Player.REPEAT_MODE_ONE) {
-            currentPlaylist.get().currentItem().play(this)
-        } else {
-            // nextItem() could trigger DB actions
-            CoroutineScope(Dispatchers.IO).launch {
-                currentPlaylist.get().nextItem().play(this@VlcPlayer)
-            }
+        // nextItem() could trigger DB actions
+        CoroutineScope(Dispatchers.IO).launch {
+            currentPlaylist.get().nextItem().play(this@VlcPlayer)
         }
     }
 
@@ -498,14 +504,14 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
 
     private fun mediaFilePeriods(file: MediaFile): List<PeriodData> {
         //TODO maybe use chapters from VLC (should be loaded for current file)
-        if(file.chapters.isNullOrEmpty()) {
-            return PeriodData.Builder(file.entityId).apply {
+        return if(file.chapters.isNullOrEmpty()) {
+            PeriodData.Builder(file.entityId).apply {
                 this.setDurationUs(file.mediaTags.length * 1000)
             }.let {
                 listOf(it.build())
             }
         } else {
-            return file.chapters!!.map { chapter ->
+            file.chapters!!.map { chapter ->
                 val id = Objects.hash(file, chapter)
                 PeriodData.Builder(id).apply {
                     this.setDurationUs(chapter.end - chapter.start)

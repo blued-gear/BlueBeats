@@ -35,7 +35,7 @@ internal class DynamicPlaylist private constructor(
         return rootRuleGroup.generateItems(iterationSize.coerceAtLeast(EXAMPLE_ITEM_COUNT), emptySet())
     }
 
-    override fun getIterator(repeat: Boolean, shuffle: Boolean): PlaylistIterator {
+    override fun getIterator(repeat: PlaylistIterator.RepeatMode, shuffle: Boolean): PlaylistIterator {
         return DynamicPlaylistIterator(rootRuleGroup, iterationSize)
     }
 
@@ -147,9 +147,10 @@ internal class DynamicPlaylistIterator(
     override var currentPosition: Int = -1
         private set
 
-    @Suppress("SuspiciousVarProperty")
-    override var repeat: Boolean = true
-        get() = true
+    override var repeat: PlaylistIterator.RepeatMode = PlaylistIterator.RepeatMode.ALL
+        set(value) {
+            field = if(value != PlaylistIterator.RepeatMode.NONE) value else PlaylistIterator.RepeatMode.ALL// NONE is forbidden
+        }
     @Suppress("SetterBackingFieldAssignment")
     override var shuffle: Boolean = true
         set(_) {
@@ -165,7 +166,9 @@ internal class DynamicPlaylistIterator(
     }
 
     override fun nextItem(): PlaylistItem {
-        seek(1)
+        if(repeat != PlaylistIterator.RepeatMode.ONE)
+            seek(1)
+
         return mediaBuffer[currentPosition]
     }
 

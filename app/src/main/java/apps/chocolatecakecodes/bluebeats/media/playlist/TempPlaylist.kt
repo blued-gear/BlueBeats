@@ -25,7 +25,7 @@ internal class TempPlaylist : PlaylistIterator {
         get() = items.size
     override var currentPosition: Int = -1
         private set
-    override var repeat: Boolean = false
+    override var repeat: PlaylistIterator.RepeatMode = PlaylistIterator.RepeatMode.NONE
     override var shuffle: Boolean = false
         set(value) {
             field = value
@@ -38,7 +38,9 @@ internal class TempPlaylist : PlaylistIterator {
         if(isAtEnd())
             throw NoSuchElementException("end reached")
 
-        seek(1)
+        if(repeat != PlaylistIterator.RepeatMode.ONE)
+            seek(1)
+
         return items[currentPosition]
     }
 
@@ -60,7 +62,7 @@ internal class TempPlaylist : PlaylistIterator {
 
         val newPos = currentPosition + amount
 
-        if(newPos == totalItems && repeat) {
+        if(newPos == totalItems && repeat == PlaylistIterator.RepeatMode.ALL) {
             currentPosition = 0
 
             if(shuffle)
@@ -73,7 +75,7 @@ internal class TempPlaylist : PlaylistIterator {
     }
 
     override fun isAtEnd(): Boolean {
-        return !repeat && currentPosition == (totalItems - 1)
+        return repeat == PlaylistIterator.RepeatMode.NONE && currentPosition == (totalItems - 1)
     }
 
     override fun getItems(): List<PlaylistItem> {

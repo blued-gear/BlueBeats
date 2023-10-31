@@ -597,11 +597,11 @@ class Player : Fragment() {
             when(repeatMode) {
                 Media3Player.REPEAT_MODE_ALL -> {
                     btn.setImageResource(R.drawable.ic_baseline_repeat_24)
-                    btn.backgroundTintList = tintNotSelected
+                    btn.backgroundTintList = tintSelected
                 }
                 Media3Player.REPEAT_MODE_ONE -> {
                     btn.setImageResource(R.drawable.baseline_repeat_one_24)
-                    btn.backgroundTintList = tintNotSelected
+                    btn.backgroundTintList = tintSelected
                 }
                 Media3Player.REPEAT_MODE_OFF -> {
                     btn.setImageResource(R.drawable.ic_baseline_repeat_24)
@@ -658,26 +658,22 @@ class Player : Fragment() {
         }
 
         private fun onRepeatClick() {
-            //TODO support REPEAT_MODE_ONE
-            player.repeatMode = if(player.repeatMode == Media3Player.REPEAT_MODE_OFF)
-                Media3Player.REPEAT_MODE_ALL
-            else
-                Media3Player.REPEAT_MODE_OFF
+            player.repeatMode = when(player.repeatMode) {
+                Media3Player.REPEAT_MODE_OFF -> Media3Player.REPEAT_MODE_ALL
+                Media3Player.REPEAT_MODE_ALL -> Media3Player.REPEAT_MODE_ONE
+                Media3Player.REPEAT_MODE_ONE -> Media3Player.REPEAT_MODE_OFF
+                else -> throw AssertionError()
+            }
 
             setRepeatButtonContent(btnRepeat, player.repeatMode)
         }
 
         private fun onShuffleClick() {
-            // DynamicPlaylist will run DB-Queries when re-shuffling
-            CoroutineScope(Dispatchers.IO).launch {
                 player.shuffleModeEnabled = !player.shuffleModeEnabled
 
-                withContext(Dispatchers.Main) {
-                    btnShuffle.backgroundTintList = if(player.shuffleModeEnabled) tintSelected else tintNotSelected
-                    // shuffle can change the items
-                    loadItems()
-                }
-            }
+                btnShuffle.backgroundTintList = if(player.shuffleModeEnabled) tintSelected else tintNotSelected
+                // shuffle can change the items
+                loadItems()
         }
 
         private fun loadItems() {

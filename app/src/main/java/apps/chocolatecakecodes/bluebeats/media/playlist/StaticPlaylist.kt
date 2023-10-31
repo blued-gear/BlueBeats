@@ -32,7 +32,7 @@ internal class StaticPlaylist private constructor(
         return mediaImmutable
     }
 
-    override fun getIterator(repeat: Boolean, shuffle: Boolean): PlaylistIterator {
+    override fun getIterator(repeat: PlaylistIterator.RepeatMode, shuffle: Boolean): PlaylistIterator {
         val validMedia = media.filter { it !is PlaylistItem.INVALID }
         return StaticPlaylistIterator(validMedia, repeat, shuffle)
     }
@@ -170,7 +170,7 @@ internal data class StaticPlaylistEntry(
 
 private class StaticPlaylistIterator(
     media: List<PlaylistItem>,
-    override var repeat: Boolean,
+    override var repeat: PlaylistIterator.RepeatMode,
     shuffle: Boolean
 ) : PlaylistIterator {
 
@@ -198,7 +198,9 @@ private class StaticPlaylistIterator(
         if(isAtEnd())
             throw NoSuchElementException("end reached")
 
-        seek(1)
+        if(repeat != PlaylistIterator.RepeatMode.ONE)
+            seek(1)
+
         return items[currentPosition]
     }
 
@@ -220,7 +222,7 @@ private class StaticPlaylistIterator(
 
         val newPos = currentPosition + amount
 
-        if(newPos == totalItems && repeat) {
+        if(newPos == totalItems && repeat == PlaylistIterator.RepeatMode.ALL) {
             currentPosition = 0
 
             if(shuffle)
@@ -233,7 +235,7 @@ private class StaticPlaylistIterator(
     }
 
     override fun isAtEnd(): Boolean {
-        return !repeat && currentPosition == (totalItems - 1)
+        return repeat == PlaylistIterator.RepeatMode.NONE && currentPosition == (totalItems - 1)
     }
 
     override fun getItems(): List<PlaylistItem> {

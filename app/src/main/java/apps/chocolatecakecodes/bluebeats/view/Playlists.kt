@@ -28,6 +28,7 @@ import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.player.VlcPlayer
+import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistIterator
 import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
 import apps.chocolatecakecodes.bluebeats.media.playlist.StaticPlaylist
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylist
@@ -254,7 +255,7 @@ internal class Playlists : Fragment() {
             return
 
         CoroutineScope(Dispatchers.IO).launch {
-            val iter = viewModel.selectedPlaylist!!.getIterator(false, false)
+            val iter = viewModel.selectedPlaylist!!.getIterator(PlaylistIterator.RepeatMode.NONE, false)
             if(iter is DynamicPlaylistIterator) {
                 iter.seekToMedia(item)
             } else {
