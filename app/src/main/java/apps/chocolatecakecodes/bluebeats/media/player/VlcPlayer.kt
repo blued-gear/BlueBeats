@@ -498,11 +498,9 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
                     this.setGenre(it)
             }
 
-            // chapters should now be available, so make sure that onMediaMetadataChanged() gets called
-            if(file.shallowEquals(currentPlaylist.get().currentItem().file))
-                this.setTotalTrackCount(1)
-            else
-                this.setTotalTrackCount(null)
+            // as player-specific data (like chapters) may have changed, force a onMediaMetadataChanged() event every time this metadata is rebuild
+            // this misuses the station field, but *shrug*
+            this.setStation(System.currentTimeMillis().toString())
         }.let {
             builder.setMediaMetadata(it.build())
         }
