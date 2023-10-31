@@ -172,7 +172,7 @@ private class StaticPlaylistIterator(
     media: List<PlaylistItem>,
     override var repeat: Boolean,
     shuffle: Boolean
-    ) : PlaylistIterator {
+) : PlaylistIterator {
 
     private val items = ArrayList(media)
     private val itemsRO = Collections.unmodifiableList(items)
