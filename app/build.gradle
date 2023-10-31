@@ -6,7 +6,7 @@ plugins {
     id 'com.android.application'
     id 'kotlin-android'
     id 'com.google.devtools.ksp'
-    id 'org.jetbrains.kotlin.plugin.serialization' version "1.9.10"
+    id 'org.jetbrains.kotlin.plugin.serialization' version "1.9.20"
     id 'idea'
     id 'com.jaredsburrows.license' version '0.9.3'
 }
@@ -77,11 +77,11 @@ android {
 }
 
 dependencies {
-    def room_version = '2.5.2'
+    def room_version = '2.6.0'
     def fastadapter_version = '5.7.0'
     def media3_version = '1.1.1'
     def lifecycle_version = '2.6.2'
-    def acra_version = '5.11.2'
+    def acra_version = '5.11.3'
 
     implementation project(':taglib')
 
@@ -91,7 +91,7 @@ dependencies {
     implementation "androidx.core:core-ktx:$version_android_ktx"
 
     implementation "androidx.appcompat:appcompat:$version_appcompat"
-    implementation 'com.google.android.material:material:1.9.0'
+    implementation 'com.google.android.material:material:1.10.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation "androidx.lifecycle:lifecycle-livedata-ktx:$lifecycle_version"
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycle_version"
