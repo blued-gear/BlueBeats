@@ -13,8 +13,8 @@ import androidx.media3.common.Player.Commands
 import androidx.media3.common.SimpleBasePlayer
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistIterator
+import apps.chocolatecakecodes.bluebeats.media.playlist.TempPlaylist
 import apps.chocolatecakecodes.bluebeats.media.playlist.UNDETERMINED_COUNT
-import apps.chocolatecakecodes.bluebeats.media.playlist.items.MediaFileItem
 import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
 import apps.chocolatecakecodes.bluebeats.media.playlist.items.TimeSpanItem
 import apps.chocolatecakecodes.bluebeats.taglib.Chapter
@@ -62,9 +62,8 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
     private val mainThreadHandler = Handler(looper)
     private val chapters = ArrayList<Chapter>()
     private val chaptersRO = Collections.unmodifiableList(chapters)
-    private var state: SimpleBasePlayer.State.Builder
-    private var currentMedia = RequireNotNull<MediaFile>()
-    private var currentPlaylist: PlaylistIterator? = null
+    private val state: SimpleBasePlayer.State.Builder
+    private val currentPlaylist = RequireNotNull<PlaylistIterator>()
     private var suppressCallbacks: Boolean = false
     @Volatile
     private var playbackPos: Long = 0
@@ -111,21 +110,20 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
     //region other public methods
     fun playMedia(media: MediaFile, keepPlaylist: Boolean = false) {
         if(!keepPlaylist) {
-            currentPlaylist = null
-            repeatMode = Player.REPEAT_MODE_OFF
+            playPlaylist(TempPlaylist(media))
+        } else {
+
+            chapters.clear()
+
+            playbackPos = 0
+            player.play(media.path)
+
+            // state will be invalidated by VLC event
         }
-
-        chapters.clear()
-
-        currentMedia.set(media)
-        playbackPos = 0
-        player.play(media.path)
-
-        // state will be invalidated by VLC event
     }
 
     fun playPlaylist(playlist: PlaylistIterator) {
-        currentPlaylist = playlist
+        currentPlaylist.set(playlist)
         repeatMode = if(playlist.repeat) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF
 
         synchronized(state) {
@@ -153,11 +151,11 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
     }
 
     fun getCurrentMedia(): MediaFile? {
-        return if(currentMedia.isNull()) null else currentMedia.get()
+        return currentPlaylist.getNullable()?.currentItem()?.file
     }
 
     fun getCurrentPlaylist(): PlaylistIterator? {
-        return currentPlaylist
+        return currentPlaylist.getNullable()
     }
     //endregion
 
@@ -166,7 +164,7 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
         return synchronized(state) {
             state.apply {
                 this.setRepeatMode(repeatMode)
-                this.setShuffleModeEnabled(currentPlaylist?.shuffle ?: false)
+                this.setShuffleModeEnabled(currentPlaylist.getNullable()?.shuffle ?: false)
             }.build()
         }
     }
@@ -195,9 +193,8 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
     override fun handleStop(): ListenableFuture<*> {
         player.stop()
 
-        currentPlaylist = null
+        currentPlaylist.set(null)
         playbackPos = 0
-        currentMedia.set(null)
         repeatMode = Player.REPEAT_MODE_OFF
 
         synchronized(state) {
@@ -211,67 +208,57 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
     }
 
     override fun handleSeek(mediaItemIndex: Int, positionMs: Long, seekCommand: Int): ListenableFuture<*> {
-        if(currentPlaylist == null) {
-            if(positionMs != C.TIME_UNSET)
-                player.setTime(positionMs, false)
+        val ret = SettableFuture.create<Unit>()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val pl = currentPlaylist.get()
 
-            return Futures.immediateVoidFuture()
-        } else {
-            val ret = SettableFuture.create<Unit>()
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    val pl = currentPlaylist!!
-
-                    if(pl.currentPosition == UNDETERMINED_COUNT) {
-                        ret.setException(IllegalStateException("playlist not started"))
-                        return@launch
-                    }
-
-                    if(mediaItemIndex != pl.currentPosition) {
-                        pl.seek(mediaItemIndex - pl.currentPosition)
-                        pl.currentItem().play(this@VlcPlayer)
-                    }
-
-                    if(positionMs != C.TIME_UNSET) {
-                        //TODO this might not work as the player might still be loading
-                        player.setTime(positionMs, true)
-                    }
-
-                    synchronized(state) {
-                        state.setCurrentMediaItemIndex(pl.currentPosition)
-                    }
-                    ret.set(Unit)
-                } catch (e: Exception) {
-                    Log.e(LOG_TAG, "exception in handleSeek()::pl_seek", e)
-                    ret.setException(e)
+                if(pl.currentPosition == UNDETERMINED_COUNT) {
+                    ret.setException(IllegalStateException("playlist not started"))
+                    return@launch
                 }
+
+                if(mediaItemIndex != pl.currentPosition) {
+                    pl.seek(mediaItemIndex - pl.currentPosition)
+                    pl.currentItem().play(this@VlcPlayer)
+                }
+
+                if(positionMs != C.TIME_UNSET) {
+                    //TODO this might not work as the player might still be loading
+                    player.setTime(positionMs, true)
+                }
+
+                synchronized(state) {
+                    state.setCurrentMediaItemIndex(pl.currentPosition)
+                }
+                ret.set(Unit)
+            } catch (e: Exception) {
+                Log.e(LOG_TAG, "exception in handleSeek()::pl_seek", e)
+                ret.setException(e)
             }
-            return ret
         }
+        return ret
     }
 
     override fun handleSetRepeatMode(repeatMode: Int): ListenableFuture<*> {
         this.repeatMode = repeatMode
-        currentPlaylist?.let { it.repeat = repeatMode != Player.REPEAT_MODE_OFF }
+        currentPlaylist.get().repeat = repeatMode != Player.REPEAT_MODE_OFF
 
         return Futures.immediateVoidFuture()
     }
 
     override fun handleSetShuffleModeEnabled(shuffleModeEnabled: Boolean): ListenableFuture<*> {
-        if(currentPlaylist == null)
-            return Futures.immediateVoidFuture()// silently ignore
-
         // on DynamicPlaylist this will trigger regeneration, so run it outside of main-thread
         val ret = SettableFuture.create<Unit>()
         CoroutineScope(Dispatchers.IO).launch {
-            currentPlaylist!!.shuffle = shuffleModeEnabled
+            currentPlaylist.get().shuffle = shuffleModeEnabled
             ret.set(Unit)
         }
         return ret
     }
 
     private fun handlePlay(): ListenableFuture<*> {
-        if(currentMedia.isNull()) {
+        if(currentPlaylist.isNull()) {
             return Futures.immediateFailedFuture<Void?>(IllegalStateException("no media set"))
         }
 
@@ -286,7 +273,7 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
     }
 
     private fun handlePause(): ListenableFuture<*> {
-        if(currentMedia.isNull()) {
+        if(currentPlaylist.isNull()) {
             return Futures.immediateFailedFuture<Void?>(IllegalStateException("no media set"))
         }
 
@@ -342,7 +329,6 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
         // in IO-thread because fillInStateMedia() will load media-attrs from DB
         CoroutineScope(Dispatchers.IO).launch {
             // chapter-info should now be loaded
-            chapters.clear()
             loadChapters()
 
             synchronized(state) {
@@ -356,13 +342,8 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
     }
 
     private fun onEndReached() {
-        val pl = currentPlaylist
-        if(pl !== null) {
-            if(!pl.isAtEnd()) {
-                playNextPlaylistItem()
-            } else {
-                onTotalEndReached()
-            }
+        if(!currentPlaylist.get().isAtEnd()) {
+            playNextPlaylistItem()
         } else {
             onTotalEndReached()
         }
@@ -371,7 +352,11 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
     private fun onTotalEndReached() {
         // reset player, or else seek will break
         suppressCallbacks = true
-        player.play(currentMedia.get().path)
+        currentPlaylist.get().currentItem().file?.let {
+            player.play(it.path)
+        } ?: let {
+            currentPlaylist.get().currentItem().play(this)
+        }
         player.pause()
         playbackPos = 0
         suppressCallbacks = false
@@ -400,22 +385,22 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
     //region private methods
     private fun playNextPlaylistItem() {
         if(repeatMode == Player.REPEAT_MODE_ONE) {
-            val pl = currentPlaylist
-            if(pl != null) {
-                pl.currentItem().play(this)
-            } else {
-                player.setTime(0, false)
-            }
+            currentPlaylist.get().currentItem().play(this)
         } else {
+            // nextItem() could trigger DB actions
             CoroutineScope(Dispatchers.IO).launch {
-                currentPlaylist!!.nextItem().play(this@VlcPlayer)
+                currentPlaylist.get().nextItem().play(this@VlcPlayer)
             }
         }
     }
 
     private fun loadChapters() {
+        chapters.clear()
+
+        val file = currentPlaylist.get().currentItem().file ?: return
+
         // 1.: use chapters from MediaFile; 2.: if not available use from player; 3.: leave empty
-        val mediaChapters = currentMedia.get().chapters
+        val mediaChapters = file.chapters
         val chapters = if(!mediaChapters.isNullOrEmpty()){
             mediaChapters
         } else {
@@ -434,17 +419,15 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
 
     //region convert PlaylistItem to MediaItemData
     private fun fillInStateMedia(builder: State.Builder) {
-        //TODO simplify this after the player primarily uses playlists
-
         // set here as a DynamicPlaylist might have updated itself
-        val plItems = currentPlaylist?.getItems()
-            ?: listOf(MediaFileItem(currentMedia.get()))
+        val plItems = currentPlaylist.get().getItems()
         plItems.mapIndexed { idx, itm ->
             playlistItemToMediaItemData(itm, idx)
         }.let {
             builder.setPlaylist(it)
         }
-        builder.setCurrentMediaItemIndex(currentPlaylist?.currentPosition ?: 0)
+
+        builder.setCurrentMediaItemIndex(currentPlaylist.get().currentPosition)
     }
 
     private fun playlistItemToMediaItemData(itm: PlaylistItem, itmIdx: Int): MediaItemData {
@@ -504,7 +487,7 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
             }
 
             // chapters should now be available, so make sure that onMediaMetadataChanged() gets called
-            if(file.shallowEquals(currentMedia.get()))
+            if(file.shallowEquals(currentPlaylist.get().currentItem().file))
                 this.setTotalTrackCount(1)
             else
                 this.setTotalTrackCount(null)

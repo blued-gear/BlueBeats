@@ -16,6 +16,10 @@ class RequireNotNull<V> constructor(){
         return value!!
     }
 
+    fun getNullable(): V? {
+        return value
+    }
+
     fun set(value: V?) {
         this.value = value
     }
