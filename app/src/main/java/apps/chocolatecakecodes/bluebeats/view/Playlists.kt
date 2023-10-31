@@ -38,6 +38,7 @@ import apps.chocolatecakecodes.bluebeats.util.RequireNotNull
 import apps.chocolatecakecodes.bluebeats.util.SmartBackPressedCallback
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import apps.chocolatecakecodes.bluebeats.util.castTo
+import apps.chocolatecakecodes.bluebeats.util.castToOrNull
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
 import apps.chocolatecakecodes.bluebeats.view.specialitems.SelectableItem
 import apps.chocolatecakecodes.bluebeats.view.specialitems.playlistitems.PlaylistItemItem
@@ -533,7 +534,7 @@ internal class Playlists : Fragment() {
         menu.findItem(MNU_ID_OVERVIEW_EDIT_DYN).apply {
             val selection = itemsAdapter.getSelectExtension().selectedItems.toList()
             val oneDynplSelected = selection.size == 1
-                    && selection[0].castTo<ListsItem>().playlist.second == PlaylistType.DYNAMIC
+                    && selection[0].castToOrNull<ListsItem>()?.playlist?.second == PlaylistType.DYNAMIC
             isEnabled = oneDynplSelected && !dialogOpen
         }
     }
