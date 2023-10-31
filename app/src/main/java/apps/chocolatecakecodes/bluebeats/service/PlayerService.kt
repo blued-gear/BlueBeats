@@ -17,13 +17,13 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.IconCompat
 import androidx.core.graphics.drawable.toBitmap
-import androidx.media.app.NotificationCompat.MediaStyle
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaNotification
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import androidx.media3.session.MediaStyleNotificationHelper
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
@@ -69,8 +69,8 @@ internal class PlayerService : MediaSessionService(){
         }
 
         player = VlcPlayer(VlcManagers.getLibVlc(), this.mainLooper)
+        setMediaNotificationProvider(NotificationProvider(this) { session })// notificationProvider must be set before setupSession() but needs a reference to the session, so set it lazily
         setupSession()
-        setMediaNotificationProvider(NotificationProvider(this, session))
 
         initialized = true
     }
@@ -123,7 +123,7 @@ internal class PlayerServiceConnection : ServiceConnection {
 @androidx.annotation.OptIn(UnstableApi::class)
 private class NotificationProvider(
     private val context: Context,
-    private val mediaSession: MediaSession
+    private val mediaSessionProvider: () -> MediaSession
 ) : MediaNotification.Provider {
 
     companion object {
@@ -131,6 +131,7 @@ private class NotificationProvider(
         private const val notificationChannelId = "PlayerService-notification_channel"
     }
 
+    private val mediaSession: MediaSession by lazy { mediaSessionProvider() }
     private val notificationManager = NotificationManagerCompat.from(context)
     private val contentActionIntent: PendingIntent
     private var lastThumb: Pair<String, Bitmap>? = null
@@ -178,8 +179,7 @@ private class NotificationProvider(
             createActions(this, actionFactory)
             setContentIntent(contentActionIntent)
 
-            MediaStyle().also {
-                it.setMediaSession(mediaSession.sessionCompatToken)
+            MediaStyleNotificationHelper.MediaStyle(mediaSession).also {
                 it.setShowCancelButton(false)
                 it.setShowActionsInCompactView(1)
             }.let {
