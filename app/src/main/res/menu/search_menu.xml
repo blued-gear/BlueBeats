@@ -14,6 +14,9 @@
             android:title="@string/filebrowser_menu_add_playlist"
             android:id="@+id/search_mnu_addpl" />
     <item
+            android:title="@string/filebrowser_menu_start_tmp_pl"
+            android:id="@+id/search_mnu_start_tpl" />
+    <item
             android:title="@string/filebrowser_menu_fileinfo"
             android:id="@+id/search_mnu_fi" />
 </menu>

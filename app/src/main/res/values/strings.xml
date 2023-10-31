@@ -68,4 +68,6 @@
     <string name="dynpl_timespan_end">End (s):</string>
     <string name="misc_description">Description</string>
     <string name="player_vlc_err">An error occured in the player</string>
+    <string name="filebrowser_menu_start_tmp_pl">Play now</string>
+    <string name="filebrowser_menu_add_tmp_pl">Add to running Playlist</string>
 </resources>

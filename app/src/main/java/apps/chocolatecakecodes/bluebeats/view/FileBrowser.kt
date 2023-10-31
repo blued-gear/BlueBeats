@@ -23,6 +23,7 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.media.player.VlcPlayer
 import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
+import apps.chocolatecakecodes.bluebeats.media.playlist.TempPlaylist
 import apps.chocolatecakecodes.bluebeats.taglib.BuildConfig
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.SmartBackPressedCallback
@@ -120,6 +121,10 @@ class FileBrowser : Fragment() {
             }
             menu.findItem(R.id.filebrowser_menu_atp).setOnMenuItemClickListener {
                 onAddToPlClicked()
+                true
+            }
+            menu.findItem(R.id.filebrowser_menu_start_tpl).setOnMenuItemClickListener {
+                onStartTmpPlClicked()
                 true
             }
             menu.findItem(R.id.filebrowser_menu_sela).setOnMenuItemClickListener {
@@ -248,15 +253,24 @@ class FileBrowser : Fragment() {
     }
 
     private fun updateMenuItems(){
+        val selectedItems = browser.selectedItems
+        val onlyFilesSelected = selectedItems.filterIsInstance<MediaFile>().size == selectedItems.size
+
         val fileInfoItem = mainMenu.findItem(R.id.filebrowser_menu_details)
         val dialogOpen = mainVM.currentDialog.value == MainActivityViewModel.Dialogs.FILE_DETAILS
         fileInfoItem.isEnabled = viewModel.selectedFile.value !== null
                 && !dialogOpen
 
         val addToPlItem = mainMenu.findItem(R.id.filebrowser_menu_atp)
-        val selectedItems = browser.selectedItems
-        val onlyFilesSelected = selectedItems.filterIsInstance<MediaFile>().size == selectedItems.size
         addToPlItem.isEnabled = selectedItems.isNotEmpty() && onlyFilesSelected
+
+        val startTemPlItem = mainMenu.findItem(R.id.filebrowser_menu_start_tpl)
+        val currentPl = requireActivity().castTo<MainActivity>().playerConn.player?.getCurrentPlaylist()
+        startTemPlItem.isEnabled = selectedItems.isNotEmpty() && onlyFilesSelected
+        if(currentPl is TempPlaylist)
+            startTemPlItem.title = this.requireContext().getText(R.string.filebrowser_menu_add_tmp_pl)
+        else
+            startTemPlItem.title = this.requireContext().getText(R.string.filebrowser_menu_start_tmp_pl)
     }
 
     //region action-handlers
@@ -341,6 +355,32 @@ class FileBrowser : Fragment() {
 
     private fun onSelectAllClicked() {
         browser.selectAll()
+    }
+
+    private fun onStartTmpPlClicked() {
+        val toAdd = browser.selectedItems
+            .filterIsInstance<MediaFile>().map {
+                it
+            }.sortedBy {
+                it.name
+            }
+
+        val pl = player.getCurrentPlaylist()
+        if(pl is TempPlaylist) {
+            toAdd.forEach {
+                pl.addMedia(it)
+            }
+        } else {
+            TempPlaylist().also { tpl ->
+                toAdd.forEach {
+                    tpl.addMedia(it)
+                }
+            }.let {
+                player.playPlaylist(it)
+            }
+
+            mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
+        }
     }
     //endregion
 }

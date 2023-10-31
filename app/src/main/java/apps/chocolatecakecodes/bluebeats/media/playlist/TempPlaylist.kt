@@ -8,7 +8,7 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
  * a playlist where the user puts media in ad-hoc;
  * it can not be saved
  */
-internal class TempPlaylist : PlaylistIterator {
+internal class TempPlaylist() : PlaylistIterator {
 
     private val items = ArrayList<PlaylistItem>()
 
@@ -16,7 +16,7 @@ internal class TempPlaylist : PlaylistIterator {
      * creates a TempPlaylist with the given media as the first item
      * @param initialMedia the media to add to the newly created playlist
      */
-    constructor(initialMedia: MediaFile) {
+    constructor(initialMedia: MediaFile) : this() {
         addMedia(initialMedia)
     }
 

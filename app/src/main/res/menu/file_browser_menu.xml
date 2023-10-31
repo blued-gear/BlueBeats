@@ -8,6 +8,9 @@
             android:title="@string/filebrowser_menu_add_playlist"
             android:id="@+id/filebrowser_menu_atp" />
     <item
+            android:title="@string/filebrowser_menu_start_tmp_pl"
+            android:id="@+id/filebrowser_menu_start_tpl" />
+    <item
             android:title="@string/filebrowser_menu_fileinfo"
             android:id="@+id/filebrowser_menu_details" />
 </menu>

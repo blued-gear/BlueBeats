@@ -17,6 +17,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.player.VlcPlayer
+import apps.chocolatecakecodes.bluebeats.media.playlist.TempPlaylist
 import apps.chocolatecakecodes.bluebeats.util.*
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
 import com.google.android.material.tabs.TabLayout
@@ -176,6 +177,12 @@ internal class Search : Fragment(R.layout.search_fragment) {
                     true
                 }
             }
+            menu.findItem(R.id.search_mnu_start_tpl).apply {
+                setOnMenuItemClickListener {
+                    onStartTmpPlClicked()
+                    true
+                }
+            }
             menu.findItem(R.id.search_mnu_fi).apply {
                 setOnMenuItemClickListener {
                     onShowFileInfo()
@@ -280,13 +287,37 @@ internal class Search : Fragment(R.layout.search_fragment) {
     private fun onAddToPlaylist() {
         val toAdd = itemListAdapter.getSelectExtension().selectedItems
             .filterIsInstance<MediaFileItem>().map {
-                it
-            }.map {
                 it.file
             }.sortedBy {
                 it.name
             }
         showAddToPlDlg(this.requireContext(), toAdd)
+    }
+
+    private fun onStartTmpPlClicked() {
+        val toAdd = itemListAdapter.getSelectExtension().selectedItems
+            .filterIsInstance<MediaFileItem>().map {
+                it.file
+            }.sortedBy {
+                it.name
+            }
+
+        val pl = player.getCurrentPlaylist()
+        if(pl is TempPlaylist) {
+            toAdd.forEach {
+                pl.addMedia(it)
+            }
+        } else {
+            TempPlaylist().also { tpl ->
+                toAdd.forEach {
+                    tpl.addMedia(it)
+                }
+            }.let {
+                player.playPlaylist(it)
+            }
+
+            mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
+        }
     }
 
     private fun onShowFileInfo() {
@@ -400,8 +431,17 @@ internal class Search : Fragment(R.layout.search_fragment) {
     private fun updateMenu() {
         menu?.let {
             val selectedCount = itemListAdapter.getSelectExtension().selectedItems.size
+
             it.findItem(R.id.search_mnu_addpl).isEnabled = selectedCount > 0
             it.findItem(R.id.search_mnu_fi).isEnabled = selectedCount == 1
+
+            val startTemPlItem = it.findItem(R.id.search_mnu_start_tpl)
+            val currentPl = requireActivity().castTo<MainActivity>().playerConn.player?.getCurrentPlaylist()
+            startTemPlItem.isEnabled = selectedCount > 0
+            if(currentPl is TempPlaylist)
+                startTemPlItem.title = this.requireContext().getText(R.string.filebrowser_menu_add_tmp_pl)
+            else
+                startTemPlItem.title = this.requireContext().getText(R.string.filebrowser_menu_start_tmp_pl)
         }
     }
 }
