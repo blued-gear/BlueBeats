@@ -30,7 +30,7 @@ internal open class TimeSpanItem(
     override val file: MediaFile,
     val startMs: Long,
     val endMs: Long
-) : PlaylistItem {
+) : PlaylistItem {//TODO sometimes this skips the item when started
 
     override fun play(player: VlcPlayer) {
         PlayerController(player).register()
