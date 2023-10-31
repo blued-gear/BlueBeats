@@ -150,7 +150,7 @@ class FileBrowser : Fragment() {
                 browser.currentDir = it
 
                 // scanMedia() was split because there were a race condition between this set and addEntry in the scan-listener
-                if(scanRequested)
+                if(scanRequested && false)
                     scanMedia()
             }
         }
@@ -367,14 +367,10 @@ class FileBrowser : Fragment() {
 
         val pl = player.getCurrentPlaylist()
         if(pl is TempPlaylist) {
-            toAdd.forEach {
-                pl.addMedia(it)
-            }
+            pl.addMedias(toAdd)
         } else {
             TempPlaylist().also { tpl ->
-                toAdd.forEach {
-                    tpl.addMedia(it)
-                }
+                tpl.addMedias(toAdd)
             }.let {
                 player.playPlaylist(it)
             }

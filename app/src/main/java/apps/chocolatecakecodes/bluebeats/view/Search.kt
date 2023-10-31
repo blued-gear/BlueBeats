@@ -304,14 +304,10 @@ internal class Search : Fragment(R.layout.search_fragment) {
 
         val pl = player.getCurrentPlaylist()
         if(pl is TempPlaylist) {
-            toAdd.forEach {
-                pl.addMedia(it)
-            }
+            pl.addMedias(toAdd)
         } else {
             TempPlaylist().also { tpl ->
-                toAdd.forEach {
-                    tpl.addMedia(it)
-                }
+                tpl.addMedias(toAdd)
             }.let {
                 player.playPlaylist(it)
             }

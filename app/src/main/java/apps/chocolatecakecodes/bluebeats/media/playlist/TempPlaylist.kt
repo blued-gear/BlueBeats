@@ -4,6 +4,8 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.playlist.items.MediaFileItem
 import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
 
+private typealias ChangeListener = () -> Unit
+
 /**
  * a playlist where the user puts media in ad-hoc;
  * it can not be saved
@@ -11,6 +13,7 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
 internal class TempPlaylist() : PlaylistIterator {
 
     private val items = ArrayList<PlaylistItem>()
+    private val changeListeners = ArrayList<ChangeListener>()
 
     /**
      * creates a TempPlaylist with the given media as the first item
@@ -90,15 +93,46 @@ internal class TempPlaylist() : PlaylistIterator {
 
     fun addItem(toAdd: PlaylistItem) {
         items.add(toAdd)
+        notifyChangeListeners()
+    }
+
+    fun addMedias(toAdd: List<MediaFile>) {
+        addItems(toAdd.map { MediaFileItem(it) })
+    }
+
+    fun addItems(toAdd: List<PlaylistItem>) {
+        items.addAll(toAdd)
+        notifyChangeListeners()
     }
 
     fun removeItem(index: Int) {
         items.removeAt(index)
+        notifyChangeListeners()
+    }
+
+    fun removeItems(indices: List<Int>) {
+        indices.sortedDescending().forEach { items.removeAt(it) }
+        notifyChangeListeners()
     }
 
     fun moveItem(from: Int, newIndex: Int) {
         val item = items.removeAt(from)
         items.add(newIndex, item)
+
+        notifyChangeListeners()
+    }
+    //endregion
+
+    //region change_listener methods
+    /**
+     * adds a listener which will be called when the items in this list change (add, remove, reorder)
+     */
+    fun addChangeListener(listener: ChangeListener) {
+        changeListeners.add(listener)
+    }
+
+    fun removeChangeListener(listener: ChangeListener) {
+        changeListeners.remove(listener)
     }
     //endregion
 
@@ -112,6 +146,12 @@ internal class TempPlaylist() : PlaylistIterator {
             items.shuffle()
             items.add(currentPosition, media)
         }
+
+        notifyChangeListeners()
+    }
+
+    private fun notifyChangeListeners() {
+        changeListeners.forEach { it() }
     }
     //endregion
 }

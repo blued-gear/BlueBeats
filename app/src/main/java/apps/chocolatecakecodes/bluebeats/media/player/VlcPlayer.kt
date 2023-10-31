@@ -121,7 +121,17 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
     }
 
     fun playPlaylist(playlist: PlaylistIterator) {
+        currentPlaylist.getNullable()?.let { pl ->
+            if(pl is TempPlaylist) {
+                pl.removeChangeListener(this::invalidateMediaInfo)
+            }
+        }
+
         currentPlaylist.set(playlist)
+
+        if(playlist is TempPlaylist) {
+            playlist.addChangeListener(this::invalidateMediaInfo)
+        }
 
         synchronized(state) {
             when(playlist.repeat) {
@@ -192,6 +202,12 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
 
     override fun handleStop(): ListenableFuture<*> {
         player.stop()
+
+        currentPlaylist.getNullable()?.let { pl ->
+            if(pl is TempPlaylist) {
+                pl.removeChangeListener(this::invalidateMediaInfo)
+            }
+        }
 
         currentPlaylist.set(null)
         playbackPos = 0
@@ -403,6 +419,17 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
         // nextItem() could trigger DB actions
         CoroutineScope(Dispatchers.IO).launch {
             currentPlaylist.get().nextItem().play(this@VlcPlayer)
+        }
+    }
+
+    fun invalidateMediaInfo() {
+        // in IO-thread because fillInStateMedia() will load media-attrs from DB
+        CoroutineScope(Dispatchers.IO).launch {
+            loadChapters()
+            synchronized(state) {
+                fillInStateMedia(state)
+                mainThreadHandler.post { invalidateState() }
+            }
         }
     }
 
