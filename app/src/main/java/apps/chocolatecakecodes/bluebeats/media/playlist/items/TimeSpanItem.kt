@@ -128,6 +128,9 @@ internal open class TimeSpanItem(
                         if(time >= endMs) {
                             player.seekToNext()
                             true
+                        } else if(time < startMs) {
+                            // the user seems to seeked on their own so stop control of this item
+                            true
                         } else {
                             false
                         }
