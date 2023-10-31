@@ -1,6 +1,8 @@
 package apps.chocolatecakecodes.bluebeats.media.playlist.items
 
 import android.util.Log
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
@@ -64,83 +66,70 @@ internal open class TimeSpanItem(
     @androidx.annotation.OptIn(UnstableApi::class)
     private inner class PlayerController(
         private val player: VlcPlayer
-    ) : TimerThread.TaskRunnable {
+    ) : TimerThread.TaskRunnable, Player.Listener {
 
         private var timerId: Int = -1
         private var fileLoaded = false
         private var timeSet = false
         private var justSought = false
+        private var cancel = false
 
         fun register() {
             timerId = TimerThread.INSTANCE.addInterval(100, this)
+            player.addListener(this)
+
+            if(file.shallowEquals(player.getCurrentMedia()))
+                fileLoaded = true
         }
 
         override fun invoke(): Long {
             return runBlocking {
-                val (shouldExit, shouldContinue) = checkFile()
-                if (shouldExit)
-                    return@runBlocking -1L
+                if (fileLoaded) {
+                    checkTime()
+                }
 
-                if (shouldContinue) {
-                    val shouldExit = checkTime()
-                    if (shouldExit)
-                        return@runBlocking -1L
+                if (cancel) {
+                    withContext(Dispatchers.Main) { player.removeListener(this@PlayerController) }
+                    return@runBlocking -1L
                 }
 
                 return@runBlocking 0L
             }
         }
 
-        /** @return Pair<shouldExit, shouldContinue> */
-        private suspend fun checkFile(): Pair<Boolean, Boolean> {
-            return withContext(Dispatchers.IO) {
-                val currentFile = player.getCurrentMedia()
-
-                return@withContext if (fileLoaded) {
-                    if (!file.shallowEquals(currentFile)) {
-                        Pair(true, false)
-                    } else {
-                        Pair(false, true)
-                    }
-                } else {
-                    if (file.shallowEquals(currentFile)) {
-                        fileLoaded = true
-                        Pair(false, true)
-                    } else {
-                        Pair(false, false)
-                    }
-                }
+        override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
+            val currentFile = player.getCurrentMedia()
+            if(fileLoaded) {
+                if(!file.shallowEquals(currentFile))
+                    cancel = true
+            } else {
+                if(file.shallowEquals(currentFile))
+                    fileLoaded = true
             }
         }
 
-        /** @return shouldExit */
-        private suspend fun checkTime(): Boolean {
-            return withContext(Dispatchers.Main) {
+        private suspend fun checkTime() {
+            withContext(Dispatchers.Main) {
                 val time = player.currentPosition
 
-                return@withContext if(timeSet) {
+                if(timeSet) {
                     if(justSought) {
                         // wait till player did seek
                         if((time - startMs) < 2000)
                             justSought = false
-                        false
                     } else {
                         if(time >= endMs) {
                             player.seekToNext()
-                            true
+                            cancel = true
                         } else if(time < startMs) {
                             // the user seems to seeked on their own so stop control of this item
-                            true
-                        } else {
-                            false
+                            cancel = true
                         }
                     }
                 } else {
                     player.seekTo(startMs)
                     timeSet = true
                     justSought = true
-
-                    false
                 }
             }
         }
