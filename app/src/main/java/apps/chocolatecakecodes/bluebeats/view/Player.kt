@@ -526,7 +526,7 @@ class Player : Fragment() {
         }
     }
 
-    private inner class PlaylistOverviewPopup {
+    private inner class PlaylistOverviewPopup : Media3Player.Listener {
 
         private val tintSelected = ColorStateList.valueOf(this@Player.requireContext().getColor(R.color.button_selected))
         private val tintNotSelected = ColorStateList.valueOf(this@Player.requireContext().getColor(R.color.button_not_selected))
@@ -545,7 +545,10 @@ class Player : Fragment() {
                 true,
                 this@PlaylistOverviewPopup::initContent)
 
-            setupCurrentItemObserver()
+            player.addListener(this)
+            popup.setOnDismissListener {
+                player.removeListener(this)
+            }
         }
 
         private fun initContent(view: View) {
@@ -610,30 +613,6 @@ class Player : Fragment() {
             }
         }
 
-        private fun setupCurrentItemObserver() {
-            val mediaChangedListener = object : Media3Player.Listener {
-
-                override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
-                    val select = listAdapter.getSelectExtension()
-                    select.deselect()
-
-                    val plPos = player.getCurrentPlaylist()?.currentPosition ?: -1
-                    if(plPos != -1) {
-                        select.select(
-                            player.currentMediaItemIndex,
-                            false,
-                            false
-                        )
-                    }
-                }
-            }
-
-            player.addListener(mediaChangedListener)
-            popup.setOnDismissListener {
-                player.removeListener(mediaChangedListener)
-            }
-        }
-
         private fun setupListAdapter(): FastItemAdapter<SelectableItem<out SelectableItem.ViewHolder<*>>> {
             val adapter = FastItemAdapter<SelectableItem<out SelectableItem.ViewHolder<*>>>()
 
@@ -664,16 +643,10 @@ class Player : Fragment() {
                 Media3Player.REPEAT_MODE_ONE -> Media3Player.REPEAT_MODE_OFF
                 else -> throw AssertionError()
             }
-
-            setRepeatButtonContent(btnRepeat, player.repeatMode)
         }
 
         private fun onShuffleClick() {
-                player.shuffleModeEnabled = !player.shuffleModeEnabled
-
-                btnShuffle.backgroundTintList = if(player.shuffleModeEnabled) tintSelected else tintNotSelected
-                // shuffle can change the items
-                loadItems()
+            player.shuffleModeEnabled = !player.shuffleModeEnabled
         }
 
         private fun loadItems() {
@@ -701,6 +674,30 @@ class Player : Fragment() {
             val itemPos = pl.currentPosition.coerceAtLeast(0)
             scroller.targetPosition = itemPos
             listView.layoutManager!!.startSmoothScroll(scroller)
+        }
+
+        override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
+            val select = listAdapter.getSelectExtension()
+            select.deselect()
+
+            val plPos = player.getCurrentPlaylist()?.currentPosition ?: -1
+            if(plPos != -1) {
+                select.select(
+                    player.currentMediaItemIndex,
+                    false,
+                    false
+                )
+            }
+        }
+
+        override fun onRepeatModeChanged(repeatMode: Int) {
+            setRepeatButtonContent(btnRepeat, player.repeatMode)
+        }
+
+        override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+            btnShuffle.backgroundTintList = if(player.shuffleModeEnabled) tintSelected else tintNotSelected
+            // shuffle can change the items
+            loadItems()
         }
     }
 

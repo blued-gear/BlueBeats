@@ -262,6 +262,12 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
         val ret = SettableFuture.create<Unit>()
         CoroutineScope(Dispatchers.IO).launch {
             currentPlaylist.get().shuffle = shuffleModeEnabled
+
+            synchronized(state) {
+                // re-create playlist info as shuffle might have changed the order
+                fillInStateMedia(state)
+            }
+
             ret.set(Unit)
         }
         return ret
