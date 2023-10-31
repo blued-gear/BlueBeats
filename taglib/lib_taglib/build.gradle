@@ -54,6 +54,8 @@ tasks.named("clean").configure {
 }
 
 tasks.register('generateIncludeDir', Copy) {
+    group = 'build'
+
     from file(project.projectDir.absolutePath + "/src/main/cpp/")
     into file(project.projectDir.absolutePath + "/src/main/cpp/include/")
     include("**/*.h")
