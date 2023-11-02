@@ -150,7 +150,7 @@ class FileBrowser : Fragment() {
                 browser.currentDir = it
 
                 // scanMedia() was split because there were a race condition between this set and addEntry in the scan-listener
-                if(scanRequested && false)
+                if(scanRequested)
                     scanMedia()
             }
         }
