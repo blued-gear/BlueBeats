@@ -52,7 +52,7 @@
     <string name="misc_filetype_audio">Audio</string>
     <string name="misc_filetype_video">Video</string>
     <string name="misc_filetype_other">other</string>
-    <string name="misc_loading">loading ...</string>
+    <string name="misc_loading">loading &#8230;</string>
     <string name="filebrowser_menu_select_all_files">Select All Files</string>
     <string name="dynpl_regex_attr">Attribute</string>
     <string name="dynpl_regex_regex">Regex Pattern</string>
@@ -67,7 +67,7 @@
     <string name="dynpl_timespan_start">Start (s):</string>
     <string name="dynpl_timespan_end">End (s):</string>
     <string name="misc_description">Description</string>
-    <string name="player_vlc_err">An error occured in the player</string>
+    <string name="player_vlc_err">An error occurred in the player</string>
     <string name="filebrowser_menu_start_tmp_pl">Play now</string>
     <string name="filebrowser_menu_add_tmp_pl">Add to running Playlist</string>
     <string name="filebrowser_dir_no_media">Directory does not contain any mediafiles</string>

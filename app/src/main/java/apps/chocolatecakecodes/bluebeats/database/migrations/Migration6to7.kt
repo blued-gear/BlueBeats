@@ -1,7 +1,6 @@
 package apps.chocolatecakecodes.bluebeats.database.migrations
 
 import androidx.room.migration.Migration
-import androidx.room.util.useCursor
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteQueryBuilder
 import apps.chocolatecakecodes.bluebeats.database.DbUtils.map
@@ -35,7 +34,7 @@ object Migration6to7 : Migration(6, 7) {
         }.create().let {
             db.query(it)
         }.let { cursor ->
-            cursor.useCursor {
+            cursor.use {
                 val colIdxId = cursor.getColumnIndexOrThrow("id")
                 val colIdxMedia = cursor.getColumnIndexOrThrow("media")
 
