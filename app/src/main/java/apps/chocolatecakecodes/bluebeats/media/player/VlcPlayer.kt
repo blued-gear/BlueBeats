@@ -19,6 +19,7 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
 import apps.chocolatecakecodes.bluebeats.media.playlist.items.TimeSpanItem
 import apps.chocolatecakecodes.bluebeats.taglib.Chapter
 import apps.chocolatecakecodes.bluebeats.util.RequireNotNull
+import apps.chocolatecakecodes.bluebeats.util.Utils
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
@@ -115,8 +116,18 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
 
             playbackPos = 0
             player.play(media.path)
+        }
 
-            // state will be invalidated by VLC event
+        // state will be invalidated by VLC event
+
+        // this will be set at state-rebuild on VLC event, but it may be needed earlier so also set it now
+        synchronized(state) {
+            fillInStateMedia(state)
+
+            if(Utils.isUiThread())
+                invalidateState()
+            else
+                mainThreadHandler.post { invalidateState() }
         }
     }
 
@@ -422,7 +433,7 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
         }
     }
 
-    fun invalidateMediaInfo() {
+    private fun invalidateMediaInfo() {
         // in IO-thread because fillInStateMedia() will load media-attrs from DB
         CoroutineScope(Dispatchers.IO).launch {
             loadChapters()
