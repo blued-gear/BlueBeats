@@ -19,7 +19,6 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
 import apps.chocolatecakecodes.bluebeats.media.playlist.items.TimeSpanItem
 import apps.chocolatecakecodes.bluebeats.taglib.Chapter
 import apps.chocolatecakecodes.bluebeats.util.RequireNotNull
-import apps.chocolatecakecodes.bluebeats.util.Utils
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
@@ -121,13 +120,11 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
         // state will be invalidated by VLC event
 
         // this will be set at state-rebuild on VLC event, but it may be needed earlier so also set it now
-        synchronized(state) {
-            fillInStateMedia(state)
-
-            if(Utils.isUiThread())
-                invalidateState()
-            else
+        CoroutineScope(Dispatchers.IO).launch {
+            synchronized(state) {
+                fillInStateMedia(state)
                 mainThreadHandler.post { invalidateState() }
+            }
         }
     }
 
