@@ -732,6 +732,10 @@ class Player : Fragment() {
 
     private inner class TimeUpdater : TimerThread.TaskRunnable {
         override operator fun invoke(): Long {
+            // I don't know why this can be called after onPause() removed the timer, so add this safeguard
+            if(this@Player.activity == null)
+                return 0L
+
             return runBlocking {
                 withContext(Dispatchers.Main) {
                     val time = player.currentPosition
