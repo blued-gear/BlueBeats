@@ -242,7 +242,12 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
                 }
 
                 if(mediaItemIndex != pl.currentPosition) {
-                    pl.seek(mediaItemIndex - pl.currentPosition)
+                    if(seekCommand == Player.COMMAND_SEEK_TO_NEXT || seekCommand == Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM) {
+                        pl.nextItem()
+                    } else {
+                        pl.seek(mediaItemIndex - pl.currentPosition)
+                    }
+
                     pl.currentItem().play(this@VlcPlayer)
                 }
 
