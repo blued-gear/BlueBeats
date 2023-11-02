@@ -266,7 +266,7 @@ class FileBrowser : Fragment() {
 
         val startTemPlItem = mainMenu.findItem(R.id.filebrowser_menu_start_tpl)
         val currentPl = requireActivity().castTo<MainActivity>().playerConn.player?.getCurrentPlaylist()
-        startTemPlItem.isEnabled = selectedItems.isNotEmpty() && onlyFilesSelected
+        startTemPlItem.isEnabled = selectedItems.isNotEmpty()
         if(currentPl is TempPlaylist)
             startTemPlItem.title = this.requireContext().getText(R.string.filebrowser_menu_add_tmp_pl)
         else
@@ -358,24 +358,37 @@ class FileBrowser : Fragment() {
     }
 
     private fun onStartTmpPlClicked() {
-        val toAdd = browser.selectedItems
-            .filterIsInstance<MediaFile>().map {
-                it
-            }.sortedBy {
-                it.name
-            }
+        CoroutineScope(Dispatchers.IO).launch {
+            val toAdd = browser.selectedItems
+                .flatMap {
+                    when(it) {
+                        is MediaFile -> listOf(it)
+                        is MediaDir -> it.getFiles()
+                        else -> emptyList()
+                    }
+                }.sortedBy {
+                    it.name
+                }
 
-        val pl = player.getCurrentPlaylist()
-        if(pl is TempPlaylist) {
-            pl.addMedias(toAdd)
-        } else {
-            TempPlaylist().also { tpl ->
-                tpl.addMedias(toAdd)
-            }.let {
-                player.playPlaylist(it)
-            }
+            withContext(Dispatchers.Main) {
+                if(toAdd.isEmpty()) {
+                    Toast.makeText(this@FileBrowser.requireContext(), R.string.filebrowser_dir_no_media, Toast.LENGTH_SHORT).show()
+                    return@withContext
+                }
 
-            mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
+                val pl = player.getCurrentPlaylist()
+                if(pl is TempPlaylist) {
+                    pl.addMedias(toAdd)
+                } else {
+                    TempPlaylist().also { tpl ->
+                        tpl.addMedias(toAdd)
+                    }.let {
+                        player.playPlaylist(it)
+                    }
+
+                    mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
+                }
+            }
         }
     }
     //endregion
