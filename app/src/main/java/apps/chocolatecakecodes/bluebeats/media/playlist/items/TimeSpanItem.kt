@@ -9,7 +9,6 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.media.player.VlcPlayer
 import apps.chocolatecakecodes.bluebeats.util.TimerThread
-import com.google.common.collect.ArrayListMultimap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -33,16 +32,7 @@ internal open class TimeSpanItem(
     val endMs: Long
 ) : PlaylistItem {//TODO sometimes this skips the item when started
 
-    // ugly, but I have no better plan
-    private val activeControllers = ArrayListMultimap.create<Player, PlayerController>()
-
     override fun play(player: VlcPlayer) {
-        runBlocking {
-            activeControllers.get(player).toList().forEach {
-                it.unregister()
-            }
-        }
-
         PlayerController(player).register()
         player.playMedia(file, true)
     }
@@ -85,8 +75,6 @@ internal open class TimeSpanItem(
         private var cancel = false
 
         fun register() {
-            activeControllers.put(player, this)
-
             timerId = TimerThread.INSTANCE.addInterval(100, this)
             player.addListener(this)
         }
@@ -94,7 +82,6 @@ internal open class TimeSpanItem(
         suspend fun unregister() {
             cancel = true
             withContext(Dispatchers.Main) { player.removeListener(this@PlayerController) }
-            activeControllers.remove(player, this)
         }
 
         override fun invoke(): Long {
@@ -113,15 +100,18 @@ internal open class TimeSpanItem(
         }
 
         override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
+            val currentPlItem = player.getCurrentPlaylist()?.currentItem()
             val currentFile = player.getCurrentMedia()
+
             if(fileLoaded) {
-                if(!file.shallowEquals(currentFile)) {
+                if(this@TimeSpanItem != currentPlItem || !file.shallowEquals(currentFile)) {
                     fileLoaded = false
                     cancel = true
                 }
             } else {
-                if(file.shallowEquals(currentFile))
+                if(file.shallowEquals(currentFile)) {
                     fileLoaded = true
+                }
             }
         }
 
