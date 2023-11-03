@@ -86,7 +86,8 @@ internal open class TimeSpanItem(
 
         override fun invoke(): Long {
             return runBlocking {
-                if (fileLoaded) {
+                val itemActive = this@TimeSpanItem == player.getCurrentPlaylist()?.currentItem()// check is necessary as onMediaMetadataChanged() might be called to late
+                if (fileLoaded && itemActive) {
                     checkTime()
                 }
 
