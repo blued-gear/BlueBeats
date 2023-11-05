@@ -133,6 +133,7 @@ tasks.withType(LicenseReportTask).configureEach {
 }
 
 tasks.register('publishApkDebug') {
+    group = "publish"
     dependsOn("build")
 
     Properties properties = new Properties()
