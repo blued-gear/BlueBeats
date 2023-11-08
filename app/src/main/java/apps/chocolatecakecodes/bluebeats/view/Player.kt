@@ -33,8 +33,7 @@ import androidx.media3.common.Player as Media3Player
 
 private const val CONTROLS_FADE_IN_TIME = 200L
 private const val CONTROLS_FADE_OUT_TIME = 100L
-//private const val CONTROLS_FADE_OUT_DELAY = 2000L
-private const val CONTROLS_FADE_OUT_DELAY = 200000L
+private const val CONTROLS_FADE_OUT_DELAY = 2000L
 private const val SEEK_STEP = 1000.0f
 private const val SEEK_DEBOUNCE_TIMEOUT = 200L
 private const val TIME_UPDATER_INTERVAL_RUNNING = 500L
