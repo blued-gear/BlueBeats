@@ -122,6 +122,8 @@ dependencies {
 
     implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0'
 
+    implementation 'io.github.esentsov:kotlin-visibility:1.1.0'
+
     testImplementation "junit:junit:$version_junit"
     androidTestImplementation "androidx.test.ext:junit:$version_android_junit"
     androidTestImplementation "androidx.test.espresso:espresso-core:$version_espresso"

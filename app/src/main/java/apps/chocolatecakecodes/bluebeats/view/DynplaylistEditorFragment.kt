@@ -19,7 +19,7 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicP
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.GenericRule
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGroup
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
-import apps.chocolatecakecodes.bluebeats.view.specialviews.createEditorRoot
+import apps.chocolatecakecodes.bluebeats.view.specialviews.dynpleditors.DynPlaylistEditors
 import kotlinx.coroutines.*
 import kotlin.math.abs
 
@@ -158,7 +158,7 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
 
         plRules.removeAllViews()
         plRules.addView(
-            createEditorRoot(editCopy, this::onRuleEdited, this.requireContext()),
+            DynPlaylistEditors.createEditorRoot(editCopy, this::onRuleEdited, this.requireContext()),
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
         )
     }
