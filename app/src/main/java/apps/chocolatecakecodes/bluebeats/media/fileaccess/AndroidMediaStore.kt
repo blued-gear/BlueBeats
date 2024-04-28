@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
 import android.os.Build
+import android.os.CancellationSignal
 import android.provider.MediaStore
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContentResolverCompat
@@ -41,7 +42,7 @@ internal class AndroidMediaStore : FileEnumerator {
             DATA_COL,
             null, null,
             "${DATA_COL[0]} ASC",
-            null
+            null as CancellationSignal?
         )?.use {  cursor ->
             val dataColIdx = cursor.getColumnIndexOrThrow(DATA_COL[0])
 

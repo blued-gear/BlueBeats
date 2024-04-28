@@ -15,6 +15,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import apps.chocolatecakecodes.bluebeats.BuildConfig
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.MediaDB
@@ -24,7 +25,6 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.media.player.VlcPlayer
 import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
 import apps.chocolatecakecodes.bluebeats.media.playlist.TempPlaylist
-import apps.chocolatecakecodes.bluebeats.taglib.BuildConfig
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.SmartBackPressedCallback
 import apps.chocolatecakecodes.bluebeats.util.Utils

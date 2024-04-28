@@ -4,10 +4,20 @@ import android.annotation.SuppressLint
 import android.content.res.ColorStateList
 import android.os.Bundle
 import android.util.Log
-import android.view.*
-import android.widget.*
+import android.view.GestureDetector
+import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.widget.ImageButton
+import android.widget.ImageView
+import android.widget.PopupWindow
+import android.widget.SeekBar
+import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import androidx.core.view.GestureDetectorCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.media3.common.MediaMetadata
@@ -21,13 +31,24 @@ import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.player.VlcPlayer
 import apps.chocolatecakecodes.bluebeats.taglib.Chapter
-import apps.chocolatecakecodes.bluebeats.util.*
+import apps.chocolatecakecodes.bluebeats.util.Debouncer
+import apps.chocolatecakecodes.bluebeats.util.OnceSettable
+import apps.chocolatecakecodes.bluebeats.util.SmartBackPressedCallback
+import apps.chocolatecakecodes.bluebeats.util.TimerThread
+import apps.chocolatecakecodes.bluebeats.util.Utils
+import apps.chocolatecakecodes.bluebeats.util.castTo
 import apps.chocolatecakecodes.bluebeats.view.specialitems.SelectableItem
 import apps.chocolatecakecodes.bluebeats.view.specialitems.playlistitems.itemForPlaylistItem
 import apps.chocolatecakecodes.bluebeats.view.specialviews.SegmentedSeekBar
 import com.mikepenz.fastadapter.adapters.FastItemAdapter
 import com.mikepenz.fastadapter.select.getSelectExtension
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.videolan.libvlc.util.VLCVideoLayout
 import androidx.media3.common.Player as Media3Player
 
@@ -177,7 +198,7 @@ class Player : Fragment() {
     private fun setupControlPaneGestures(controlsPane: View) {
         val gestureHandler = ControlsGestureHandler(controlsPane)
 
-        val gestureDetector = GestureDetectorCompat(this.requireContext(), gestureHandler)
+        val gestureDetector = GestureDetector(this.requireContext(), gestureHandler)
         gestureDetector.setOnDoubleTapListener(gestureHandler)
         gestureDetector.setIsLongpressEnabled(false)
 
