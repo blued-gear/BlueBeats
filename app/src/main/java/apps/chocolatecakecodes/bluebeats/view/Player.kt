@@ -516,7 +516,7 @@ class Player : Fragment() {
         }
     }
 
-    private inner class SeekHandler : SeekBar.OnSeekBarChangeListener{
+    private inner class SeekHandler : SeekBar.OnSeekBarChangeListener {
 
         var isSeeking = false
 

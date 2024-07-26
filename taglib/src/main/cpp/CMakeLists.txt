@@ -44,10 +44,18 @@ find_library( # Sets the name of the path variable.
               log)
 
 # include lib_taglib
+set(build_type_capitalised ${build_type})
+if(build_type STREQUAL "debug")
+    set(build_type_capitalised "Debug")
+elseif(build_type STREQUAL "release")
+    set(build_type_capitalised "Release")
+endif()
+
 set(libtaglib_proj "../../../lib_taglib")
 get_filename_component(libtaglib_proj ${libtaglib_proj} ABSOLUTE)
 set(libtaglib_include "${libtaglib_proj}/src/main/cpp/include")
-set(libtaglib_out "${libtaglib_proj}/build/intermediates/stripped_native_libs/${build_type}/out/lib/${CMAKE_ANDROID_ARCH_ABI}")
+message(${libtaglib_include})
+set(libtaglib_out "${libtaglib_proj}/build/intermediates/stripped_native_libs/${build_type}/strip${build_type_capitalised}DebugSymbols/out/lib/${CMAKE_ANDROID_ARCH_ABI}")
 
 add_library(libtaglib SHARED IMPORTED)
 set_target_properties(libtaglib PROPERTIES IMPORTED_LOCATION ${libtaglib_out}/libtag.so)

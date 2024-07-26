@@ -213,28 +213,28 @@ private class NotificationProvider(
 
         builder.addAction(factory.createMediaAction(
             mediaSession,
-            IconCompat.createWithResource(context, androidx.media3.session.R.drawable.media3_notification_seek_to_previous),
+            IconCompat.createWithResource(context, androidx.media3.session.R.drawable.media3_icon_previous),
             context.getString(androidx.media3.session.R.string.media3_controls_seek_to_previous_description),
             Player.COMMAND_SEEK_TO_PREVIOUS
         ))
         if(player.isPlaying) {
             builder.addAction(factory.createMediaAction(
                 mediaSession,
-                IconCompat.createWithResource(context, androidx.media3.session.R.drawable.media3_notification_pause),
+                IconCompat.createWithResource(context, androidx.media3.session.R.drawable.media3_icon_pause),
                 context.getString(androidx.media3.session.R.string.media3_controls_pause_description),
                 Player.COMMAND_PLAY_PAUSE
             ))
         } else {
             builder.addAction(factory.createMediaAction(
                 mediaSession,
-                IconCompat.createWithResource(context, androidx.media3.session.R.drawable.media3_notification_play),
+                IconCompat.createWithResource(context, androidx.media3.session.R.drawable.media3_icon_play),
                 context.getString(androidx.media3.session.R.string.media3_controls_play_description),
                 Player.COMMAND_PLAY_PAUSE
             ))
         }
         builder.addAction(factory.createMediaAction(
             mediaSession,
-            IconCompat.createWithResource(context, androidx.media3.session.R.drawable.media3_notification_seek_to_next),
+            IconCompat.createWithResource(context, androidx.media3.session.R.drawable.media3_icon_next),
             context.getString(androidx.media3.session.R.string.media3_controls_seek_to_next_description),
             Player.COMMAND_SEEK_TO_NEXT
         ))
