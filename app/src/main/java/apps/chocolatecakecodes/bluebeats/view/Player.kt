@@ -750,8 +750,10 @@ class Player : Fragment() {
             val plPos = pl?.currentPosition ?: -1
             if(plPos != -1) {
                 CoroutineScope(Dispatchers.IO).launch {
-                    if (expectedPl != pl?.getItems())
+                    if (expectedPl != pl?.getItems()) {
                         loadItems()
+                        scrollToCurrentItem()
+                    }
 
                     withContext(Dispatchers.Main) {
                         select.select(
