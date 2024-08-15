@@ -30,6 +30,7 @@ import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.player.VlcPlayer
+import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
 import apps.chocolatecakecodes.bluebeats.service.PlayerService
 import apps.chocolatecakecodes.bluebeats.service.PlayerServiceConnection
 import apps.chocolatecakecodes.bluebeats.taglib.Chapter
@@ -593,11 +594,14 @@ class Player : Fragment() {
         private var btnRepeat: ImageButton by OnceSettable()
         private var btnShuffle: ImageButton by OnceSettable()
         private var player: VlcPlayer by OnceSettable()
+        private var expectedPl: List<PlaylistItem> = emptyList()
 
         suspend fun createAndShow() {
             player = this@Player.player.await()
 
-            loadItems()
+            withContext(Dispatchers.IO) {
+                loadItems()
+            }
 
             popup = Utils.showPopup(this@Player.requireContext(), this@Player.requireView(),
                 R.layout.player_playlist_fragment,
@@ -708,21 +712,24 @@ class Player : Fragment() {
             player.shuffleModeEnabled = !player.shuffleModeEnabled
         }
 
-        private fun loadItems() {
+        /** must be called in IO Dispatcher */
+        private suspend fun loadItems() {
             val pl = player.getCurrentPlaylist()!!
-            CoroutineScope(Dispatchers.IO).launch {
-                pl.getItems().map {
-                    itemForPlaylistItem(it, false)
-                }.let {
-                    withContext(Dispatchers.Main) {
-                        listAdapter.setNewList(it)
+            val items = pl.getItems()
 
-                        listAdapter.getSelectExtension().select(
-                            pl.currentPosition.coerceAtLeast(0),
-                            false,
-                            false
-                        )
-                    }
+            expectedPl = ArrayList(pl.getItems())
+
+            items.map {
+                itemForPlaylistItem(it, false)
+            }.let {
+                withContext(Dispatchers.Main) {
+                    listAdapter.setNewList(it)
+
+                    listAdapter.getSelectExtension().select(
+                        pl.currentPosition.coerceAtLeast(0),
+                        false,
+                        false
+                    )
                 }
             }
         }
@@ -739,13 +746,21 @@ class Player : Fragment() {
             val select = listAdapter.getSelectExtension()
             select.deselect()
 
-            val plPos = player.getCurrentPlaylist()?.currentPosition ?: -1
+            val pl = player.getCurrentPlaylist()
+            val plPos = pl?.currentPosition ?: -1
             if(plPos != -1) {
-                select.select(
-                    player.currentMediaItemIndex,
-                    false,
-                    false
-                )
+                CoroutineScope(Dispatchers.IO).launch {
+                    if (expectedPl != pl?.getItems())
+                        loadItems()
+
+                    withContext(Dispatchers.Main) {
+                        select.select(
+                            player.currentMediaItemIndex,
+                            false,
+                            false
+                        )
+                    }
+                }
             }
         }
 
@@ -755,8 +770,11 @@ class Player : Fragment() {
 
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
             btnShuffle.backgroundTintList = if(player.shuffleModeEnabled) tintSelected else tintNotSelected
+
             // shuffle can change the items
-            loadItems()
+            CoroutineScope(Dispatchers.IO).launch {
+                loadItems()
+            }
         }
     }
 
