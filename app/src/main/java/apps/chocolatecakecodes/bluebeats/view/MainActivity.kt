@@ -21,8 +21,6 @@ import androidx.viewpager2.widget.ViewPager2
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
-import apps.chocolatecakecodes.bluebeats.service.PlayerService
-import apps.chocolatecakecodes.bluebeats.service.PlayerServiceConnection
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 import kotlinx.coroutines.CoroutineScope
@@ -70,7 +68,7 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
 
-        viewModel.currentTab.value = MainActivityViewModel.Tabs.values()[mainTabContent.currentItem]
+        viewModel.currentTab.value = MainActivityViewModel.Tabs.entries[mainTabContent.currentItem]
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -209,7 +207,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showRequestedTab() {
         if(this.intent.hasExtra(INTENT_OPTION_TAB)) {
-            val tabs = MainActivityViewModel.Tabs.values()
+            val tabs = MainActivityViewModel.Tabs.entries
             val idx = this.intent.getIntExtra(INTENT_OPTION_TAB, -1)
                 .coerceAtLeast(0)
                 .coerceAtMost(tabs.size)
@@ -258,7 +256,7 @@ class MainActivity : AppCompatActivity() {
         val tabs: List<Pair<String, () -> Fragment>>
 
         init {
-            tabs = MainActivityViewModel.Tabs.values().map{
+            tabs = MainActivityViewModel.Tabs.entries.map{
                 when(it){
                     MainActivityViewModel.Tabs.MEDIA ->
                         Pair(getText(R.string.main_tab_media).toString(), { FileBrowser.newInstance() })
