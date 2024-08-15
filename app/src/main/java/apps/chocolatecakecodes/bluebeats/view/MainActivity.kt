@@ -39,9 +39,6 @@ class MainActivity : AppCompatActivity() {
         private const val STORAGE_PERM_REQ_ID = 11
     }
 
-    internal lateinit var playerConn: PlayerServiceConnection
-        private set
-
     private lateinit var viewModel: MainActivityViewModel
     private lateinit var mainContentView: View
     private lateinit var mainTabContent: ViewPager2
@@ -61,8 +58,6 @@ class MainActivity : AppCompatActivity() {
         if(!VlcManagers.isInitialized())
             VlcManagers.init(this)
 
-        playerConn = PlayerService.connect(this)
-
         setupTabs()
         setupSystemBarsHider()
         wireObservers()
@@ -76,12 +71,6 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
 
         viewModel.currentTab.value = MainActivityViewModel.Tabs.values()[mainTabContent.currentItem]
-    }
-
-    override fun onDestroy() {
-        this.unbindService(playerConn)
-
-        super.onDestroy()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {

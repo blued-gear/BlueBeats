@@ -30,13 +30,15 @@ import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.player.VlcPlayer
+import apps.chocolatecakecodes.bluebeats.service.PlayerService
+import apps.chocolatecakecodes.bluebeats.service.PlayerServiceConnection
 import apps.chocolatecakecodes.bluebeats.taglib.Chapter
 import apps.chocolatecakecodes.bluebeats.util.Debouncer
+import apps.chocolatecakecodes.bluebeats.util.EventualValue
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.SmartBackPressedCallback
 import apps.chocolatecakecodes.bluebeats.util.TimerThread
 import apps.chocolatecakecodes.bluebeats.util.Utils
-import apps.chocolatecakecodes.bluebeats.util.castTo
 import apps.chocolatecakecodes.bluebeats.view.specialitems.SelectableItem
 import apps.chocolatecakecodes.bluebeats.view.specialitems.playlistitems.itemForPlaylistItem
 import apps.chocolatecakecodes.bluebeats.view.specialviews.SegmentedSeekBar
@@ -85,11 +87,16 @@ class Player : Fragment() {
     private var fullscreenState: Boolean = false
     private var timeUpdaterTimerId: Int = -1
 
-    private val player: VlcPlayer
-        get() = requireActivity().castTo<MainActivity>().playerConn.player!!
+    private val player: EventualValue<PlayerServiceConnection, VlcPlayer>
+
+    init {
+        player = EventualValue(Dispatchers.Main) { it.player }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        player.holder = PlayerService.connect(this.requireContext())
 
         val vmProvider = ViewModelProvider(this.requireActivity())
         viewModel = vmProvider.get(PlayerViewModel::class.java)
@@ -97,7 +104,7 @@ class Player : Fragment() {
 
         seekDebouncer = Debouncer.create(SEEK_DEBOUNCE_TIMEOUT) {
             withContext(Dispatchers.Main) {
-                player.seekTo(it)
+                player.await().seekTo(it)
             }
         }
     }
@@ -130,32 +137,43 @@ class Player : Fragment() {
     override fun onResume() {
         super.onResume()
 
-        attachPlayer()
-        player.addListener(playerCallback)
+        player.await {
+            attachPlayer()
+            it.addListener(playerCallback)
+
+            refreshPlayerControls()
+        }
+
         timeUpdaterTimerId = TimerThread.INSTANCE.addInterval(TIME_UPDATER_INTERVAL_IDLING, TimeUpdater())
 
         setupMainMenu()
-        refreshPlayerControls()
     }
 
     override fun onPause() {
         super.onPause()
 
         TimerThread.INSTANCE.removeTask(timeUpdaterTimerId)
-        player.clearVideoOutput()
-        player.removeListener(playerCallback)
+
+        player.await {
+            withContext(Dispatchers.Main) {
+                it.clearVideoOutput()
+                it.removeListener(playerCallback)
+            }
+        }
 
         mainMenu = null
     }
 
     override fun onDestroy() {
         seekDebouncer.stop()
+        player.holder?.let { this.context?.unbindService(it) }
+        player.destroy()
 
         super.onDestroy()
     }
 
-    private fun attachPlayer() {
-        player.setVideoOutput(playerView)
+    private suspend fun attachPlayer() {
+        player.await().setVideoOutput(playerView)
     }
 
     //region action-handlers
@@ -209,18 +227,20 @@ class Player : Fragment() {
     }
 
     private fun onPlayPauseClick() {
-        if(player.isPlaying)
-            player.pause()
-        else if(player.getCurrentMedia() !== null)
-            player.play()
+        player.await {
+            if(it.isPlaying)
+                it.pause()
+            else if(it.getCurrentMedia() !== null)
+                it.play()
+        }
     }
 
     private fun onPrevClick() {
-        player.seekToPrevious()
+        player.await { it.seekToPrevious() }
     }
 
     private fun onNextClick() {
-        player.seekToNext()
+        player.await { it.seekToNext() }
     }
 
     private fun onFullscreenClick() {
@@ -229,7 +249,7 @@ class Player : Fragment() {
 
     private fun onBackPressed() {
         // check fullscreen is active
-        if(mainVM.fullScreenContent.value !== null){
+        if(mainVM.fullScreenContent.value !== null) {
             viewModel.setFullscreenMode(false)
         }
     }
@@ -237,12 +257,14 @@ class Player : Fragment() {
 
     //region livedata-handlers
     private fun wireObservers(){
-        viewModel.isFullscreen.observe(this.viewLifecycleOwner){
+        viewModel.isFullscreen.observe(this.viewLifecycleOwner) {
             onIsFullscreenChanged(it)
         }
 
-        viewModel.timeTextAsRemaining.observe(this.viewLifecycleOwner){
-            timeTextView.text = formatPlayTime(player.currentPosition, player.duration, it!!)
+        viewModel.timeTextAsRemaining.observe(this.viewLifecycleOwner) { timeTextAsRemaining ->
+            player.await { player ->
+                timeTextView.text = formatPlayTime(player.currentPosition, player.duration, timeTextAsRemaining)
+            }
         }
     }
 
@@ -267,28 +289,31 @@ class Player : Fragment() {
 
             // configure items
             menu.findItem(R.id.player_menu_chapters).setOnMenuItemClickListener {
-                showChapterMenu()
+                CoroutineScope(Dispatchers.Main).launch { showChapterMenu() }
                 return@setOnMenuItemClickListener true
             }
             menu.findItem(R.id.player_menu_playlist).setOnMenuItemClickListener {
-                showPlaylistOverview()
+                CoroutineScope(Dispatchers.Main).launch { showPlaylistOverview() }
                 return@setOnMenuItemClickListener true
             }
 
-            updateChaptersMenuItem()
-            updatePlaylistMenuItem()
+            CoroutineScope(Dispatchers.Main).launch {
+                updateChaptersMenuItem()
+                updatePlaylistMenuItem()
+            }
         }
     }
 
-    private fun updateChaptersMenuItem(){
+    private suspend fun updateChaptersMenuItem(){
         mainMenu?.let {
             val chaptersItem = it.findItem(R.id.player_menu_chapters)
-            chaptersItem.isEnabled = player.getChapters().isNotEmpty()
+            chaptersItem.isEnabled = player.await().getChapters().isNotEmpty()
         }
     }
 
-    private fun showChapterMenu(){
+    private suspend fun showChapterMenu(){
         val dlgBuilder = AlertDialog.Builder(this.requireContext())
+        val player = player.await()
 
         // generate chapter items
         val chapters = player.getChapters()
@@ -307,13 +332,13 @@ class Player : Fragment() {
         dlgBuilder.create().show()
     }
 
-    private fun updatePlaylistMenuItem() {
+    private suspend fun updatePlaylistMenuItem() {
         mainMenu?.let {
-            it.findItem(R.id.player_menu_playlist).isEnabled = player.getCurrentPlaylist() != null
+            it.findItem(R.id.player_menu_playlist).isEnabled = player.await().getCurrentPlaylist() != null
         }
     }
 
-    private fun showPlaylistOverview() {
+    private suspend fun showPlaylistOverview() {
         PlaylistOverviewPopup().createAndShow()
     }
     //endregion
@@ -345,7 +370,7 @@ class Player : Fragment() {
         controlsHideCoroutine = CoroutineScope(Dispatchers.Default).launch {
             delay(CONTROLS_FADE_OUT_DELAY)
             launch(Dispatchers.Main) {
-                if (player.isPlaying()) {// only re-hide if playing
+                if (player.await().isPlaying()) {// only re-hide if playing
                     runControlsTransition(false)
                 }
 
@@ -404,7 +429,9 @@ class Player : Fragment() {
         }
     }
 
-    private fun refreshPlayerControls() {
+    private suspend fun refreshPlayerControls() {
+        val player = player.await()
+
         if (player.isPlaying()) {
             playerContainer.findViewById<ImageButton>(R.id.player_controls_play).setImageResource(R.drawable.ic_baseline_pause)
         }else {
@@ -448,12 +475,12 @@ class Player : Fragment() {
         }
     }
 
-    private fun updateChapters(chapters: List<Chapter>) {
+    private suspend fun updateChapters(chapters: List<Chapter>) {
         if(chapters.isEmpty()){
             seekBar.segments = emptyArray()
             seekBar.showTitle = false
         }else{
-            val totalTime = player.duration.toDouble()
+            val totalTime = player.await().duration.toDouble()
             assert(totalTime > 0)
 
             seekBar.segments = chapters.map {
@@ -494,25 +521,30 @@ class Player : Fragment() {
         }
 
         override fun onDoubleTapEvent(e: MotionEvent): Boolean {
-            if(e.actionMasked != MotionEvent.ACTION_UP) return false
-            if(player.getCurrentMedia() === null) return false
+            return runBlocking {
+                val player = player.await()
+                withContext(Dispatchers.Main) {
+                    if(e.actionMasked != MotionEvent.ACTION_UP) return@withContext false
+                    if(player.getCurrentMedia() === null) return@withContext false
 
-            val width = view.width
-            val x = e.x
+                    val width = view.width
+                    val x = e.x
 
-            if(x <= width * SEEK_AREA_WIDTH){
-                // seek back
-                player.seekBack()
+                    if(x <= width * SEEK_AREA_WIDTH){
+                        // seek back
+                        player.seekBack()
 
-                return true
-            }else if(x >= width * (1.0f - SEEK_AREA_WIDTH)){
-                // seek forward
-                player.seekForward()
+                        return@withContext true
+                    }else if(x >= width * (1.0f - SEEK_AREA_WIDTH)){
+                        // seek forward
+                        player.seekForward()
 
-                return true
+                        return@withContext true
+                    }
+
+                    return@withContext false
+                }
             }
-
-            return false
         }
     }
 
@@ -522,9 +554,11 @@ class Player : Fragment() {
 
         override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
             if(isSeeking) {
-                val newTime = (player.duration * (this@Player.seekBar.value / SEEK_STEP)).toLong()
-                timeTextView.text = formatPlayTime(newTime, player.duration, viewModel.timeTextAsRemaining.value!!)
-                seekDebouncer.debounce(newTime)
+                player.await { player ->
+                    val newTime = (player.duration * (this@Player.seekBar.value / SEEK_STEP)).toLong()
+                    timeTextView.text = formatPlayTime(newTime, player.duration, viewModel.timeTextAsRemaining.value!!)
+                    seekDebouncer.debounce(newTime)
+                }
             }
         }
 
@@ -540,8 +574,10 @@ class Player : Fragment() {
             isSeeking = false
 
             // re-schedule control-hiding
-            if(player.isPlaying()) {// only re-hide if playing
-                hideControlsWithDelay()
+            player.await { player ->
+                if(player.isPlaying()) {// only re-hide if playing
+                    hideControlsWithDelay()
+                }
             }
         }
     }
@@ -556,8 +592,11 @@ class Player : Fragment() {
         private var popup: PopupWindow by OnceSettable()
         private var btnRepeat: ImageButton by OnceSettable()
         private var btnShuffle: ImageButton by OnceSettable()
+        private var player: VlcPlayer by OnceSettable()
 
-        fun createAndShow() {
+        suspend fun createAndShow() {
+            player = this@Player.player.await()
+
             loadItems()
 
             popup = Utils.showPopup(this@Player.requireContext(), this@Player.requireView(),
@@ -733,14 +772,18 @@ class Player : Fragment() {
         }
 
         override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
-            player.getCurrentMedia()?.let { media ->
-                updateAltImg(media)
+            player.await { player ->
+                player.getCurrentMedia()?.let { media ->
+                    updateAltImg(media)
+                }
+                updateChapters(player.getChapters())
             }
-            updateChapters(player.getChapters())
         }
 
         override fun onPlaylistMetadataChanged(mediaMetadata: MediaMetadata) {
-            updatePlaylistMenuItem()
+            CoroutineScope(Dispatchers.Main).launch {
+                updatePlaylistMenuItem()
+            }
         }
 
         override fun onPlayerError(error: PlaybackException) {
@@ -757,6 +800,8 @@ class Player : Fragment() {
                 return 0L
 
             return runBlocking {
+                val player = player.await()
+
                 withContext(Dispatchers.Main) {
                     val time = player.currentPosition
                     if(time >= 0) {

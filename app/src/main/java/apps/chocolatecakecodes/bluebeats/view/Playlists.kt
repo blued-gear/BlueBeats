@@ -34,6 +34,9 @@ import apps.chocolatecakecodes.bluebeats.media.playlist.StaticPlaylist
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylist
 import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylistIterator
 import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
+import apps.chocolatecakecodes.bluebeats.service.PlayerService
+import apps.chocolatecakecodes.bluebeats.service.PlayerServiceConnection
+import apps.chocolatecakecodes.bluebeats.util.EventualValue
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.RequireNotNull
 import apps.chocolatecakecodes.bluebeats.util.SmartBackPressedCallback
@@ -83,11 +86,16 @@ internal class Playlists : Fragment() {
     private var menu: Menu? = null
     private var inSelection = false
 
-    private val player: VlcPlayer
-        get() = requireActivity().castTo<MainActivity>().playerConn.player!!
+    private val player: EventualValue<PlayerServiceConnection, VlcPlayer>
+
+    init {
+        player = EventualValue(Dispatchers.Main) { it.player }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        player.holder = PlayerService.connect(this.requireContext())
 
         val vmProvider = ViewModelProvider(this.requireActivity())
         viewModel = vmProvider.get(PlaylistsViewModel::class.java)
@@ -141,6 +149,13 @@ internal class Playlists : Fragment() {
         super.onPause()
 
         menu = null
+    }
+
+    override fun onDestroy() {
+        player.holder?.let { this.context?.unbindService(it) }
+        player.destroy()
+
+        super.onDestroy()
     }
 
     private fun setupFastAdapter() {
@@ -263,7 +278,7 @@ internal class Playlists : Fragment() {
             }
 
             mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
-            player.playPlaylist(iter)
+            player.await { it.playPlaylist(iter) }
         }
     }
 

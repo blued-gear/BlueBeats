@@ -7,7 +7,11 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.View
 import android.view.ViewGroup
-import android.widget.*
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
+import android.widget.EditText
+import android.widget.Spinner
+import android.widget.TextView
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
@@ -18,15 +22,30 @@ import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.player.VlcPlayer
 import apps.chocolatecakecodes.bluebeats.media.playlist.TempPlaylist
-import apps.chocolatecakecodes.bluebeats.util.*
+import apps.chocolatecakecodes.bluebeats.service.PlayerService
+import apps.chocolatecakecodes.bluebeats.service.PlayerServiceConnection
+import apps.chocolatecakecodes.bluebeats.util.EventualValue
+import apps.chocolatecakecodes.bluebeats.util.OnceSettable
+import apps.chocolatecakecodes.bluebeats.util.RequireNotNull
+import apps.chocolatecakecodes.bluebeats.util.SmartBackPressedCallback
+import apps.chocolatecakecodes.bluebeats.util.Utils
+import apps.chocolatecakecodes.bluebeats.util.castTo
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
 import com.google.android.material.tabs.TabLayout
-import com.mikepenz.fastadapter.*
+import com.mikepenz.fastadapter.FastAdapter
+import com.mikepenz.fastadapter.GenericItem
+import com.mikepenz.fastadapter.IParentItem
+import com.mikepenz.fastadapter.ISelectionListener
+import com.mikepenz.fastadapter.ISubItem
 import com.mikepenz.fastadapter.adapters.FastItemAdapter
 import com.mikepenz.fastadapter.expandable.getExpandableExtension
 import com.mikepenz.fastadapter.expandable.items.AbstractExpandableItem
 import com.mikepenz.fastadapter.select.getSelectExtension
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 internal class Search : Fragment(R.layout.search_fragment) {
 
@@ -49,11 +68,16 @@ internal class Search : Fragment(R.layout.search_fragment) {
     private var menu: Menu? = null
     private var inSelection = false
 
-    private val player: VlcPlayer
-        get() = requireActivity().castTo<MainActivity>().playerConn.player!!
+    private val player: EventualValue<PlayerServiceConnection, VlcPlayer>
+
+    init {
+        player = EventualValue(Dispatchers.Main) { it.player }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        player.holder = PlayerService.connect(this.requireContext())
 
         val vmProvider = ViewModelProvider(this.requireActivity())
         viewModel = vmProvider.get(SearchViewModel::class.java).apply {
@@ -108,6 +132,9 @@ internal class Search : Fragment(R.layout.search_fragment) {
 
     override fun onDestroy() {
         viewModel.contextProvider = null
+
+        player.holder?.let { this.context?.unbindService(it) }
+        player.destroy()
 
         super.onDestroy()
     }
@@ -275,7 +302,7 @@ internal class Search : Fragment(R.layout.search_fragment) {
             itemListAdapter.getSelectExtension().toggleSelection(pos)
         } else {
             mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
-            player.playMedia(item.file)
+            player.await { it.playMedia(item.file) }
         }
     }
 
@@ -302,17 +329,19 @@ internal class Search : Fragment(R.layout.search_fragment) {
                 it.name
             }
 
-        val pl = player.getCurrentPlaylist()
-        if(pl is TempPlaylist) {
-            pl.addMedias(toAdd)
-        } else {
-            TempPlaylist().also { tpl ->
-                tpl.addMedias(toAdd)
-            }.let {
-                player.playPlaylist(it)
-            }
+        player.await { player ->
+            val pl = player.getCurrentPlaylist()
+            if(pl is TempPlaylist) {
+                pl.addMedias(toAdd)
+            } else {
+                TempPlaylist().also { tpl ->
+                    tpl.addMedias(toAdd)
+                }.let {
+                    player.playPlaylist(it)
+                }
 
-            mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
+                mainVM.currentTab.postValue(MainActivityViewModel.Tabs.PLAYER)
+            }
         }
     }
 
@@ -432,12 +461,15 @@ internal class Search : Fragment(R.layout.search_fragment) {
             it.findItem(R.id.search_mnu_fi).isEnabled = selectedCount == 1
 
             val startTemPlItem = it.findItem(R.id.search_mnu_start_tpl)
-            val currentPl = requireActivity().castTo<MainActivity>().playerConn.player?.getCurrentPlaylist()
-            startTemPlItem.isEnabled = selectedCount > 0
-            if(currentPl is TempPlaylist)
-                startTemPlItem.title = this.requireContext().getText(R.string.filebrowser_menu_add_tmp_pl)
-            else
-                startTemPlItem.title = this.requireContext().getText(R.string.filebrowser_menu_start_tmp_pl)
+
+            player.await { player ->
+                val currentPl = player.getCurrentPlaylist()
+                startTemPlItem.isEnabled = selectedCount > 0
+                if(currentPl is TempPlaylist)
+                    startTemPlItem.title = this.requireContext().getText(R.string.filebrowser_menu_add_tmp_pl)
+                else
+                    startTemPlItem.title = this.requireContext().getText(R.string.filebrowser_menu_start_tmp_pl)
+            }
         }
     }
 }
