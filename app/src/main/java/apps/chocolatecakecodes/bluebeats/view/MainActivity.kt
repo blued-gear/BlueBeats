@@ -45,16 +45,16 @@ class MainActivity : AppCompatActivity() {
     private var appMenu: Menu? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // init these fist as super.onCreate() might trigger access to them when a some fragments get restored
+        RoomDB.init(this)
+        if(!VlcManagers.isInitialized())
+            VlcManagers.init(this)
+
         super.onCreate(savedInstanceState)
         this.setContentView(R.layout.main_activity)
 
         mainContentView = this.findViewById(R.id.main_content)
         viewModel = ViewModelProvider(this).get(MainActivityViewModel::class.java)
-
-        RoomDB.init(this)
-
-        if(!VlcManagers.isInitialized())
-            VlcManagers.init(this)
 
         setupTabs()
         setupSystemBarsHider()
