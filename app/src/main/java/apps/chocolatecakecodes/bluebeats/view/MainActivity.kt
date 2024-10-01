@@ -10,8 +10,11 @@ import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
@@ -55,6 +58,17 @@ class MainActivity : AppCompatActivity() {
 
         mainContentView = this.findViewById(R.id.main_content)
         viewModel = ViewModelProvider(this).get(MainActivityViewModel::class.java)
+
+        enableEdgeToEdge()
+        ViewCompat.setOnApplyWindowInsetsListener(mainContentView) { v, insets ->
+            val innerPadding = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            v.setPadding(
+                innerPadding.left,
+                innerPadding.top,
+                innerPadding.right,
+                innerPadding.bottom)
+            return@setOnApplyWindowInsetsListener insets
+        }
 
         setupTabs()
         setupSystemBarsHider()

@@ -4,7 +4,7 @@ buildscript {
         version_sdk = 35
         version_cmake = '3.22.1'
 
-        version_kotlin = '2.0.10'
+        version_kotlin = '2.0.20'
 
         version_android_ktx = '1.13.1'
         version_appcompat = '1.7.0'
@@ -19,7 +19,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.5.2'
+        classpath 'com.android.tools.build:gradle:8.6.1'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$version_kotlin"
     }
 }
