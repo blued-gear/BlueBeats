@@ -522,29 +522,28 @@ class Player : Fragment() {
         }
 
         override fun onDoubleTapEvent(e: MotionEvent): Boolean {
+            if(e.actionMasked != MotionEvent.ACTION_UP) return false
+
             return runBlocking {
                 val player = player.await()
-                withContext(Dispatchers.Main) {
-                    if(e.actionMasked != MotionEvent.ACTION_UP) return@withContext false
-                    if(player.getCurrentMedia() === null) return@withContext false
+                if(player.getCurrentMedia() === null) return@runBlocking false
 
-                    val width = view.width
-                    val x = e.x
+                val width = view.width
+                val x = e.x
 
-                    if(x <= width * SEEK_AREA_WIDTH){
-                        // seek back
-                        player.seekBack()
+                if(x <= width * SEEK_AREA_WIDTH){
+                    // seek back
+                    player.seekBack()
 
-                        return@withContext true
-                    }else if(x >= width * (1.0f - SEEK_AREA_WIDTH)){
-                        // seek forward
-                        player.seekForward()
+                    return@runBlocking true
+                }else if(x >= width * (1.0f - SEEK_AREA_WIDTH)){
+                    // seek forward
+                    player.seekForward()
 
-                        return@withContext true
-                    }
-
-                    return@withContext false
+                    return@runBlocking true
                 }
+
+                return@runBlocking false
             }
         }
     }
