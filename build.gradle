@@ -4,9 +4,9 @@ buildscript {
         version_sdk = 35
         version_cmake = '3.22.1'
 
-        version_kotlin = '2.0.20'
+        version_kotlin = '2.1.20'
 
-        version_android_ktx = '1.13.1'
+        version_android_ktx = '1.16.0'
         version_appcompat = '1.7.0'
 
         version_junit = '4.13.2'
@@ -19,7 +19,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.6.1'
+        classpath 'com.android.tools.build:gradle:8.9.2'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$version_kotlin"
     }
 }
@@ -27,8 +27,8 @@ buildscript {
 plugins{
     id 'idea'
     id 'org.jetbrains.kotlin.android' version "$version_kotlin" apply false
-    id 'com.google.devtools.ksp' version '2.0.10-1.0.24' apply false
-    id 'com.github.ben-manes.versions' version '0.51.0'
+    id 'com.google.devtools.ksp' version "$version_kotlin-2.0.0" apply false
+    id 'com.github.ben-manes.versions' version '0.52.0'
 }
 
 idea{
