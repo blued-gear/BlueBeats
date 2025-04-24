@@ -28,7 +28,8 @@ import kotlinx.coroutines.launch
 import org.videolan.libvlc.MediaPlayer
 import org.videolan.libvlc.interfaces.ILibVLC
 import org.videolan.libvlc.util.VLCVideoLayout
-import java.util.*
+import java.util.Collections
+import java.util.Objects
 import kotlin.concurrent.Volatile
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
@@ -253,7 +254,7 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
 
                 if(positionMs != C.TIME_UNSET) {
                     //TODO this might not work as the player might still be loading
-                    player.setTime(positionMs, true)
+                    player.setTime(positionMs, false)
                 }
 
                 synchronized(state) {
