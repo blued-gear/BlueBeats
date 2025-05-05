@@ -4,8 +4,8 @@ import android.content.Context
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.PopupWindow
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.UsertagsRule
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.UsertagsRule
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import io.github.esentsov.PackagePrivate
 import kotlinx.coroutines.CoroutineScope

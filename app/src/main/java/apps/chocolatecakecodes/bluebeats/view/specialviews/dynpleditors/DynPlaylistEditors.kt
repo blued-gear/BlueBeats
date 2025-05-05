@@ -2,13 +2,13 @@ package apps.chocolatecakecodes.bluebeats.view.specialviews.dynpleditors
 
 import android.content.Context
 import android.view.View
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.GenericRule
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.ID3TagsRule
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.IncludeRule
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RegexRule
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGroup
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.TimeSpanRule
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.UsertagsRule
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.GenericRule
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.ID3TagsRule
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.IncludeRule
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.RegexRule
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.RuleGroup
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.TimeSpanRule
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.UsertagsRule
 import io.github.esentsov.PackagePrivate
 
 internal typealias ChangedCallback = (GenericRule) -> Unit

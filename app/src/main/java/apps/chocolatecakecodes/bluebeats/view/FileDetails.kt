@@ -11,9 +11,9 @@ import android.widget.TextView
 import androidx.core.view.doOnNextLayout
 import androidx.fragment.app.Fragment
 import apps.chocolatecakecodes.bluebeats.R
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaFile
+import apps.chocolatecakecodes.bluebeats.blueplaylists.model.tag.TagFields
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
-import apps.chocolatecakecodes.bluebeats.taglib.TagFields
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import kotlinx.coroutines.CoroutineScope

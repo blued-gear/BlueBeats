@@ -3,11 +3,12 @@ package apps.chocolatecakecodes.bluebeats.database.migrations
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteQueryBuilder
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaFile
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaNode
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.items.MediaFileItem
 import apps.chocolatecakecodes.bluebeats.database.DbUtils.map
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
-import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
-import apps.chocolatecakecodes.bluebeats.media.playlist.items.MediaFileItem
-import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItemSerializer
+import apps.chocolatecakecodes.bluebeats.media.model.MediaFileImpl
+import apps.chocolatecakecodes.bluebeats.util.serializers.PlaylistItemSerializer
 
 object Migration6to7 : Migration(6, 7) {
 
@@ -59,7 +60,7 @@ object Migration6to7 : Migration(6, 7) {
     }
 
     private fun transformStaticPlEntryToItem(fileId: Long): String {
-        val fileItem = MediaFileItem(MediaFile.new(fileId,
+        val fileItem = MediaFileItem(MediaFileImpl.new(fileId,
             "", MediaFile.Type.OTHER, { MediaNode.UNSPECIFIED_DIR }))
         return PlaylistItemSerializer.INSTANCE.serialize(fileItem)
     }

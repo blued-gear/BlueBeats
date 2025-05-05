@@ -2,7 +2,6 @@ package apps.chocolatecakecodes.bluebeats.media.fileaccess
 
 import android.content.Context
 import android.os.Environment
-import androidx.core.content.ContextCompat
 import java.io.File
 
 class AndroidFs : FileEnumerator {
@@ -28,7 +27,7 @@ class AndroidFs : FileEnumerator {
         roots.add(internalStoragePath)
 
         // https://stackoverflow.com/a/70879069/8288367
-        ContextCompat.getExternalFilesDirs(ctx, null)
+        ctx.getExternalFilesDirs(null)
             .filterNotNull()
             .mapNotNull {
                 val nameSubPos = it.absolutePath.lastIndexOf("/Android/data")

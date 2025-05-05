@@ -7,8 +7,8 @@ import android.widget.Button
 import android.widget.LinearLayout
 import androidx.core.view.setPadding
 import apps.chocolatecakecodes.bluebeats.R
-import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
-import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaDir
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaNode
 import apps.chocolatecakecodes.bluebeats.view.specialviews.FileBrowserView
 import com.google.android.material.color.MaterialColors
 import io.github.esentsov.PackagePrivate

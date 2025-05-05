@@ -3,9 +3,9 @@ package apps.chocolatecakecodes.bluebeats.view
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaDir
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
-import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.util.Utils
 
 internal class FileBrowserViewModel : ViewModel() {

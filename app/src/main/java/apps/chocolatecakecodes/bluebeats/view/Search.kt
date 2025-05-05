@@ -19,9 +19,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import apps.chocolatecakecodes.bluebeats.R
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaFile
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.TempPlaylist
 import apps.chocolatecakecodes.bluebeats.media.player.VlcPlayer
-import apps.chocolatecakecodes.bluebeats.media.playlist.TempPlaylist
 import apps.chocolatecakecodes.bluebeats.service.PlayerService
 import apps.chocolatecakecodes.bluebeats.service.PlayerServiceConnection
 import apps.chocolatecakecodes.bluebeats.util.EventualValue

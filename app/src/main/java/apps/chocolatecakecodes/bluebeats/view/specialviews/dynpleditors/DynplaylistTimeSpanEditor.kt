@@ -16,11 +16,11 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.widget.addTextChangedListener
 import apps.chocolatecakecodes.bluebeats.R
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaDir
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaFile
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaNode
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.TimeSpanRule
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
-import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
-import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.TimeSpanRule
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import apps.chocolatecakecodes.bluebeats.view.specialviews.TimeEdit
 import com.google.android.material.color.MaterialColors
@@ -167,7 +167,7 @@ internal class DynplaylistTimeSpanEditor(
             if(it.isNotEmpty()) {
                 val file = it.first() as MediaFile
 
-                lastDir = file.parent
+                lastDir = file.parent as MediaDir
 
                 onFileChanged(file)
                 expander.expanded = true

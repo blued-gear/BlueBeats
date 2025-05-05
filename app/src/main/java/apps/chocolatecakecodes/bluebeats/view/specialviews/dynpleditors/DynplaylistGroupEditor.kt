@@ -10,10 +10,10 @@ import android.widget.LinearLayout
 import android.widget.Spinner
 import androidx.appcompat.app.AlertDialog
 import apps.chocolatecakecodes.bluebeats.R
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.GenericRule
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Rule
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.RuleGroup
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.GenericRule
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.Rule
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGroup
 import com.google.android.material.color.MaterialColors
 import io.github.esentsov.PackagePrivate
 import kotlinx.coroutines.CoroutineScope

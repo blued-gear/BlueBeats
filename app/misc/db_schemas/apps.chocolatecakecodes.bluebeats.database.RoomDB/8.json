@@ -108,8 +108,7 @@
           {
             "fieldPath": "chaptersJson",
             "columnName": "chapters",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           }
         ],
         "primaryKey": {
@@ -204,8 +203,7 @@
             "orders": [],
             "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_ID3TagTypeEntity_str` ON `${TABLE_NAME}` (`str`)"
           }
-        ],
-        "foreignKeys": []
+        ]
       },
       {
         "tableName": "ID3TagValueEntity",
@@ -370,8 +368,7 @@
             "orders": [],
             "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_UserTagEntity_name` ON `${TABLE_NAME}` (`name`)"
           }
-        ],
-        "foreignKeys": []
+        ]
       },
       {
         "tableName": "UserTagRelation",
@@ -493,8 +490,7 @@
             "orders": [],
             "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_PlaylistName_name` ON `${TABLE_NAME}` (`name`)"
           }
-        ],
-        "foreignKeys": []
+        ]
       },
       {
         "tableName": "StaticPlaylistEntity",
@@ -512,9 +508,7 @@
           "columnNames": [
             "id"
           ]
-        },
-        "indices": [],
-        "foreignKeys": []
+        }
       },
       {
         "tableName": "StaticPlaylistEntry",
@@ -664,9 +658,7 @@
           "columnNames": [
             "id"
           ]
-        },
-        "indices": [],
-        "foreignKeys": []
+        }
       },
       {
         "tableName": "RuleGroupEntry",
@@ -779,9 +771,7 @@
           "columnNames": [
             "id"
           ]
-        },
-        "indices": [],
-        "foreignKeys": []
+        }
       },
       {
         "tableName": "IncludeRuleFileEntry",
@@ -973,9 +963,7 @@
           "columnNames": [
             "id"
           ]
-        },
-        "indices": [],
-        "foreignKeys": []
+        }
       },
       {
         "tableName": "UsertagsRuleEntry",
@@ -1065,9 +1053,7 @@
           "columnNames": [
             "id"
           ]
-        },
-        "indices": [],
-        "foreignKeys": []
+        }
       },
       {
         "tableName": "ID3TagsRuleEntry",
@@ -1164,9 +1150,7 @@
           "columnNames": [
             "id"
           ]
-        },
-        "indices": [],
-        "foreignKeys": []
+        }
       },
       {
         "tableName": "TimeSpanRuleEntity",
@@ -1181,8 +1165,7 @@
           {
             "fieldPath": "file",
             "columnName": "file",
-            "affinity": "INTEGER",
-            "notNull": false
+            "affinity": "INTEGER"
           },
           {
             "fieldPath": "startMs",
@@ -1247,7 +1230,6 @@
         ]
       }
     ],
-    "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
       "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '48f4b070af8149ed813551a5ab41f4d6')"

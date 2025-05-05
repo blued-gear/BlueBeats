@@ -10,7 +10,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.RadioButton
 import apps.chocolatecakecodes.bluebeats.R
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.Rule
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Rule
 import com.google.android.material.color.MaterialColors
 import io.github.esentsov.PackagePrivate
 import java.math.RoundingMode

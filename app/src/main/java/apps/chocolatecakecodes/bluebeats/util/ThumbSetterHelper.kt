@@ -5,8 +5,8 @@ import android.view.View
 import android.widget.ImageView
 import androidx.core.view.doOnNextLayout
 import apps.chocolatecakecodes.bluebeats.R
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel

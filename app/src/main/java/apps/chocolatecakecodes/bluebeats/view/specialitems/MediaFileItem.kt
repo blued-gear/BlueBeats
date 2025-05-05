@@ -4,7 +4,7 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import apps.chocolatecakecodes.bluebeats.R
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaFile
 import apps.chocolatecakecodes.bluebeats.util.ThumbSetterHelper
 import com.mikepenz.fastadapter.drag.IDraggable
 import kotlinx.coroutines.CoroutineScope

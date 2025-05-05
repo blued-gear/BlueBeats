@@ -11,7 +11,7 @@ import android.widget.Spinner
 import android.widget.TextView
 import androidx.appcompat.R
 import androidx.core.widget.addTextChangedListener
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RegexRule
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.RegexRule
 import apps.chocolatecakecodes.bluebeats.util.Debouncer
 import io.github.esentsov.PackagePrivate
 import kotlinx.coroutines.CoroutineScope

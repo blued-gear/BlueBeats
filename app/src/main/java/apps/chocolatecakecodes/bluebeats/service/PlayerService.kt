@@ -25,8 +25,8 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.MediaStyleNotificationHelper
 import apps.chocolatecakecodes.bluebeats.R
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.media.player.VlcPlayer
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
 import apps.chocolatecakecodes.bluebeats.view.MainActivity
@@ -169,18 +169,20 @@ private class NotificationProvider(
             setOngoing(player.isPlaying)
             setSmallIcon(R.mipmap.ic_launcher)
 
-            player.currentMediaItem!!.let { media ->
-                setContentTitle(media.mediaMetadata.title)
-                setContentText(media.mediaMetadata.artist)
+            val mediaItem = player.currentMediaItem
+            val mediaFile = player.getCurrentMedia()
+            if(mediaItem != null && mediaFile != null) {
+                setContentTitle(mediaItem.mediaMetadata.title)
+                setContentText(mediaItem.mediaMetadata.artist)
 
-                setLargeIcon(getThumbnail(player.getCurrentMedia()!!))
+                setLargeIcon(getThumbnail(mediaFile))
+
             }
 
             createActions(this, actionFactory)
             setContentIntent(contentActionIntent)
 
             MediaStyleNotificationHelper.MediaStyle(mediaSession).also {
-                it.setShowCancelButton(false)
                 it.setShowActionsInCompactView(1)
             }.let {
                 this.setStyle(it)

@@ -5,7 +5,7 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import apps.chocolatecakecodes.bluebeats.R
-import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaDir
 import com.mikepenz.fastadapter.drag.IDraggable
 
 internal class MediaDirItem(

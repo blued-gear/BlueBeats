@@ -11,8 +11,8 @@ import android.widget.PopupWindow
 import android.widget.Spinner
 import android.widget.TextView
 import androidx.appcompat.R
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.ID3TagsRule
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.ID3TagsRule
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import io.github.esentsov.PackagePrivate
 import kotlinx.coroutines.CoroutineScope

@@ -1,7 +1,7 @@
 package apps.chocolatecakecodes.bluebeats.view.specialitems.playlistitems
 
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
-import apps.chocolatecakecodes.bluebeats.media.playlist.items.MediaFileItem as MediaFilePlItem
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.items.MediaFileItem as MediaFilePlItem
 
 internal class MediaFileItemItem(
     override val item: MediaFilePlItem,

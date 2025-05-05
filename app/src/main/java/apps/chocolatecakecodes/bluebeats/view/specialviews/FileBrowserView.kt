@@ -4,9 +4,10 @@ import android.content.Context
 import android.widget.FrameLayout
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
-import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaDir
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaFile
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaNode
+import apps.chocolatecakecodes.bluebeats.util.castToOrNull
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaDirItem
 import apps.chocolatecakecodes.bluebeats.view.specialitems.MediaFileItem
 import com.mikepenz.fastadapter.GenericItem
@@ -127,7 +128,7 @@ internal class FileBrowserView(context: Context): FrameLayout(context){
     }
 
     fun goDirUp(): MediaDir? {
-        currentDir?.parent?.let {
+        currentDir?.parent?.castToOrNull<MediaDir>()?.let {
             currentDir = it
             return it
         }
@@ -137,9 +138,9 @@ internal class FileBrowserView(context: Context): FrameLayout(context){
     fun addNode(node: MediaNode): Boolean {
         listAdapter.adapterItems.any {
             if(node is MediaDir && it is MediaDirItem) {
-                it.dir.entityId == node.entityId
+                it.dir.id == node.id
             } else if(node is MediaFile && it is MediaFileItem) {
-                it.file.entityId == node.entityId
+                it.file.id == node.id
             } else {
                 false
             }
@@ -157,9 +158,9 @@ internal class FileBrowserView(context: Context): FrameLayout(context){
     fun removeNode(node: MediaNode): Boolean {
         listAdapter.adapterItems.indexOfFirst {
             if(node is MediaDir && it is MediaDirItem) {
-                it.dir.entityId == node.entityId
+                it.dir.id == node.id
             } else if(node is MediaFile && it is MediaFileItem) {
-                it.file.entityId == node.entityId
+                it.file.id == node.id
             } else {
                 false
             }

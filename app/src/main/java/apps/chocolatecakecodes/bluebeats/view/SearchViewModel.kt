@@ -8,8 +8,8 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import apps.chocolatecakecodes.bluebeats.R
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaFile
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
 import apps.chocolatecakecodes.bluebeats.util.Debouncer
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import kotlinx.coroutines.CoroutineScope
@@ -319,11 +319,11 @@ internal class SearchViewModel : ViewModel() {
      * Applies the matchers against every string from items (item.first)
      *  and returns the items (item.second) where all AND-substrings of at least one OR-list matched.
      */
-    private fun <R> performSearch(matchers: List<List<String>>, items: List<Pair<String, R>>): List<R> {
+    private fun <R> performSearch(matchers: List<List<String>>, items: List<Pair<String?, R>>): List<R> {
         return items.filter { item ->
             matchers.any {
                 it.all {
-                    item.first.contains(it, true)
+                    item.first?.contains(it, true) ?: false
                 }
             }
         }.map {

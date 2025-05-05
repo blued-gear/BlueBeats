@@ -5,7 +5,7 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import apps.chocolatecakecodes.bluebeats.R
-import apps.chocolatecakecodes.bluebeats.media.playlist.items.TimeSpanItem
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.items.TimeSpanItem
 import apps.chocolatecakecodes.bluebeats.util.ThumbSetterHelper
 import apps.chocolatecakecodes.bluebeats.util.Utils
 import apps.chocolatecakecodes.bluebeats.view.specialitems.SelectableItem

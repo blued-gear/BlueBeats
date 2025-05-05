@@ -5,10 +5,11 @@ import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.PopupWindow
 import androidx.core.view.children
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaDir
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaFile
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.IncludeRule
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
-import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.IncludeRule
+import apps.chocolatecakecodes.bluebeats.util.castTo
 import io.github.esentsov.PackagePrivate
 
 @PackagePrivate
@@ -84,8 +85,8 @@ internal class DynplaylistIncludeEditor(
                 // set lastDir to parent of selection
                 it[0].let {
                     lastDir = when (it) {
-                        is MediaFile -> it.parent
-                        is MediaDir -> it.parent ?: it
+                        is MediaFile -> it.parent as MediaDir
+                        is MediaDir -> it.parent?.castTo<MediaDir>() ?: it
                         else -> throw AssertionError()
                     }
                 }

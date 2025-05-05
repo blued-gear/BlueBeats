@@ -14,13 +14,18 @@ import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import apps.chocolatecakecodes.bluebeats.R
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.DynamicPlaylist
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.GenericRule
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.RuleGroup
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylist
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.GenericRule
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.RuleGroup
 import apps.chocolatecakecodes.bluebeats.util.OnceSettable
+import apps.chocolatecakecodes.bluebeats.util.serializers.RuleGroupParcel
 import apps.chocolatecakecodes.bluebeats.view.specialviews.dynpleditors.DynPlaylistEditors
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlin.math.abs
 
 private const val LOG_TAG = "DynplaylistEditor"
@@ -62,11 +67,12 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
             val plId = savedInstanceState.getLong(STATE_PLAYLIST_ID)
             CoroutineScope(Dispatchers.IO).launch {
                 playlist = playlistDao.load(plId)
-                editCopy = if (Build.VERSION.SDK_INT >= 33) {
-                    savedInstanceState.getParcelable(STATE_RULES, RuleGroup::class.java)!!
-                }else{
+                val editCopyParcel = if (Build.VERSION.SDK_INT >= 33) {
+                    savedInstanceState.getParcelable(STATE_RULES, RuleGroupParcel::class.java)!!
+                } else {
                     savedInstanceState.getParcelable(STATE_RULES)!!
                 }
+                editCopy = editCopyParcel.content
             }
         }
     }
@@ -78,7 +84,7 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
         runBlocking {
             withContext(Dispatchers.IO) {
                 outState.putLong(STATE_PLAYLIST_ID, playlistManager.getPlaylistId(playlist.name))
-                outState.putParcelable(STATE_RULES, editCopy)
+                outState.putParcelable(STATE_RULES, RuleGroupParcel(editCopy))
             }
         }
     }

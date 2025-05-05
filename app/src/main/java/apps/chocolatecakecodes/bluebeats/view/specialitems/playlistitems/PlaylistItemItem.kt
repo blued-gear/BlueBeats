@@ -1,11 +1,11 @@
 package apps.chocolatecakecodes.bluebeats.view.specialitems.playlistitems
 
 import androidx.recyclerview.widget.RecyclerView
-import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
-import apps.chocolatecakecodes.bluebeats.media.playlist.items.TimeSpanItem
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.items.PlaylistItem
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.items.TimeSpanItem
 import apps.chocolatecakecodes.bluebeats.view.specialitems.SelectableItem
 import com.mikepenz.fastadapter.IItem
-import apps.chocolatecakecodes.bluebeats.media.playlist.items.MediaFileItem as MediaFilePlItem
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.items.MediaFileItem as MediaFilePlItem
 
 internal sealed interface PlaylistItemItem<VH : RecyclerView.ViewHolder> : IItem<VH> {
     val item: PlaylistItem

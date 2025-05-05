@@ -1,7 +1,7 @@
 package apps.chocolatecakecodes.bluebeats.util
 
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaNode
 import apps.chocolatecakecodes.bluebeats.media.MediaDB
-import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import java.util.concurrent.atomic.AtomicReference
 
 internal class MediaDBEventRelay : MediaDB.ScanEventHandler(null) {

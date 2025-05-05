@@ -1,4 +1,3 @@
 rootProject.name = "BlueBeats"
+
 include ':app'
-include ':taglib'
-include ':taglib:lib_taglib'

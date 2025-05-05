@@ -25,15 +25,15 @@ import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import apps.chocolatecakecodes.bluebeats.R
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.PlaylistIterator
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.PlaylistType
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.StaticPlaylist
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.DynamicPlaylist
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.DynamicPlaylistIterator
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.items.PlaylistItem
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.VlcManagers
 import apps.chocolatecakecodes.bluebeats.media.player.VlcPlayer
-import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistIterator
-import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
-import apps.chocolatecakecodes.bluebeats.media.playlist.StaticPlaylist
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylist
-import apps.chocolatecakecodes.bluebeats.media.playlist.dynamicplaylist.DynamicPlaylistIterator
-import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
 import apps.chocolatecakecodes.bluebeats.service.PlayerService
 import apps.chocolatecakecodes.bluebeats.service.PlayerServiceConnection
 import apps.chocolatecakecodes.bluebeats.util.EventualValue
@@ -411,7 +411,7 @@ internal class Playlists : Fragment() {
     private fun loadPlaylists(refresh: Boolean) {
         if(viewModel.allLists === null || refresh) {
             CoroutineScope(Dispatchers.IO).launch {
-                viewModel.allLists = RoomDB.DB_INSTANCE.playlistManager().listAllPlaylist().map {
+                viewModel.allLists = RoomDB.DB_INSTANCE.playlistManager().listAllPlaylists().map {
                     PlaylistInfo(it.key, it.value.first, it.value.second)
                 }.sortedWith { a, b ->
                     Utils.compareStringNaturally(a.first, b.first)
@@ -592,7 +592,7 @@ internal class Playlists : Fragment() {
     private fun onNewDynamicPlaylist() {
         val ctx = this.requireContext()
         CoroutineScope(Dispatchers.IO).launch {
-            val existingPlaylist = RoomDB.DB_INSTANCE.playlistManager().listAllPlaylist().mapValues {
+            val existingPlaylist = RoomDB.DB_INSTANCE.playlistManager().listAllPlaylists().mapValues {
                 it.value.second
             }
 

@@ -11,13 +11,13 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Player.Commands
 import androidx.media3.common.SimpleBasePlayer
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
-import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistIterator
-import apps.chocolatecakecodes.bluebeats.media.playlist.TempPlaylist
-import apps.chocolatecakecodes.bluebeats.media.playlist.UNDETERMINED_COUNT
-import apps.chocolatecakecodes.bluebeats.media.playlist.items.PlaylistItem
-import apps.chocolatecakecodes.bluebeats.media.playlist.items.TimeSpanItem
-import apps.chocolatecakecodes.bluebeats.taglib.Chapter
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.BasicPlayer
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaFile
+import apps.chocolatecakecodes.bluebeats.blueplaylists.model.tag.Chapter
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.PlaylistIterator
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.TempPlaylist
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.items.PlaylistItem
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.items.TimeSpanItem
 import apps.chocolatecakecodes.bluebeats.util.RequireNotNull
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -33,7 +33,7 @@ import java.util.Objects
 import kotlin.concurrent.Volatile
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(looper), MediaPlayer.EventListener {
+internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(looper), BasicPlayer, MediaPlayer.EventListener {
 
     companion object {
         private const val LOG_TAG = "VlcPlayer"
@@ -108,7 +108,11 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
     }
 
     //region other public methods
-    fun playMedia(media: MediaFile, keepPlaylist: Boolean = false) {
+    fun playMedia(media: MediaFile) {
+        playMedia(media, false)
+    }
+
+    override fun playMedia(media: MediaFile, keepPlaylist: Boolean) {
         if(!keepPlaylist) {
             playPlaylist(TempPlaylist(media))
         } else {
@@ -237,7 +241,7 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
             try {
                 val pl = currentPlaylist.get()
 
-                if(pl.currentPosition == UNDETERMINED_COUNT) {
+                if(pl.currentPosition == PlaylistIterator.UNDETERMINED_COUNT) {
                     ret.setException(IllegalStateException("playlist not started"))
                     return@launch
                 }
@@ -516,7 +520,7 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
     }
 
     private fun fillInMediaItemFromMediaFile(file: MediaFile, builder: MediaItem.Builder) {
-        builder.setMediaId(file.entityId.toString())
+        builder.setMediaId(file.id.toString())
         builder.setUri("file://${file.path}")
 
         MediaMetadata.Builder().apply {
@@ -550,7 +554,7 @@ internal class VlcPlayer(libVlc: ILibVLC, looper: Looper) : SimpleBasePlayer(loo
     private fun mediaFilePeriods(file: MediaFile): List<PeriodData> {
         //TODO maybe use chapters from VLC (should be loaded for current file)
         return if(file.chapters.isNullOrEmpty()) {
-            PeriodData.Builder(file.entityId).apply {
+            PeriodData.Builder(file.id).apply {
                 this.setDurationUs(file.mediaTags.length * 1000)
             }.let {
                 listOf(it.build())

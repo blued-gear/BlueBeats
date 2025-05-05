@@ -17,14 +17,14 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import apps.chocolatecakecodes.bluebeats.BuildConfig
 import apps.chocolatecakecodes.bluebeats.R
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaDir
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaFile
+import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaNode
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.PlaylistType
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.TempPlaylist
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.media.MediaDB
-import apps.chocolatecakecodes.bluebeats.media.model.MediaDir
-import apps.chocolatecakecodes.bluebeats.media.model.MediaFile
-import apps.chocolatecakecodes.bluebeats.media.model.MediaNode
 import apps.chocolatecakecodes.bluebeats.media.player.VlcPlayer
-import apps.chocolatecakecodes.bluebeats.media.playlist.PlaylistType
-import apps.chocolatecakecodes.bluebeats.media.playlist.TempPlaylist
 import apps.chocolatecakecodes.bluebeats.service.PlayerService
 import apps.chocolatecakecodes.bluebeats.service.PlayerServiceConnection
 import apps.chocolatecakecodes.bluebeats.util.EventualValue
@@ -414,7 +414,7 @@ class FileBrowser : Fragment() {
 
 internal fun showAddToPlDlg(ctx: Context, toAdd: List<MediaFile>) {
     CoroutineScope(Dispatchers.IO).launch {
-        val existingPlaylist = RoomDB.DB_INSTANCE.playlistManager().listAllPlaylist().filter {
+        val existingPlaylist = RoomDB.DB_INSTANCE.playlistManager().listAllPlaylists().filter {
             it.value.first == PlaylistType.STATIC
         }.mapValues {
             it.value.second
