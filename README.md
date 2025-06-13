@@ -23,4 +23,4 @@ This app is not meant to organize your Media-Library nor does it contain a Tag-E
 ## Repo
 
 The GitHub Repo is a mirror from my GitLab.\
-To get prebuilt binaries, go [here](https://projects.chocolatecakecodes.goip.de/blued_gear/bluebeats).
+To get prebuilt binaries, go [here](https://projects.chocolatecakecodes.goip.de/bluebeats/bluebeats-app).
