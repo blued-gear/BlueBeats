@@ -7,7 +7,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.IncludeRule
-import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Rule
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Share
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.database.dao.media.MediaDirDAO
 import apps.chocolatecakecodes.bluebeats.database.dao.media.MediaFileDAO
@@ -30,9 +30,9 @@ internal abstract class IncludeRuleDao {
     //region api
 
     @Transaction
-    open fun createNew(initialShare: Rule.Share): IncludeRule {
-        val id = insertEntity(IncludeRuleEntity(0, ShareEmbed(initialShare)))
-        return IncludeRule(id, true, initialShare = initialShare)
+    open fun createNew(initialShare: Share): IncludeRule {
+        val id = insertEntity(IncludeRuleEntity(0, ShareEmbed(initialShare), ""))
+        return IncludeRule(id, true, initialShare = initialShare, name = "")
     }
 
     fun load(id: Long): IncludeRule {
@@ -55,7 +55,7 @@ internal abstract class IncludeRuleDao {
             }
         }.toSet()
 
-        return IncludeRule(id, true, dirEntries, fileEntries, entity.share.toShare())
+        return IncludeRule(id, true, entity.share.toShare(), dirEntries, fileEntries, entity.name)
     }
 
     @Transaction
@@ -91,7 +91,7 @@ internal abstract class IncludeRuleDao {
             }
         }
 
-        updateEntity(IncludeRuleEntity(rule.id, ShareEmbed(rule.share)))
+        updateEntity(IncludeRuleEntity(rule.id, ShareEmbed(rule.share), rule.name))
     }
 
     fun delete(rule: IncludeRule) {

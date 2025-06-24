@@ -11,6 +11,7 @@ import android.widget.PopupWindow
 import android.widget.Spinner
 import android.widget.TextView
 import androidx.appcompat.R
+import androidx.core.widget.doAfterTextChanged
 import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.ID3TagsRule
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.util.Utils
@@ -35,6 +36,14 @@ internal class DynplaylistID3TagsEditor(
 
     init {
         header.title.text = "ID3 Tags"
+
+        header.name.apply {
+            this.editableText.append(rule.name)
+            this.doAfterTextChanged { text ->
+                rule.name = text.toString()
+                changedCallback(rule)
+            }
+        }
 
         header.setupShareEdit(rule.share) {
             rule.share = it

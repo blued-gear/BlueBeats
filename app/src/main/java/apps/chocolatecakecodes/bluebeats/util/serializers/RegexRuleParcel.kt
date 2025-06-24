@@ -18,6 +18,7 @@ class RegexRuleParcel(
 
         dest.writeLong(content.id)
         RuleShareParcel(content.share).writeToParcel(dest, flags)
+        dest.writeString(content.name)
         dest.writeInt(content.attribute.ordinal)
         dest.writeString(content.regex)
     }
@@ -27,9 +28,10 @@ class RegexRuleParcel(
             return RegexRule(
                 id = parcel.readLong(),
                 initialShare = RuleShareParcel.createFromParcel(parcel).content,
+                name = parcel.readString()!!,
                 attribute = RegexRule.Attribute.entries[parcel.readInt()],
                 regex = parcel.readString()!!,
-                isOriginal = false
+                isOriginal = false,
             ).let { RegexRuleParcel(it) }
         }
 

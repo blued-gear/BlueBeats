@@ -19,6 +19,7 @@ class IncludeRuleParcel(
             throw IllegalStateException("only copies may be serialized (there must only be one original)")
 
         dest.writeLong(content.id)
+        dest.writeString(content.name)
         RuleShareParcel(content.share).writeToParcel(dest, flags)
 
         content.getDirs().let {
@@ -43,7 +44,8 @@ class IncludeRuleParcel(
             return IncludeRule(
                 parcel.readLong(),
                 false,
-                initialShare = RuleShareParcel.createFromParcel(parcel).content
+                name = parcel.readString()!!,
+                initialShare = RuleShareParcel.createFromParcel(parcel).content,
             ).apply {
                 for(i in 0 until parcel.readInt()) {
                     this.addDir(

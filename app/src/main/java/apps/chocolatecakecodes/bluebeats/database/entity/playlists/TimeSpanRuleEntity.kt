@@ -22,8 +22,9 @@ import apps.chocolatecakecodes.bluebeats.database.entity.media.MediaFileEntity
 internal data class TimeSpanRuleEntity(
     @PrimaryKey(autoGenerate = true) val id: Long,
     @Embedded(prefix = "share_") val share: ShareEmbed,
+    val name: String,
     val file: Long?,
     val startMs: Long,
     val endMs: Long,
-    val desc: String
+    val desc: String,
 )

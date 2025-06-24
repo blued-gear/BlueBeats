@@ -9,10 +9,11 @@ import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.Spinner
 import androidx.appcompat.app.AlertDialog
+import androidx.core.widget.doAfterTextChanged
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.GenericRule
-import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Rule
 import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.RuleGroup
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Share
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import com.google.android.material.color.MaterialColors
 import io.github.esentsov.PackagePrivate
@@ -31,22 +32,22 @@ internal class DynplaylistGroupEditor(
     //FIXME this will create unreachable garbage-entries in the DB if the user does not save after creating a rule
     private val ruleGenerators = mapOf(
         context.getString(R.string.dynpl_type_group) to {
-            RoomDB.DB_INSTANCE.dplRuleGroupDao().createNew(Rule.Share(-1f, true)).copy()
+            RoomDB.DB_INSTANCE.dplRuleGroupDao().createNew(Share(-1f, true)).copy()
         },
         context.getString(R.string.dynpl_type_include) to {
-            RoomDB.DB_INSTANCE.dplIncludeRuleDao().createNew(Rule.Share(-1f, true)).copy()
+            RoomDB.DB_INSTANCE.dplIncludeRuleDao().createNew(Share(-1f, true)).copy()
         },
         context.getString(R.string.dynpl_type_usertags) to {
-            RoomDB.DB_INSTANCE.dplUsertagsRuleDao().createNew(Rule.Share(-1f, true)).copy()
+            RoomDB.DB_INSTANCE.dplUsertagsRuleDao().createNew(Share(-1f, true)).copy()
         },
         context.getString(R.string.dynpl_type_id3tag) to {
-            RoomDB.DB_INSTANCE.dplID3TagsRuleDao().create(Rule.Share(-1f, true)).copy()
+            RoomDB.DB_INSTANCE.dplID3TagsRuleDao().create(Share(-1f, true)).copy()
         },
         context.getString(R.string.dynpl_regex_title) to {
-            RoomDB.DB_INSTANCE.dplRegexRuleDao().createNew(Rule.Share(-1f, true)).copy()
+            RoomDB.DB_INSTANCE.dplRegexRuleDao().createNew(Share(-1f, true)).copy()
         },
         context.getString(R.string.dynpl_type_timespan) to {
-            RoomDB.DB_INSTANCE.dplTimeSpanRuleDao().createNew(Rule.Share(-1f, true)).copy()
+            RoomDB.DB_INSTANCE.dplTimeSpanRuleDao().createNew(Share(-1f, true)).copy()
         }
     )
 
@@ -69,6 +70,15 @@ internal class DynplaylistGroupEditor(
 
         header.apply {
             title.text = "Group"
+
+            header.name.apply {
+                this.editableText.append(group.name)
+                this.doAfterTextChanged { text ->
+                    group.name = text.toString()
+                    changedCallback(group)
+                }
+            }
+
             setupShareEdit(group.share) {
                 group.share = it
                 changedCallback(group)

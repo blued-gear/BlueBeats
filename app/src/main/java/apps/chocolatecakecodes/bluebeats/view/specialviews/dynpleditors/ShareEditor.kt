@@ -10,7 +10,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.RadioButton
 import apps.chocolatecakecodes.bluebeats.R
-import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Rule
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Share
 import com.google.android.material.color.MaterialColors
 import io.github.esentsov.PackagePrivate
 import java.math.RoundingMode
@@ -20,9 +20,9 @@ import kotlin.math.truncate
 
 @PackagePrivate
 internal class ShareEditor(
-    initialShare: Rule.Share,
+    initialShare: Share,
     ctx: Context,
-    private val onResult: (Rule.Share?) -> Unit
+    private val onResult: (Share?) -> Unit
 ) : FrameLayout(ctx) {
 
     private enum class ShareMode { RELATIVE, EVEN, ABSOLUTE, UNLIMITED }
@@ -135,15 +135,15 @@ internal class ShareEditor(
     private fun onOk() {
         var shareVal = valueInp.text.toString().toFloat()
         if(unlimitedRb.isChecked) {
-            onResult(Rule.Share(-1f, false))
+            onResult(Share(-1f, false))
         } else if(evenRb.isChecked) {
-            onResult(Rule.Share(-1f, true))
+            onResult(Share(-1f, true))
         } else {
             val relative = relativeRb.isChecked
             if(relative)
                 shareVal = shareVal.coerceAtMost(1f)
             onResult(
-                Rule.Share(
+                Share(
                 if(relative) shareVal else truncate(shareVal),
                 relative
             ))

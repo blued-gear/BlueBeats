@@ -25,6 +25,7 @@ class RuleGroupParcel(
 
         dest.writeLong(content.id)
         RuleShareParcel(content.share).writeToParcel(dest, flags)
+        dest.writeString(content.name)
         Utils.parcelWriteBoolean(dest, content.combineWithAnd)
 
         content.getRules().let {
@@ -52,6 +53,7 @@ class RuleGroupParcel(
                 parcel.readLong(),
                 false,
                 RuleShareParcel.createFromParcel(parcel).content,
+                parcel.readString()!!,
                 Utils.parcelReadBoolean(parcel)
             ).apply {
                 val cl = Rule::class.java.classLoader

@@ -5,7 +5,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
-import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Rule
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Share
 import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.UsertagsRule
 import apps.chocolatecakecodes.bluebeats.database.entity.playlists.ShareEmbed
 import apps.chocolatecakecodes.bluebeats.database.entity.playlists.UsertagsRuleEntity
@@ -17,15 +17,15 @@ internal abstract class UsertagsRuleDao{
 
     //region public methods
     @Transaction
-    open fun createNew(share: Rule.Share): UsertagsRule {
+    open fun createNew(share: Share): UsertagsRule {
         val initialAndMode = true
-        val id = insertEntity(UsertagsRuleEntity(0, ShareEmbed(share), initialAndMode))
-        return UsertagsRule(share, initialAndMode, true, id)
+        val id = insertEntity(UsertagsRuleEntity(0, ShareEmbed(share), "", initialAndMode))
+        return UsertagsRule(share, initialAndMode, true, id, "")
     }
 
     fun load(id: Long): UsertagsRule {
         return getEntity(id).let {
-            UsertagsRule(it.share.toShare(), it.andMode, true, it.id)
+            UsertagsRule(it.share.toShare(), it.andMode, true, it.id, it.name)
         }.apply {
             getAllEntriesForRule(this.id).forEach {
                 this.addTag(it.tag)
@@ -48,7 +48,7 @@ internal abstract class UsertagsRuleDao{
             }
         }
 
-        updateEntity(UsertagsRuleEntity(rule.id, ShareEmbed(rule.share), rule.combineWithAnd))
+        updateEntity(UsertagsRuleEntity(rule.id, ShareEmbed(rule.share), rule.name, rule.combineWithAnd))
     }
 
     fun delete(rule: UsertagsRule) {

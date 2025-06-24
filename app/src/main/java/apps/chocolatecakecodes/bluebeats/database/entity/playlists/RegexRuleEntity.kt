@@ -9,6 +9,7 @@ import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.
 internal data class RegexRuleEntity(
     @PrimaryKey(autoGenerate = true) val id: Long,
     @Embedded(prefix = "share_") val share: ShareEmbed,
+    val name: String,
     val attribute: RegexRule.Attribute,
-    val regex: String
+    val regex: String,
 )

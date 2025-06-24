@@ -6,7 +6,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.RegexRule
-import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Rule
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Share
 import apps.chocolatecakecodes.bluebeats.database.entity.playlists.RegexRuleEntity
 import apps.chocolatecakecodes.bluebeats.database.entity.playlists.ShareEmbed
 
@@ -14,10 +14,10 @@ import apps.chocolatecakecodes.bluebeats.database.entity.playlists.ShareEmbed
 internal abstract class RegexRuleDao {
 
     @Transaction
-    open fun createNew(initialShare: Rule.Share): RegexRule {
-        val entity = RegexRuleEntity(0, ShareEmbed(initialShare), RegexRule.Attribute.TITLE, "")
+    open fun createNew(initialShare: Share): RegexRule {
+        val entity = RegexRuleEntity(0, ShareEmbed(initialShare), "", RegexRule.Attribute.TITLE, "")
         val id = insertEntity(entity)
-        return RegexRule(id, true, entity.attribute, entity.regex, entity.share.toShare())
+        return RegexRule(id, true, entity.attribute, entity.regex, entity.share.toShare(), "")
     }
 
     open fun load(id: Long): RegexRule {
@@ -25,7 +25,8 @@ internal abstract class RegexRuleDao {
         return RegexRule(
             entity.id, true,
             entity.attribute, entity.regex,
-            entity.share.toShare()
+            entity.share.toShare(),
+            entity.name
         )
     }
 
@@ -35,8 +36,9 @@ internal abstract class RegexRuleDao {
             RegexRuleEntity(
                 rule.id,
                 ShareEmbed(rule.share),
+                rule.name,
                 rule.attribute,
-                rule.regex
+                rule.regex,
             )
         )
     }

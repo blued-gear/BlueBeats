@@ -20,6 +20,7 @@ class TimeSpanRuleParcel(
 
         dest.writeLong(content.id)
         RuleShareParcel(content.share).writeToParcel(dest, flags)
+        dest.writeString(content.name)
 
         dest.writeLong(content.file.id)
         dest.writeLong(content.startMs)
@@ -34,6 +35,7 @@ class TimeSpanRuleParcel(
                 id = source.readLong(),
                 isOriginal = false,
                 initialShare = RuleShareParcel.createFromParcel(source).content,
+                name = source.readString()!!,
                 file = source.readLong().let { fileId ->
                     if(fileId == MediaNode.INVALID_FILE.id)
                         MediaNode.INVALID_FILE
@@ -42,7 +44,7 @@ class TimeSpanRuleParcel(
                 } ,
                 startMs = source.readLong(),
                 endMs = source.readLong(),
-                description = source.readString()!!
+                description = source.readString()!!,
             ).let { TimeSpanRuleParcel(it) }
         }
 

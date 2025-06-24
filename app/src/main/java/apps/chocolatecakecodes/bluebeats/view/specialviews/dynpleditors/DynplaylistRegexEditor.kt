@@ -11,6 +11,7 @@ import android.widget.Spinner
 import android.widget.TextView
 import androidx.appcompat.R
 import androidx.core.widget.addTextChangedListener
+import androidx.core.widget.doAfterTextChanged
 import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.RegexRule
 import apps.chocolatecakecodes.bluebeats.util.Debouncer
 import io.github.esentsov.PackagePrivate
@@ -37,6 +38,14 @@ internal class DynplaylistRegexEditor(
 
     init {
         header.title.text = ctx.getString(apps.chocolatecakecodes.bluebeats.R.string.dynpl_regex_title)
+
+        header.name.apply {
+            this.editableText.append(rule.name)
+            this.doAfterTextChanged { text ->
+                rule.name = text.toString()
+                changedCallback(rule)
+            }
+        }
 
         header.setupShareEdit(rule.share) {
             rule.share = it

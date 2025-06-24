@@ -17,6 +17,7 @@ import org.videolan.libvlc.interfaces.AbstractVLCEvent
 import org.videolan.libvlc.interfaces.IMedia
 import org.videolan.libvlc.interfaces.IVLCObject
 import java.io.File
+import kotlin.math.roundToInt
 
 object Utils {
 
@@ -170,6 +171,10 @@ object Utils {
             return lcCmp
 
         return o1.compareTo(o2)
+    }
+
+    fun dpToPx(ctx: Context, dp: Int): Int {
+        return (ctx.resources.displayMetrics.density * dp).roundToInt()
     }
 }
 

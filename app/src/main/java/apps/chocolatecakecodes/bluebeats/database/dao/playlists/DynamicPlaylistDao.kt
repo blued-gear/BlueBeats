@@ -8,7 +8,7 @@ import androidx.room.Transaction
 import androidx.room.Update
 import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.PlaylistType
 import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.DynamicPlaylist
-import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Rule
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Share
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.database.entity.playlists.DynamicPlaylistEntity
 import apps.chocolatecakecodes.bluebeats.util.TimerThread
@@ -17,7 +17,7 @@ import com.google.common.cache.CacheBuilder
 import java.util.concurrent.TimeUnit
 
 @Dao
-internal abstract class DynamicPlaylistDAO {
+internal abstract class DynamicPlaylistDao {
 
     private val cache: Cache<Long, DynamicPlaylist>
 
@@ -39,7 +39,7 @@ internal abstract class DynamicPlaylistDAO {
     @Transaction
     open fun createNew(name: String): DynamicPlaylist {
         val id = playlistsManager.createNewEntry(name, PlaylistType.DYNAMIC)
-        val playlist = DynamicPlaylist(id, name, ruleGroupDao.createNew(Rule.Share(1f, true)))
+        val playlist = DynamicPlaylist(id, name, ruleGroupDao.createNew(Share(1f, true)))
         insertEntity(generateEntity(playlist, id))
 
         cache.put(id, playlist)

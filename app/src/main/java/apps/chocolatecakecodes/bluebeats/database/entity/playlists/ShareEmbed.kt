@@ -1,13 +1,13 @@
 package apps.chocolatecakecodes.bluebeats.database.entity.playlists
 
-import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Rule
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Share
 
 internal data class ShareEmbed(val value: Float, val isRelative: Boolean) {
 
-    constructor(from: Rule.Share) : this(from.value, from.isRelative)
+    constructor(from: Share) : this(from.value, from.isRelative)
 
-    fun toShare(): Rule.Share {
-        return Rule.Share(value, isRelative)
+    fun toShare(): Share {
+        return Share(value, isRelative)
     }
 
 }

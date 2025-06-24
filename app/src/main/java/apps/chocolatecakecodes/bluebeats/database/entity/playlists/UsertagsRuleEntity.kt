@@ -8,5 +8,6 @@ import androidx.room.PrimaryKey
 internal data class UsertagsRuleEntity(
     @PrimaryKey(autoGenerate = true) val id: Long,
     @Embedded(prefix = "share_") val share: ShareEmbed,
-    val andMode: Boolean
+    val name: String,
+    val andMode: Boolean,
 )

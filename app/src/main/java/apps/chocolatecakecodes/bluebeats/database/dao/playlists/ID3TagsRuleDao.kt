@@ -6,7 +6,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.ID3TagsRule
-import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Rule
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Share
 import apps.chocolatecakecodes.bluebeats.database.entity.playlists.ID3TagsRuleEntity
 import apps.chocolatecakecodes.bluebeats.database.entity.playlists.ID3TagsRuleEntry
 import apps.chocolatecakecodes.bluebeats.database.entity.playlists.ShareEmbed
@@ -17,15 +17,15 @@ internal abstract class ID3TagsRuleDao {
 
     //region public methods
     @Transaction
-    open fun create(initialShare: Rule.Share): ID3TagsRule {
-        return insertEntity(ID3TagsRuleEntity(0, ShareEmbed(initialShare), "")).let {
+    open fun create(initialShare: Share): ID3TagsRule {
+        return insertEntity(ID3TagsRuleEntity(0, ShareEmbed(initialShare), "", "")).let {
             ID3TagsRule(initialShare, true, it)
         }
     }
 
     fun load(id: Long): ID3TagsRule {
         val rule = findEntityWithId(id).let {
-            ID3TagsRule(it.share.toShare(), true, it.id).apply {
+            ID3TagsRule(it.share.toShare(), true, it.id, it.name).apply {
                 tagType = it.tagType
             }
         }
@@ -39,7 +39,7 @@ internal abstract class ID3TagsRuleDao {
 
     @Transaction
     open fun save(rule: ID3TagsRule) {
-        updateEntity(ID3TagsRuleEntity(rule.id, ShareEmbed(rule.share), rule.tagType))
+        updateEntity(ID3TagsRuleEntity(rule.id, ShareEmbed(rule.share), rule.name, rule.tagType))
 
         Utils.diffChanges(
             findEntriesForRule(rule.id).map { it.value }.toSet(),

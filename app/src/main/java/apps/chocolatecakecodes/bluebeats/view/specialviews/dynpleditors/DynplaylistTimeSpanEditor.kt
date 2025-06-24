@@ -15,6 +15,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.widget.addTextChangedListener
+import androidx.core.widget.doAfterTextChanged
 import apps.chocolatecakecodes.bluebeats.R
 import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaDir
 import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaFile
@@ -46,6 +47,14 @@ internal class DynplaylistTimeSpanEditor(
 
     init {
         header.title.text = context.getText(R.string.dynpl_type_timespan)
+
+        header.name.apply {
+            this.editableText.append(rule.name)
+            this.doAfterTextChanged { text ->
+                rule.name = text.toString()
+                changedCallback(rule)
+            }
+        }
 
         header.setupShareEdit(rule.share) {
             rule.share = it

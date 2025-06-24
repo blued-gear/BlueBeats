@@ -4,6 +4,7 @@ import android.content.Context
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.PopupWindow
+import androidx.core.widget.doAfterTextChanged
 import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.UsertagsRule
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.util.Utils
@@ -25,6 +26,14 @@ internal class DynplaylistUsertagsEditor(
 
     init {
         header.title.text = "Tags"
+
+        header.name.apply {
+            this.editableText.append(rule.name)
+            this.doAfterTextChanged { text ->
+                rule.name = text.toString()
+                changedCallback(rule)
+            }
+        }
 
         header.setupShareEdit(rule.share) {
             rule.share = it

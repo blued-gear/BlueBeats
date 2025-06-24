@@ -8,5 +8,6 @@ import androidx.room.PrimaryKey
 internal data class ID3TagsRuleEntity(
     @PrimaryKey(autoGenerate = true) val id: Long,
     @Embedded(prefix = "share_") val share: ShareEmbed,
-    val tagType: String
+    val name: String,
+    val tagType: String,
 )

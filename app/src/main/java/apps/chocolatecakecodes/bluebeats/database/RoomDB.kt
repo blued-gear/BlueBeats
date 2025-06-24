@@ -13,7 +13,7 @@ import apps.chocolatecakecodes.bluebeats.database.dao.media.ID3TagDAO
 import apps.chocolatecakecodes.bluebeats.database.dao.media.MediaDirDAO
 import apps.chocolatecakecodes.bluebeats.database.dao.media.MediaFileDAO
 import apps.chocolatecakecodes.bluebeats.database.dao.media.UserTagsDAO
-import apps.chocolatecakecodes.bluebeats.database.dao.playlists.DynamicPlaylistDAO
+import apps.chocolatecakecodes.bluebeats.database.dao.playlists.DynamicPlaylistDao
 import apps.chocolatecakecodes.bluebeats.database.dao.playlists.ID3TagsRuleDao
 import apps.chocolatecakecodes.bluebeats.database.dao.playlists.IncludeRuleDao
 import apps.chocolatecakecodes.bluebeats.database.dao.playlists.PlaylistName
@@ -45,10 +45,11 @@ import apps.chocolatecakecodes.bluebeats.database.entity.playlists.TimeSpanRuleE
 import apps.chocolatecakecodes.bluebeats.database.entity.playlists.UsertagsRuleEntity
 import apps.chocolatecakecodes.bluebeats.database.entity.playlists.UsertagsRuleEntry
 import apps.chocolatecakecodes.bluebeats.database.migrations.Migration6to7
+import apps.chocolatecakecodes.bluebeats.database.migrations.Migration8to9
 import java.util.concurrent.atomic.AtomicReference
 
 @Database(
-    version = 8,
+    version = 9,
     entities = [
         MediaDirEntity::class, MediaFileEntity::class,
         ID3TagTypeEntity::class, ID3TagValueEntity::class, ID3TagReferenceEntity::class,
@@ -86,7 +87,7 @@ internal abstract class RoomDB : RoomDatabase() {
                 
                 val dbInst = Room.databaseBuilder(context, RoomDB::class.java, "MediaDB.db")
                     .addCallback(DBUpgradeCallback())
-                    .addMigrations(Migration6to7)
+                    .addMigrations(Migration6to7).addMigrations(Migration8to9)
                     .build()
                 dbInstance.set(dbInst)
             }
@@ -100,7 +101,7 @@ internal abstract class RoomDB : RoomDatabase() {
 
     internal abstract fun playlistManager(): PlaylistsManager
     internal abstract fun staticPlaylistDao(): StaticPlaylistDao
-    internal abstract fun dynamicPlaylistDao(): DynamicPlaylistDAO
+    internal abstract fun dynamicPlaylistDao(): DynamicPlaylistDao
 
     internal abstract fun dplRuleGroupDao(): RuleGroupDao
     internal abstract fun dplIncludeRuleDao(): IncludeRuleDao

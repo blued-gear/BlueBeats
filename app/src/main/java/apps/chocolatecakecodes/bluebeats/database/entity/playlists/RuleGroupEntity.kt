@@ -9,5 +9,6 @@ import androidx.room.PrimaryKey
 internal data class RuleGroupEntity(
     @PrimaryKey(autoGenerate = true) val id: Long,
     @Embedded(prefix = "share_") val share: ShareEmbed,
-    @ColumnInfo(name = "andMode") val andMode: Boolean
+    @ColumnInfo(name = "name") val name: String,
+    @ColumnInfo(name = "andMode") val andMode: Boolean,
 )

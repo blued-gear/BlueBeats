@@ -2,7 +2,7 @@ package apps.chocolatecakecodes.bluebeats.util.serializers
 
 import android.os.Parcel
 import android.os.Parcelable
-import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Rule.Share
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Share
 import apps.chocolatecakecodes.bluebeats.util.Utils
 
 class RuleShareParcel(

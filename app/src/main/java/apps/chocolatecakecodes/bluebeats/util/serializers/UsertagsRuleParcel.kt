@@ -19,6 +19,7 @@ class UsertagsRuleParcel(
 
         RuleShareParcel(content.share).writeToParcel(dest, flags)
         dest.writeLong(content.id)
+        dest.writeString(content.name)
         Utils.parcelWriteBoolean(dest, content.combineWithAnd)
         dest.writeStringList(content.getTags().toList())
     }
@@ -29,6 +30,7 @@ class UsertagsRuleParcel(
             return UsertagsRule(
                 share = RuleShareParcel.createFromParcel(parcel).content,
                 id = parcel.readLong(),
+                name = parcel.readString()!!,
                 combineWithAnd = Utils.parcelReadBoolean(parcel),
                 isOriginal = false,
             ).apply {

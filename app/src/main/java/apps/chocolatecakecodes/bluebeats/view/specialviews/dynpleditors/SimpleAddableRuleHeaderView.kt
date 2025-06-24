@@ -10,12 +10,15 @@ import android.view.View.OnClickListener
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.CheckBox
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.TextView
 import androidx.appcompat.widget.AppCompatImageButton
+import androidx.core.view.updatePaddingRelative
 import apps.chocolatecakecodes.bluebeats.R
-import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Rule
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Share
+import apps.chocolatecakecodes.bluebeats.util.Utils
 import com.google.android.material.color.MaterialColors
 import io.github.esentsov.PackagePrivate
 import java.math.RoundingMode
@@ -58,14 +61,23 @@ internal class SimpleAddableRuleHeaderView(ctx: Context) : LinearLayout(ctx) {
     }
 
     val title = TextView(context)
+    val name = EditText(context)
     val shareBtn = Button(context)
 
-    private lateinit var ruleShare: Rule.Share
+    private lateinit var ruleShare: Share
 
     init {
         this.orientation = HORIZONTAL
 
-        addView(title, LayoutParams(0, LayoutParams.MATCH_PARENT, 5f))
+        title.updatePaddingRelative(
+            top = Utils.dpToPx(ctx, 4),
+            start = Utils.dpToPx(ctx, 4),
+            end = Utils.dpToPx(ctx, 8)
+        )
+        name.setSingleLine()
+
+        addView(title, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT))
+        addView(name, LayoutParams(0, LayoutParams.MATCH_PARENT, 5f))
     }
 
     /**
@@ -79,7 +91,7 @@ internal class SimpleAddableRuleHeaderView(ctx: Context) : LinearLayout(ctx) {
             this.addView(item, 2, lp)
     }
 
-    fun setupShareEdit(initialShare: Rule.Share, onEdited: (Rule.Share) -> Unit) {
+    fun setupShareEdit(initialShare: Share, onEdited: (Share) -> Unit) {
         ruleShare = initialShare
         setShareBtnText(initialShare)
         shareBtn.setOnClickListener(onEditShareHandler(onEdited))
@@ -89,7 +101,7 @@ internal class SimpleAddableRuleHeaderView(ctx: Context) : LinearLayout(ctx) {
     }
 
     @SuppressLint("SetTextI18n")
-    private fun setShareBtnText(share: Rule.Share) {
+    private fun setShareBtnText(share: Share) {
         if(share.modeRelative()) {
             val sharePercentage = DecimalFormat("#.#").apply {
                 roundingMode = RoundingMode.HALF_UP
@@ -105,7 +117,7 @@ internal class SimpleAddableRuleHeaderView(ctx: Context) : LinearLayout(ctx) {
         }
     }
 
-    private fun onEditShareHandler(onEditedHandler: (Rule.Share) -> Unit): OnClickListener {
+    private fun onEditShareHandler(onEditedHandler: (Share) -> Unit): OnClickListener {
         return OnClickListener{
             var popup: PopupWindow? = null
             val popupContent = ShareEditor(ruleShare, context) { newVal ->

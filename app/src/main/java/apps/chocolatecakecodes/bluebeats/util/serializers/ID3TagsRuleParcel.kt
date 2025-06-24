@@ -18,6 +18,7 @@ class ID3TagsRuleParcel(
 
         RuleShareParcel(content.share).writeToParcel(dest, flags)
         dest.writeLong(content.id)
+        dest.writeString(content.name)
         dest.writeString(content.tagType)
         dest.writeStringList(content.getTagValues().toList())
     }
@@ -28,7 +29,8 @@ class ID3TagsRuleParcel(
             return ID3TagsRule(
                 RuleShareParcel.createFromParcel(parcel).content,
                 false,
-                parcel.readLong()
+                parcel.readLong(),
+                parcel.readString()!!,
             ).apply {
                 tagType = parcel.readString()!!
 

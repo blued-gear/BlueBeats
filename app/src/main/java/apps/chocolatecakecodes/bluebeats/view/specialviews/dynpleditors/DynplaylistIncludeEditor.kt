@@ -5,6 +5,7 @@ import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.PopupWindow
 import androidx.core.view.children
+import androidx.core.widget.doAfterTextChanged
 import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaDir
 import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaFile
 import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.IncludeRule
@@ -23,6 +24,14 @@ internal class DynplaylistIncludeEditor(
 
     init {
         header.title.text = "Include"
+
+        header.name.apply {
+            this.editableText.append(rule.name)
+            this.doAfterTextChanged { text ->
+                rule.name = text.toString()
+                changedCallback(rule)
+            }
+        }
 
         header.setupShareEdit(rule.share) {
             rule.share = it

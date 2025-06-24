@@ -6,7 +6,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import apps.chocolatecakecodes.bluebeats.blueplaylists.interfaces.media.MediaNode
-import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Rule
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Share
 import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.TimeSpanRule
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
 import apps.chocolatecakecodes.bluebeats.database.dao.media.MediaFileDAO
@@ -22,9 +22,9 @@ internal abstract class TimeSpanRuleDao {
 
     //region api
     @Transaction
-    open fun createNew(initialShare: Rule.Share): TimeSpanRule {
-        val id = insertEntity(TimeSpanRuleEntity(0, ShareEmbed(initialShare), null, 0, 0, ""))
-        return TimeSpanRule(id, true, MediaNode.INVALID_FILE, 0, 0, "", initialShare)
+    open fun createNew(initialShare: Share): TimeSpanRule {
+        val id = insertEntity(TimeSpanRuleEntity(0, ShareEmbed(initialShare), "", null, 0, 0, ""))
+        return TimeSpanRule(id, true, MediaNode.INVALID_FILE, 0, 0, "", initialShare, "")
     }
 
     fun load(id: Long): TimeSpanRule {
@@ -36,7 +36,7 @@ internal abstract class TimeSpanRuleDao {
 
         return TimeSpanRule(id, true, file,
             entity.startMs, entity.endMs,
-            entity.desc, entity.share.toShare())
+            entity.desc, entity.share.toShare(), entity.name)
     }
 
     @Transaction
@@ -46,7 +46,7 @@ internal abstract class TimeSpanRuleDao {
         else
             rule.file.id
 
-        updateEntity(TimeSpanRuleEntity(rule.id, ShareEmbed(rule.share), fileId,
+        updateEntity(TimeSpanRuleEntity(rule.id, ShareEmbed(rule.share), rule.name, fileId,
             rule.startMs, rule.endMs, rule.description))
     }
 

@@ -9,8 +9,8 @@ import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.
 import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.ID3TagsRule
 import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.IncludeRule
 import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.RegexRule
-import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Rule
 import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.RuleGroup
+import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.Share
 import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.TimeSpanRule
 import apps.chocolatecakecodes.bluebeats.blueplaylists.playlist.dynamicplaylist.rules.UsertagsRule
 import apps.chocolatecakecodes.bluebeats.database.RoomDB
@@ -45,8 +45,8 @@ internal abstract class RuleGroupDao {
 
     //region api
     @Transaction
-    open fun createNew(initialShare: Rule.Share): RuleGroup {
-        return load(insertEntity(RuleGroupEntity(0, ShareEmbed(initialShare), false)))
+    open fun createNew(initialShare: Share): RuleGroup {
+        return load(insertEntity(RuleGroupEntity(0, ShareEmbed(initialShare), "", false)))
     }
 
     fun load(id: Long): RuleGroup {
@@ -56,7 +56,7 @@ internal abstract class RuleGroupDao {
             .map { Pair(loadRule(it.rule, KnownRuleTypes.entries[it.type]), it.negated) }
 
         return RuleGroup(
-            entity.id, true, entity.share.toShare(), entity.andMode,
+            entity.id, true, entity.share.toShare(), entity.name, entity.andMode,
             ruleEntries.map { Pair(it.first, it.second) },
         )
     }
@@ -108,7 +108,7 @@ internal abstract class RuleGroupDao {
             }
         }
 
-        updateEntity(RuleGroupEntity(group.id, ShareEmbed(group.share), group.combineWithAnd))
+        updateEntity(RuleGroupEntity(group.id, ShareEmbed(group.share), group.name, group.combineWithAnd))
     }
 
     @Transaction
