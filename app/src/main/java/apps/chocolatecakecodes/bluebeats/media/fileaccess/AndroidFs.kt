@@ -8,7 +8,7 @@ class AndroidFs : FileEnumerator {
 
     private var scanRoots: Set<String>? = null
 
-    override fun visitAllFiles(ctx: Context, visitor: (String) -> Unit) {
+    override suspend fun visitAllFiles(ctx: Context, visitor: suspend (String) -> Unit) {
         val roots = synchronized(this) {
             if(scanRoots == null)
                 scanRoots = listMediaRoots(ctx)
@@ -44,7 +44,7 @@ class AndroidFs : FileEnumerator {
         return roots
     }
 
-    private fun walkTree(start: File, visitor: (String) -> Unit) {
+    private suspend fun walkTree(start: File, visitor: suspend (String) -> Unit) {
         start.listFiles()?.partition {
             it.isDirectory
         }?.let { (dirs, files) ->

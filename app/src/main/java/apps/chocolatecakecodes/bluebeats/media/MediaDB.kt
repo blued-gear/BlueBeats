@@ -20,6 +20,18 @@ import apps.chocolatecakecodes.bluebeats.media.model.MediaDirImpl
 import apps.chocolatecakecodes.bluebeats.media.model.MediaFileImpl
 import apps.chocolatecakecodes.bluebeats.util.castTo
 import apps.chocolatecakecodes.bluebeats.util.using
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.newFixedThreadPoolContext
+import kotlinx.coroutines.runBlocking
 import org.videolan.libvlc.FactoryManager
 import org.videolan.libvlc.interfaces.ILibVLC
 import org.videolan.libvlc.interfaces.IMedia
@@ -76,6 +88,7 @@ internal class MediaDB(
         }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     fun scanInAll(ctx: Context) {
         val fileWalker = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
             AndroidMediaStore()
@@ -97,31 +110,47 @@ internal class MediaDB(
             it.path
         }.toMutableMap()
 
-        fileWalker.visitAllFiles(ctx) { path ->
-            processFile(path)?.let { f ->
-                removedFiles.remove(f.path)
+        fun markDirExisting(dir: MediaDir) {
+            // mark full dir-path as not removed
+            var subHit = false
+            var parent: MediaDir? = dir
+            while(parent != null) {
+                val hit = removedDirs.remove(parent.path) != null
 
-                // mark full dir-path as not removed
-                var subHit = false
-                var parent: MediaDir? = f.parent?.castTo()
-                while(parent != null) {
-                    val hit = removedDirs.remove(parent.path) != null
-
-                    // If the parent-path was already removed then skip further checking.
-                    //  As the paths are always checked from bottom to top, once a parent-path
-                    //  does not hit anymore, the parent should already be removed
-                    if(subHit) {
-                        if(!hit)
-                            break
-                    } else {
-                        if(hit)
-                            subHit = true
-                    }
-
-                    parent = parent.parent?.castTo()
+                // If the parent-path was already removed then skip further checking.
+                //  As the paths are always checked from bottom to top, once a parent-path
+                //  does not hit anymore, the parent should already be removed
+                if(subHit) {
+                    if(!hit)
+                        break
+                } else {
+                    if(hit)
+                        subHit = true
                 }
+
+                parent = parent.parent?.castTo()
             }
         }
+
+        val scannerCoroutineCtx = CoroutineScope(newFixedThreadPoolContext(Runtime.getRuntime().availableProcessors() * 4, "MediaDB scanner"))
+        val pipeline: Flow<String> = flow {
+            fileWalker.visitAllFiles(ctx) { emit(it) }
+        }
+        val pipelineJob = scannerCoroutineCtx.launch {
+            pipeline.mapNotNull {
+                prepareFile(it)
+            }.map {
+                scannerCoroutineCtx.async {
+                    processFile(it)
+                }
+            }.toList().awaitAll().forEach {
+                val file = it.saveAction()
+
+                removedFiles.remove(it.path)
+                markDirExisting(file.parent)
+            }
+        }
+        runBlocking { pipelineJob.join() }
 
         // remove all removed nodes
         removedFiles.values.forEach {
@@ -223,7 +252,7 @@ internal class MediaDB(
     //endregion
 
     //region private methods
-    private fun processFile(path: String): MediaFile? {
+    private fun prepareFile(path: String): ProcessFileInp? {
         if(IGNORE_LIST.any { path.endsWith(it, true) })
             return null
 
@@ -235,10 +264,22 @@ internal class MediaDB(
 
         val dir = mkDirs(dirPath)
 
-        val file = when(val existingFile = dir.findChild(name)) {
+        return ProcessFileInp(path, dir, name)
+    }
+
+    private fun processFile(inp: ProcessFileInp): ProcessFileOutp {
+        val path = inp.path
+        val dir = inp.dir
+
+        when(val existingFile = dir.findChild(inp.name)) {
             null -> {
-                fileToVlcMedia(path)!!.using(false) {
-                    val newFile = mediaFileDao.newFile(mediaParser.parseFile(it, dir))
+                Log.d(LOG_TAG, "processing new file $path")
+                val parsed = fileToVlcMedia(path)!!.using(false) {
+                    mediaParser.parseFile(it, dir)
+                }
+
+                return ProcessFileOutp(path) {
+                    val newFile = mediaFileDao.newFile(parsed)
                     dir.addFile(newFile)
 
                     eventHandler.onNewNodeFound(newFile)
@@ -248,18 +289,42 @@ internal class MediaDB(
                 }
             }
             is MediaFile -> {
-                updateFile(existingFile as MediaFileImpl)
+                Log.d(LOG_TAG, "processing existing file $path")
+                val file = existingFile as MediaFileImpl
+                val unchangedVersion = mediaFileDao.createCopy(file)
+                val updated = updateFile(file)
 
-                eventHandler.onNodeProcessed(existingFile)
+                val saveAction = if(updated) {
+                    {
+                        mediaFileDao.save(file)
 
-                existingFile
+                        eventHandler.onNodeUpdated(file, unchangedVersion)
+                        eventHandler.onNodeProcessed(existingFile)
+
+                        file
+                    }
+                } else {
+                    {
+                        eventHandler.onNodeProcessed(existingFile)
+
+                        file
+                    }
+                }
+
+                return ProcessFileOutp(path, saveAction)
             }
             else -> {
                 Log.w(LOG_TAG, "dir with name of exiting file found; removing dir; path: $path")
-                dir.removeDir(existingFile as MediaDir)
+                Log.d(LOG_TAG, "processing new file (replacing dir) $path")
 
-                fileToVlcMedia(path)!!.using(false) {
-                    val newFile = mediaFileDao.newFile(mediaParser.parseFile(it, dir))
+                val parsed = fileToVlcMedia(path)!!.using(false) {
+                    mediaParser.parseFile(it, dir)
+                }
+
+                val saveAction = {
+                    dir.removeDir(existingFile as MediaDir)
+
+                    val newFile = mediaFileDao.newFile(parsed)
                     dir.addFile(newFile)
 
                     eventHandler.onNewNodeFound(newFile)
@@ -267,11 +332,10 @@ internal class MediaDB(
 
                     newFile
                 }
+
+                return ProcessFileOutp(path, saveAction)
             }
         }
-
-        mediaFileDao.save(file)
-        return file
     }
 
     private fun mkDirs(path: String): MediaDirImpl {
@@ -296,10 +360,9 @@ internal class MediaDB(
         return parent
     }
 
-    private fun updateFile(file: MediaFileImpl) {
+    private fun updateFile(file: MediaFileImpl): Boolean {
         fileToVlcMedia(file.path)!!.using(false) {
             val fsVersion = mediaParser.parseFile(it, file.parent)
-            val unchangedVersion = mediaFileDao.createCopy(file)
             var wasChanged = false
 
             if(file.type != fsVersion.type) {
@@ -321,10 +384,7 @@ internal class MediaDB(
             }
             //TODO update more attributes
 
-            if(wasChanged){
-                mediaFileDao.save(file)
-                eventHandler.onNodeUpdated(file, unchangedVersion)
-            }
+            return wasChanged
         }
     }
 
@@ -473,5 +533,8 @@ internal class MediaDB(
         protected open fun handleNodeProcessed(node: MediaNode){}
         protected open fun handleScanException(e: Exception){}
     }
+
+    private class ProcessFileInp(val path: String, val dir: MediaDirImpl, val name: String)
+    private class ProcessFileOutp(val path: String, val saveAction: () -> MediaFileImpl)
     //endregion
 }

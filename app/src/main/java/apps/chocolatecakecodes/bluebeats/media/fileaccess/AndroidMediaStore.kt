@@ -17,7 +17,7 @@ internal class AndroidMediaStore : FileEnumerator {
         private val DATA_COL = arrayOf(MediaStore.DownloadColumns.DATA)
     }
 
-    override fun visitAllFiles(ctx: Context, visitor: (String) -> Unit) {
+    override suspend fun visitAllFiles(ctx: Context, visitor: suspend (String) -> Unit) {
         visitAllFilesInCategory(
             ctx.contentResolver,
             MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL),
@@ -35,7 +35,7 @@ internal class AndroidMediaStore : FileEnumerator {
         )*/
     }
 
-    private fun visitAllFilesInCategory(resolver: ContentResolver, root: Uri, visitor: (String) -> Unit) {
+    private suspend fun visitAllFilesInCategory(resolver: ContentResolver, root: Uri, visitor: suspend (String) -> Unit) {
         ContentResolverCompat.query(
             resolver,
             root,

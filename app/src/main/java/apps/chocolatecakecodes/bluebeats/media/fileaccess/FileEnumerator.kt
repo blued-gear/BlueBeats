@@ -4,5 +4,5 @@ import android.content.Context
 
 interface FileEnumerator {
 
-    fun visitAllFiles(ctx: Context, visitor: (String) -> Unit)
+    suspend fun visitAllFiles(ctx: Context, visitor: suspend (String) -> Unit)
 }
