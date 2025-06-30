@@ -62,7 +62,7 @@ internal class DynplaylistEditorFragment() : Fragment(R.layout.playlists_dynedit
 
         mainVm = ViewModelProvider(this.requireActivity()).get(MainActivityViewModel::class.java)
 
-        if(savedInstanceState !== null){
+        if(savedInstanceState !== null) {
             modified = savedInstanceState.getBoolean(STATE_MODIFIED)
             val plId = savedInstanceState.getLong(STATE_PLAYLIST_ID)
             CoroutineScope(Dispatchers.IO).launch {
