@@ -132,7 +132,7 @@ internal class MediaDB(
             }
         }
 
-        val scannerCoroutineCtx = CoroutineScope(newFixedThreadPoolContext(Runtime.getRuntime().availableProcessors() * 4, "MediaDB scanner"))
+        val scannerCoroutineCtx = CoroutineScope(newFixedThreadPoolContext(4, "MediaDB scanner"))
         val pipeline: Flow<String> = flow {
             fileWalker.visitAllFiles(ctx) { emit(it) }
         }
