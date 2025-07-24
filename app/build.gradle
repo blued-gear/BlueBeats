@@ -88,7 +88,7 @@ dependencies {
     def room_version = '2.7.2'
     def fastadapter_version = '5.7.0'
     def media3_version = '1.7.1'
-    def lifecycle_version = '2.9.1'
+    def lifecycle_version = '2.9.2'
     def acra_version = '5.12.0'
 
     //implementation project(':taglib')
@@ -132,7 +132,7 @@ dependencies {
     implementation "com.mpatric:mp3agic:0.9.1"
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
-    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1'
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0'
 
     implementation 'io.github.esentsov:kotlin-visibility:1.1.0'
 
