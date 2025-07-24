@@ -186,13 +186,25 @@ class FileBrowser : Fragment() {
                 progressBar!!.isIndeterminate = false
             }
             override fun handleNewNodeFound(node: MediaNode) {
-                if(node.parent == viewModel.currentDir.value) {
-                    browser.addNode(node)
+                // node.parent might trigger a DB query
+                CoroutineScope(Dispatchers.IO).launch {
+                    val isOfInterest = node.parent == viewModel.currentDir.value
+                    withContext(Dispatchers.Main) {
+                        if(isOfInterest) {
+                            browser.addNode(node)
+                        }
+                    }
                 }
             }
             override fun handleNodeRemoved(node: MediaNode) {
-                if(node.parent == viewModel.currentDir.value) {
-                    browser.removeNode(node)
+                // node.parent might trigger a DB query
+                CoroutineScope(Dispatchers.IO).launch {
+                    val isOfInterest = node.parent == viewModel.currentDir.value
+                    withContext(Dispatchers.Main) {
+                        if(isOfInterest) {
+                            browser.removeNode(node)
+                        }
+                    }
                 }
             }
             override fun handleNodeUpdated(node: MediaNode, oldVersion: MediaNode) {
