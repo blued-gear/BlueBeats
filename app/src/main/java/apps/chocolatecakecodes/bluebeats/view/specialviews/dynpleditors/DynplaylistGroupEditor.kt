@@ -29,7 +29,6 @@ internal class DynplaylistGroupEditor(
     ctx: Context
 ) : AbstractDynplaylistEditorView(ctx) {
 
-    //FIXME this will create unreachable garbage-entries in the DB
     private val ruleGenerators = mapOf(
         context.getString(R.string.dynpl_type_group) to {
             RoomDB.DB_INSTANCE.dplRuleGroupDao().createNew(Share(-1f, true)).copy()

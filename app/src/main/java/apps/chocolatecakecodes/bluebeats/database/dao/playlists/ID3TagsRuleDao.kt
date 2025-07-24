@@ -24,17 +24,11 @@ internal abstract class ID3TagsRuleDao {
     }
 
     fun load(id: Long): ID3TagsRule {
-        val rule = findEntityWithId(id).let {
-            ID3TagsRule(it.share.toShare(), true, it.id, it.name).apply {
-                tagType = it.tagType
-            }
-        }
+        return findEntityWithId(id).let(this::loadRule)
+    }
 
-        findEntriesForRule(id).forEach {
-            rule.addTagValue(it.value)
-        }
-
-        return rule
+    fun loadAll(): List<ID3TagsRule> {
+        return findAllEntities().map(this::loadRule)
     }
 
     @Transaction
@@ -70,6 +64,9 @@ internal abstract class ID3TagsRuleDao {
     @Query("SELECT * FROM ID3TagsRuleEntity WHERE id = :id;")
     protected abstract fun findEntityWithId(id: Long): ID3TagsRuleEntity
 
+    @Query("SELECT * FROM ID3TagsRuleEntity;")
+    protected abstract fun findAllEntities(): List<ID3TagsRuleEntity>
+
     @Query("SELECT * FROM ID3TagsRuleEntry WHERE rule = :rule;")
     protected abstract fun findEntriesForRule(rule: Long): List<ID3TagsRuleEntry>
 
@@ -90,5 +87,19 @@ internal abstract class ID3TagsRuleDao {
 
     @Query("DELETE FROM ID3TagsRuleEntry WHERE rule = :rule;")
     protected abstract fun deleteAllEntriesForRule(rule: Long)
+    //endregion
+
+    //region private helpers
+    private fun loadRule(entity: ID3TagsRuleEntity): ID3TagsRule {
+        val rule = ID3TagsRule(entity.share.toShare(), true, entity.id, entity.name).apply {
+            tagType = entity.tagType
+        }
+
+        findEntriesForRule(entity.id).forEach {
+            rule.addTagValue(it.value)
+        }
+
+        return rule
+    }
     //endregion
 }

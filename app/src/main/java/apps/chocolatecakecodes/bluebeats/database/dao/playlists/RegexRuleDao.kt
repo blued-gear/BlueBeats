@@ -21,13 +21,11 @@ internal abstract class RegexRuleDao {
     }
 
     open fun load(id: Long): RegexRule {
-        val entity = getEntity(id)
-        return RegexRule(
-            entity.id, true,
-            entity.attribute, entity.regex,
-            entity.share.toShare(),
-            entity.name
-        )
+        return getEntity(id).let(this::loadRule)
+    }
+
+    fun loadAll(): List<RegexRule> {
+        return getAllEntities().map(this::loadRule)
     }
 
     @Transaction
@@ -65,5 +63,19 @@ internal abstract class RegexRuleDao {
 
     @Query("SELECT * FROM RegexRuleEntity WHERE id = :id;")
     protected abstract fun getEntity(id: Long): RegexRuleEntity
+
+    @Query("SELECT * FROM RegexRuleEntity;")
+    protected abstract fun getAllEntities(): List<RegexRuleEntity>
+    //endregion
+
+    //region private helpers
+    private fun loadRule(entity: RegexRuleEntity): RegexRule {
+        return RegexRule(
+            entity.id, true,
+            entity.attribute, entity.regex,
+            entity.share.toShare(),
+            entity.name
+        )
+    }
     //endregion
 }

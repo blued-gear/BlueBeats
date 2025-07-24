@@ -36,26 +36,11 @@ internal abstract class IncludeRuleDao {
     }
 
     fun load(id: Long): IncludeRule {
-        val entity = getEntity(id)
+        return getEntity(id).let(this::loadRule)
+    }
 
-        val fileEntries = getFileEntriesForRule(id).mapNotNull {
-            try {
-                fileDao.getForId(it.file)
-            } catch(e: Exception) {
-                Log.e("IncludeRuleDao", "exception while loading file", e)
-                null
-            }
-        }.toSet()
-        val dirEntries = getDirEntriesForRule(id).mapNotNull {
-            try {
-                dirDao.getForId(it.dir) to it.deep
-            } catch(e: Exception) {
-                Log.e("IncludeRuleDao", "exception while loading dir", e)
-                null
-            }
-        }.toSet()
-
-        return IncludeRule(id, true, entity.share.toShare(), dirEntries, fileEntries, entity.name)
+    fun loadAll(): List<IncludeRule> {
+        return getAllEntities().map(this::loadRule)
     }
 
     @Transaction
@@ -120,6 +105,9 @@ internal abstract class IncludeRuleDao {
     @Query("SELECT * FROM IncludeRuleEntity WHERE id = :id;")
     protected abstract fun getEntity(id: Long): IncludeRuleEntity
 
+    @Query("SELECT * FROM IncludeRuleEntity;")
+    protected abstract fun getAllEntities(): List<IncludeRuleEntity>
+
     @Insert
     protected abstract fun insertFileEntry(entry: IncludeRuleFileEntry): Long
 
@@ -166,6 +154,27 @@ internal abstract class IncludeRuleDao {
                 it.second
             )
         }
+    }
+
+    private fun loadRule(entity: IncludeRuleEntity): IncludeRule {
+        val fileEntries = getFileEntriesForRule(entity.id).mapNotNull {
+            try {
+                fileDao.getForId(it.file)
+            } catch(e: Exception) {
+                Log.e("IncludeRuleDao", "exception while loading file", e)
+                null
+            }
+        }.toSet()
+        val dirEntries = getDirEntriesForRule(entity.id).mapNotNull {
+            try {
+                dirDao.getForId(it.dir) to it.deep
+            } catch(e: Exception) {
+                Log.e("IncludeRuleDao", "exception while loading dir", e)
+                null
+            }
+        }.toSet()
+
+        return IncludeRule(entity.id, true, entity.share.toShare(), dirEntries, fileEntries, entity.name)
     }
     //endregion
 }

@@ -28,15 +28,11 @@ internal abstract class TimeSpanRuleDao {
     }
 
     fun load(id: Long): TimeSpanRule {
-        val entity = getEntity(id)
+        return getEntity(id).let(this::loadRule)
+    }
 
-        val file = entity.file?.let {
-            fileDao.getForId(it)
-        } ?: MediaNode.INVALID_FILE
-
-        return TimeSpanRule(id, true, file,
-            entity.startMs, entity.endMs,
-            entity.desc, entity.share.toShare(), entity.name)
+    fun loadAll(): List<TimeSpanRule> {
+        return getAllEntities().map(this::loadRule)
     }
 
     @Transaction
@@ -64,6 +60,9 @@ internal abstract class TimeSpanRuleDao {
     @Query("SELECT * FROM TimeSpanRuleEntity WHERE id = :id;")
     protected abstract fun getEntity(id: Long): TimeSpanRuleEntity
 
+    @Query("SELECT * FROM TimeSpanRuleEntity;")
+    protected abstract fun getAllEntities(): List<TimeSpanRuleEntity>
+
     @Insert
     protected abstract fun insertEntity(entity: TimeSpanRuleEntity): Long
 
@@ -72,5 +71,17 @@ internal abstract class TimeSpanRuleDao {
 
     @Query("DELETE FROM TimeSpanRuleEntity WHERE id = :id;")
     protected abstract fun deleteEntity(id: Long)
+    //endregion
+
+    //region private helpers
+    private fun loadRule(entity: TimeSpanRuleEntity): TimeSpanRule {
+        val file = entity.file?.let {
+            fileDao.getForId(it)
+        } ?: MediaNode.INVALID_FILE
+
+        return TimeSpanRule(entity.id, true, file,
+            entity.startMs, entity.endMs,
+            entity.desc, entity.share.toShare(), entity.name)
+    }
     //endregion
 }

@@ -50,15 +50,11 @@ internal abstract class RuleGroupDao {
     }
 
     fun load(id: Long): RuleGroup {
-        val entity = getEntity(id)
-        val ruleEntries = getEntriesForGroup(id)
-            .sortedBy { it.pos }
-            .map { Pair(loadRule(it.rule, KnownRuleTypes.entries[it.type]), it.negated) }
+        return getEntity(id).let(this::loadRuleGroup)
+    }
 
-        return RuleGroup(
-            entity.id, true, entity.share.toShare(), entity.name, entity.andMode,
-            ruleEntries.map { Pair(it.first, it.second) },
-        )
+    fun loadAll(): List<RuleGroup> {
+        return getAllEntities().map(this::loadRuleGroup)
     }
 
     @Transaction
@@ -135,6 +131,9 @@ internal abstract class RuleGroupDao {
     @Query("SELECT * FROM RuleGroupEntity WHERE id = :id;")
     protected abstract fun getEntity(id: Long): RuleGroupEntity
 
+    @Query("SELECT * FROM RuleGroupEntity;")
+    protected abstract fun getAllEntities(): List<RuleGroupEntity>
+
     @Insert
     protected abstract fun insertEntry(entry: RuleGroupEntry): Long
 
@@ -150,6 +149,17 @@ internal abstract class RuleGroupDao {
     //endregion
 
     //region private helpers
+    private fun loadRuleGroup(entity: RuleGroupEntity): RuleGroup {
+        val ruleEntries = getEntriesForGroup(entity.id)
+            .sortedBy { it.pos }
+            .map { Pair(loadRule(it.rule, KnownRuleTypes.entries[it.type]), it.negated) }
+
+        return RuleGroup(
+            entity.id, true, entity.share.toShare(), entity.name, entity.andMode,
+            ruleEntries.map { Pair(it.first, it.second) },
+        )
+    }
+
     private fun loadRule(id: Long, type: KnownRuleTypes): GenericRule {
         return when(type) {
             KnownRuleTypes.RULE_GROUP -> this.load(id)

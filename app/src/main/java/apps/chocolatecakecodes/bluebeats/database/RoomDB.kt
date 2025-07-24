@@ -44,8 +44,12 @@ import apps.chocolatecakecodes.bluebeats.database.entity.playlists.StaticPlaylis
 import apps.chocolatecakecodes.bluebeats.database.entity.playlists.TimeSpanRuleEntity
 import apps.chocolatecakecodes.bluebeats.database.entity.playlists.UsertagsRuleEntity
 import apps.chocolatecakecodes.bluebeats.database.entity.playlists.UsertagsRuleEntry
+import apps.chocolatecakecodes.bluebeats.database.maintenance.PlaylistRuleGarbageCollector
 import apps.chocolatecakecodes.bluebeats.database.migrations.Migration6to7
 import apps.chocolatecakecodes.bluebeats.database.migrations.Migration8to9
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicReference
 
 @Database(
@@ -130,7 +134,9 @@ private class DBUpgradeCallback : RoomDatabase.Callback(){
     }
 
     override fun onOpen(db: SupportSQLiteDatabase) {
-
+        CoroutineScope(Dispatchers.IO).launch {
+            PlaylistRuleGarbageCollector().run()
+        }
     }
 
     override fun onDestructiveMigration(db: SupportSQLiteDatabase) {

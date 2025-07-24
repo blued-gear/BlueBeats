@@ -24,13 +24,11 @@ internal abstract class UsertagsRuleDao{
     }
 
     fun load(id: Long): UsertagsRule {
-        return getEntity(id).let {
-            UsertagsRule(it.share.toShare(), it.andMode, true, it.id, it.name)
-        }.apply {
-            getAllEntriesForRule(this.id).forEach {
-                this.addTag(it.tag)
-            }
-        }
+        return getEntity(id).let(this::loadRule)
+    }
+
+    fun loadAll(): List<UsertagsRule> {
+        return getAllEntities().map(this::loadRule)
     }
 
     @Transaction
@@ -75,6 +73,9 @@ internal abstract class UsertagsRuleDao{
     @Query("SELECT * FROM UsertagsRuleEntity WHERE id = :id;")
     abstract fun getEntity(id: Long): UsertagsRuleEntity
 
+    @Query("SELECT * FROM UsertagsRuleEntity;")
+    abstract fun getAllEntities(): List<UsertagsRuleEntity>
+
     @Query("SELECT * FROM UsertagsRuleEntry WHERE rule = :rule;")
     abstract fun getAllEntriesForRule(rule: Long): List<UsertagsRuleEntry>
 
@@ -86,5 +87,17 @@ internal abstract class UsertagsRuleDao{
 
     @Query("DELETE FROM UsertagsRuleEntry WHERE rule = :rule AND tag = :tag;")
     abstract fun deleteEntry(rule: Long, tag: String)
+    //endregion
+
+    //region private helpers
+    private fun loadRule(entity: UsertagsRuleEntity): UsertagsRule {
+        return entity.let {
+            UsertagsRule(it.share.toShare(), it.andMode, true, it.id, it.name)
+        }.apply {
+            getAllEntriesForRule(this.id).forEach {
+                this.addTag(it.tag)
+            }
+        }
+    }
     //endregion
 }
